@@ -1,0 +1,21 @@
+{
+  "common": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "close": "Fermer",
+    "loading": "Chargement...",
+    "saving": "Enregistrement...",
+    "deleting": "Suppression...",
+    "days": "jours",
+    "error": "Erreur"
+  },
+  "navigation": {
+    "dashboard": "Tableau de bord",
+    "company": "Entreprise",
+    "subscriptions": "Abonnements",
+    "users": "Utilisateurs",
+    "settings": "Paramètres"
+  }
+}

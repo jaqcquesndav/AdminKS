@@ -1,0 +1,34 @@
+{
+  "dashboard": {
+    "title": "Tableau de bord",
+    "stats": {
+      "activeUsers": "Utilisateurs actifs",
+      "activeSessions": "Sessions actives",
+      "companies": "Entreprises",
+      "subscriptions": "Abonnements"
+    },
+    "usage": {
+      "title": "Utilisation",
+      "users": "Utilisateurs",
+      "transactions": "Transactions"
+    },
+    "subscription": {
+      "status": "État de l'abonnement",
+      "daysRemaining": "Jours restants",
+      "expiryDate": "Date d'expiration",
+      "expiringSoon": "Votre abonnement expire bientôt"
+    },
+    "activity": {
+      "title": "Activités récentes"
+    },
+    "system": {
+      "title": "État du système",
+      "memory": "Mémoire",
+      "api": "API",
+      "database": "Base de données",
+      "operational": "Opérationnel",
+      "warning": "Avertissement",
+      "error": "Erreur"
+    }
+  }
+}

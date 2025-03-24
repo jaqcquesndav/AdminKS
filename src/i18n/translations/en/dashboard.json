@@ -1,0 +1,34 @@
+{
+  "dashboard": {
+    "title": "Dashboard",
+    "stats": {
+      "activeUsers": "Active Users",
+      "activeSessions": "Active Sessions",
+      "companies": "Companies",
+      "subscriptions": "Subscriptions"
+    },
+    "usage": {
+      "title": "Usage",
+      "users": "Users",
+      "transactions": "Transactions"
+    },
+    "subscription": {
+      "status": "Subscription Status",
+      "daysRemaining": "Days Remaining",
+      "expiryDate": "Expiry Date",
+      "expiringSoon": "Your subscription is expiring soon"
+    },
+    "activity": {
+      "title": "Recent Activity"
+    },
+    "system": {
+      "title": "System Status",
+      "memory": "Memory",
+      "api": "API",
+      "database": "Database",
+      "operational": "Operational",
+      "warning": "Warning",
+      "error": "Error"
+    }
+  }
+}

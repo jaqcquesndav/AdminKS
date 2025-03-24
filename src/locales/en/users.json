@@ -1,0 +1,52 @@
+{
+  "users": {
+    "title": "User Management",
+    "actions": {
+      "create": "New User",
+      "edit": "Edit",
+      "delete": "Delete"
+    },
+    "search": {
+      "placeholder": "Search by name or email..."
+    },
+    "form": {
+      "create": "Create User",
+      "edit": "Edit User",
+      "name": "Full Name",
+      "email": "Email Address",
+      "password": "Password",
+      "confirmPassword": "Confirm Password",
+      "role": "Role",
+      "error": "An error occurred",
+      "passwordMismatch": "Passwords do not match"
+    },
+    "delete": {
+      "title": "Delete User",
+      "warning": "This action cannot be undone",
+      "description": "Are you sure you want to delete user {name}?"
+    },
+    "table": {
+      "name": "Name",
+      "email": "Email",
+      "role": "Role",
+      "status": "Status",
+      "lastLogin": "Last Login",
+      "actions": "Actions"
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "roles": {
+      "admin": "Administrator",
+      "user": "User",
+      "viewer": "Viewer"
+    },
+    "permissions": {
+      "title": "Permissions",
+      "read": "Read",
+      "write": "Write",
+      "admin": "Administration"
+    }
+  }
+}

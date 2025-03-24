@@ -1,0 +1,52 @@
+{
+  "users": {
+    "title": "Gestion des utilisateurs",
+    "actions": {
+      "create": "Nouvel utilisateur",
+      "edit": "Modifier",
+      "delete": "Supprimer"
+    },
+    "search": {
+      "placeholder": "Rechercher par nom ou email..."
+    },
+    "form": {
+      "create": "Créer un utilisateur",
+      "edit": "Modifier l'utilisateur",
+      "name": "Nom complet",
+      "email": "Adresse email",
+      "password": "Mot de passe",
+      "confirmPassword": "Confirmer le mot de passe",
+      "role": "Rôle",
+      "error": "Une erreur est survenue",
+      "passwordMismatch": "Les mots de passe ne correspondent pas"
+    },
+    "delete": {
+      "title": "Supprimer l'utilisateur",
+      "warning": "Cette action est irréversible",
+      "description": "Êtes-vous sûr de vouloir supprimer l'utilisateur {name} ?"
+    },
+    "table": {
+      "name": "Nom",
+      "email": "Email",
+      "role": "Rôle",
+      "status": "Statut",
+      "lastLogin": "Dernière connexion",
+      "actions": "Actions"
+    },
+    "status": {
+      "active": "Actif",
+      "inactive": "Inactif"
+    },
+    "roles": {
+      "admin": "Administrateur",
+      "user": "Utilisateur",
+      "viewer": "Lecteur"
+    },
+    "permissions": {
+      "title": "Permissions",
+      "read": "Lecture",
+      "write": "Écriture",
+      "admin": "Administration"
+    }
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "settings": {
+    "title": "Settings",
+    "tabs": {
+      "profile": "Profile",
+      "general": "General",
+      "security": "Security",
+      "notifications": "Notifications"
+    },
+    "profile": {
+      "title": "Profile",
+      "description": "Manage your personal information",
+      "edit": {
+        "title": "Edit Profile",
+        "button": "Edit"
+      },
+      "name": "Full Name",
+      "email": "Email Address",
+      "phone": "Phone",
+      "phoneNotSet": "Not set",
+      "location": "Location",
+      "locationNotSet": "Not set",
+      "locationPlaceholder": "Ex: Goma, North Kivu",
+      "role": "Role",
+      "changeAvatar": "Change Avatar",
+      "updateSuccess": "Profile updated successfully",
+      "updateError": "Failed to update profile",
+      "validation": {
+        "nameRequired": "Name is required",
+        "emailRequired": "Email is required",
+        "emailInvalid": "Invalid email address",
+        "phoneInvalid": "Invalid phone number"
+      }
+    }
+  }
+}

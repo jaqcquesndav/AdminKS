@@ -1,0 +1,24 @@
+const translations = {
+  common: {
+    save: 'Save',
+    cancel: 'Cancel',
+    delete: 'Delete',
+    edit: 'Edit',
+    close: 'Close',
+    loading: 'Loading...',
+    saving: 'Saving...',
+    deleting: 'Deleting...',
+    days: 'days',
+    error: 'Error'
+  },
+  navigation: {
+    dashboard: 'Dashboard',
+    company: 'Company',
+    subscriptions: 'Subscriptions',
+    users: 'Users',
+    settings: 'Settings'
+  },
+  // Add other translations directly here
+};
+
+export default translations;

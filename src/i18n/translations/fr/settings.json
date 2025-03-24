@@ -1,0 +1,36 @@
+{
+  "settings": {
+    "title": "Paramètres",
+    "tabs": {
+      "profile": "Profil",
+      "general": "Général",
+      "security": "Sécurité",
+      "notifications": "Notifications"
+    },
+    "profile": {
+      "title": "Profil",
+      "description": "Gérez vos informations personnelles",
+      "edit": {
+        "title": "Modifier le profil",
+        "button": "Modifier"
+      },
+      "name": "Nom complet",
+      "email": "Adresse e-mail",
+      "phone": "Téléphone",
+      "phoneNotSet": "Non défini",
+      "location": "Localisation",
+      "locationNotSet": "Non définie",
+      "locationPlaceholder": "Ex: Goma, Nord-Kivu",
+      "role": "Rôle",
+      "changeAvatar": "Changer l'avatar",
+      "updateSuccess": "Profil mis à jour avec succès",
+      "updateError": "Erreur lors de la mise à jour du profil",
+      "validation": {
+        "nameRequired": "Le nom est requis",
+        "emailRequired": "L'adresse e-mail est requise",
+        "emailInvalid": "L'adresse e-mail n'est pas valide",
+        "phoneInvalid": "Le numéro de téléphone n'est pas valide"
+      }
+    }
+  }
+}

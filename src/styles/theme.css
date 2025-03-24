@@ -1,0 +1,84 @@
+@layer base {
+  :root {
+    /* Light Theme Colors */
+    --color-primary: #197ca8;
+    --color-primary-rgb: 25, 124, 168;
+    --color-primary-light: #2089b7;
+    --color-primary-dark: #156d93;
+    
+    --color-interactive: #1e90c3;
+    --color-interactive-light: #2f9fcf;
+    --color-interactive-dark: #1b81af;
+    
+    --color-success: #015730;
+    --color-success-light: #026b3a;
+    --color-success-dark: #014426;
+    
+    --color-warning: #ee872b;
+    --color-warning-light: #f09642;
+    --color-warning-dark: #e67816;
+
+    /* Background Colors */
+    --bg-primary: #ffffff;
+    --bg-secondary: #f3f4f6;
+    --bg-tertiary: #e5e7eb;
+    
+    /* Text Colors */
+    --text-primary: #111827;
+    --text-secondary: #4b5563;
+    --text-tertiary: #9ca3af;
+  }
+
+  .dark {
+    /* Dark Theme Colors */
+    --color-primary: #2089b7;
+    --color-primary-rgb: 32, 137, 183;
+    --color-primary-light: #2596c7;
+    --color-primary-dark: #1b7aa3;
+    
+    --bg-primary: #1a1b1e;
+    --bg-secondary: #2c2e33;
+    --bg-tertiary: #3b3d42;
+    
+    --text-primary: #f3f4f6;
+    --text-secondary: #d1d5db;
+    --text-tertiary: #9ca3af;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-bg-primary dark:bg-gray-800 
+           rounded-lg shadow-sm p-6 
+           border border-gray-200 dark:border-gray-700;
+  }
+
+  .input {
+    @apply block w-full rounded-md 
+           border-gray-300 dark:border-gray-600 
+           bg-white dark:bg-gray-800
+           text-gray-900 dark:text-white
+           shadow-sm 
+           focus:ring-2 focus:ring-primary/20 dark:focus:ring-primary/40
+           focus:border-primary dark:focus:border-primary
+           disabled:opacity-50
+           transition duration-200;
+  }
+
+  .btn {
+    @apply px-4 py-2 rounded-md font-medium 
+           transition-colors duration-200
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply bg-primary hover:bg-primary-light 
+           text-white shadow-sm;
+  }
+
+  .btn-secondary {
+    @apply bg-gray-200 dark:bg-gray-700 
+           text-gray-900 dark:text-white
+           hover:bg-gray-300 dark:hover:bg-gray-600;
+  }
+}

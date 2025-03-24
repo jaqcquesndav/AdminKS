@@ -1,0 +1,20 @@
+```json
+{
+  "chat": {
+    "title": "Support",
+    "messagePlaceholder": "Type your message...",
+    "send": "Send",
+    "attachFile": "Attach file",
+    "typing": "typing...",
+    "status": {
+      "online": "Online",
+      "offline": "Offline"
+    },
+    "fileTypes": {
+      "image": "Image",
+      "document": "Document",
+      "file": "File"
+    }
+  }
+}
+```
