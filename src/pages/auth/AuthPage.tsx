@@ -3,26 +3,33 @@ import { useNavigate } from 'react-router-dom';
 import { LoginForm } from '../../components/auth/LoginForm';
 import { SignUpForm } from '../../components/auth/SignUpForm';
 import { ForgotPasswordForm } from '../../components/auth/ForgotPasswordForm';
+import { TwoFactorVerification } from '../../components/auth/TwoFactorVerification';
 import { useAuth } from '../../hooks/useAuth';
 import { authService } from '../../services/authService';
 import { authApi } from '../../services/api/auth';
 import { useToastStore } from '../../components/common/ToastContainer';
 
-type AuthMode = 'login' | 'signup' | 'forgotPassword';
+type AuthMode = 'login' | 'signup' | 'forgotPassword' | '2fa';
 
 export function AuthPage() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, setRequiresTwoFactor, requiresTwoFactor } = useAuth();
   const addToast = useToastStore(state => state.addToast);
-  const [mode, setMode] = useState<AuthMode>('login');
+  const [mode, setMode] = useState<AuthMode>(requiresTwoFactor ? '2fa' : 'login');
   const [error, setError] = useState<string>();
+  const [tempUser, setTempUser] = useState<any>(null);
 
   const handleLogin = async (email: string, password: string) => {
     try {
       const response = await authService.login({ email, password });
-      if (response.user) {
-        login(response.user);
+      if (response.requiresTwoFactor) {
+        setTempUser(response.user);
+        setRequiresTwoFactor(true);
+        setMode('2fa');
+      } else if (response.user) {
+        login(response.user, response.token, response.refreshToken);
         addToast('success', 'Connexion réussie');
+        // Redirection immédiate vers le tableau de bord
         navigate('/', { replace: true });
       } else {
         setError('Email ou mot de passe incorrect');
@@ -68,6 +75,20 @@ export function AuthPage() {
     }
   };
 
+  const handleTwoFactorVerification = async (code: string) => {
+    try {
+      const success = await authService.verifyTwoFactor({ code, method: 'email' });
+      if (success && tempUser) {
+        login(tempUser);
+        setRequiresTwoFactor(false);
+        navigate('/', { replace: true });
+      }
+    } catch (error) {
+      setError('Code invalide');
+      addToast('error', 'Code de vérification invalide');
+    }
+  };
+
   const renderForm = () => {
     switch (mode) {
       case 'signup':
@@ -84,6 +105,17 @@ export function AuthPage() {
             onSubmit={handleForgotPassword}
             onBack={() => setMode('login')}
             error={error}
+          />
+        );
+      case '2fa':
+        return (
+          <TwoFactorVerification
+            onVerify={handleTwoFactorVerification}
+            onCancel={() => {
+              setRequiresTwoFactor(false);
+              setTempUser(null);
+              setMode('login');
+            }}
           />
         );
       default:
