@@ -3,7 +3,7 @@ export interface AuthUser {
   email: string;
   name: string;
   picture?: string;
-  role: 'admin' | 'user';
+  role: 'admin' | 'user' | 'superadmin' | 'cto' | 'growth_finance' | 'customer_support';
 }
 
 export interface AuthState {

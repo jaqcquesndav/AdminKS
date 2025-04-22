@@ -149,11 +149,69 @@ const translations = {
 
   settings: {
     title: 'Paramètres',
+    tabs: {
+      profile: 'Profil',
+      security: 'Sécurité',
+      notifications: 'Notifications',
+      display: 'Affichage',
+      language: 'Langue',
+      support: 'Support'
+    },
     sections: {
       profile: 'Profil',
       security: 'Sécurité',
       notifications: 'Notifications',
       appearance: 'Apparence'
+    },
+    profile: {
+      title: 'Profil administrateur',
+      name: 'Nom',
+      email: 'Email',
+      role: 'Rôle',
+      phone: 'Téléphone',
+      edit: 'Modifier',
+      save: 'Enregistrer',
+      cancel: 'Annuler'
+    },
+    security: {
+      title: 'Paramètres de sécurité',
+      twoFactor: 'Authentification à deux facteurs',
+      twoFactorDesc: 'Renforcez la sécurité de votre compte',
+      password: 'Mot de passe',
+      changePassword: 'Changer le mot de passe',
+      sessions: 'Sessions actives',
+      logoutAll: 'Déconnecter toutes les sessions'
+    },
+    notifications: {
+      preferences: 'Préférences de notifications',
+      email: 'Notifications par email',
+      emailDescription: 'Recevoir les notifications importantes par email',
+      push: 'Notifications push',
+      pushDescription: 'Recevoir les notifications en temps réel',
+      sms: 'Notifications SMS',
+      smsDescription: 'Recevoir les notifications urgentes par SMS'
+    },
+    display: {
+      theme: 'Thème',
+      lightTheme: 'Clair',
+      darkTheme: 'Sombre',
+      systemTheme: 'Système',
+      layout: 'Disposition',
+      sidebarLayout: 'Menu latéral',
+      topNavLayout: 'Navigation en haut'
+    },
+    language: {
+      selectLanguage: 'Choisir la langue',
+      dateFormat: 'Format de date'
+    },
+    support: {
+      help: 'Aide et support',
+      documentation: 'Documentation',
+      documentationDesc: 'Consultez notre documentation détaillée',
+      viewDocs: 'Voir la documentation',
+      contactUs: 'Nous contacter',
+      contactDesc: 'Notre équipe de support est à votre disposition',
+      contactSupport: 'Contacter le support'
     }
   },
 

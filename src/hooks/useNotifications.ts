@@ -1,17 +1,36 @@
 import { useState, useEffect, useCallback } from 'react';
 import { notificationsApi } from '../services/api/notifications';
-import { useToastStore } from '../components/common/ToastContainer';
-import type { Notification } from '../types/notification';
+import { useToastContext } from '../contexts/ToastContext';
+import type { Notification, NotificationType } from '../types/notification';
 
 // Intervalle de polling en ms quand WebSocket n'est pas disponible
 const POLLING_INTERVAL = 30000;
+
+// Fonction pour convertir NotificationType vers ToastType
+const mapNotificationTypeToToastType = (type: NotificationType): 'info' | 'success' | 'warning' | 'error' => {
+  switch (type) {
+    case 'success':
+      return 'success';
+    case 'warning':
+      return 'warning';
+    case 'error':
+      return 'error';
+    case 'security':
+    case 'payment':
+    case 'subscription':
+    case 'document':
+    case 'info':
+    default:
+      return 'info';
+  }
+};
 
 export function useNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [wsConnected, setWsConnected] = useState(false);
-  const addToast = useToastStore(state => state.addToast);
+  const { showToast } = useToastContext();
 
   const loadNotifications = useCallback(async () => {
     try {
@@ -21,11 +40,11 @@ export function useNotifications() {
       setUnreadCount(count);
     } catch (error) {
       console.error('Failed to load notifications:', error);
-      addToast('error', 'Erreur lors du chargement des notifications');
+      showToast('error', 'Erreur lors du chargement des notifications');
     } finally {
       setIsLoading(false);
     }
-  }, [addToast]);
+  }, [showToast]);
 
   const markAsRead = useCallback(async (notificationIds: string[]) => {
     try {
@@ -38,9 +57,9 @@ export function useNotifications() {
       setUnreadCount(prev => Math.max(0, prev - notificationIds.length));
     } catch (error) {
       console.error('Failed to mark notifications as read:', error);
-      addToast('error', 'Erreur lors du marquage des notifications');
+      showToast('error', 'Erreur lors du marquage des notifications');
     }
-  }, [addToast]);
+  }, [showToast]);
 
   const markAllAsRead = useCallback(async () => {
     try {
@@ -49,9 +68,9 @@ export function useNotifications() {
       setUnreadCount(0);
     } catch (error) {
       console.error('Failed to mark all notifications as read:', error);
-      addToast('error', 'Erreur lors du marquage des notifications');
+      showToast('error', 'Erreur lors du marquage des notifications');
     }
-  }, [addToast]);
+  }, [showToast]);
 
   const deleteNotification = useCallback(async (notificationId: string) => {
     try {
@@ -65,9 +84,9 @@ export function useNotifications() {
       });
     } catch (error) {
       console.error('Failed to delete notification:', error);
-      addToast('error', 'Erreur lors de la suppression de la notification');
+      showToast('error', 'Erreur lors de la suppression de la notification');
     }
-  }, [addToast]);
+  }, [showToast]);
 
   // Fonction pour gérer les nouvelles notifications
   const handleNewNotification = useCallback((notification: Notification) => {
@@ -75,8 +94,8 @@ export function useNotifications() {
     if (!notification.read) {
       setUnreadCount(prev => prev + 1);
     }
-    addToast(notification.type, notification.message);
-  }, [addToast]);
+    showToast(mapNotificationTypeToToastType(notification.type), notification.message);
+  }, [showToast]);
 
   useEffect(() => {
     let cleanup: (() => void) | undefined;
@@ -88,7 +107,7 @@ export function useNotifications() {
         cleanup = notificationsApi.subscribeToNotifications(handleNewNotification);
         setWsConnected(true);
         return;
-      } catch (error) {
+      } catch {
         console.log('SSE not available, falling back to polling');
       }
 

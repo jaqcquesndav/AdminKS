@@ -10,6 +10,7 @@ interface SubscriptionOverviewProps {
   revenue: {
     usd: number;
     cdf: number;
+    fcfa: number;
   };
 }
 
@@ -48,6 +49,9 @@ export function SubscriptionOverview({
               {formatCurrency(revenue.usd, 'USD')}
               <span className="block text-sm text-gray-500">
                 {formatCurrency(revenue.cdf, 'CDF')}
+              </span>
+              <span className="block text-sm text-gray-500">
+                {formatCurrency(revenue.fcfa, 'FCFA')}
               </span>
             </p>
           </div>

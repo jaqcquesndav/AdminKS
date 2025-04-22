@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Mail, Lock, Eye, EyeOff, LogIn } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, LogIn, Users } from 'lucide-react';
+import { USE_MOCK_AUTH, demoUsers } from '../../utils/mockAuth';
 
 interface LoginFormProps {
   onSubmit: (email: string, password: string) => Promise<void>;
@@ -16,12 +17,45 @@ export function LoginForm({ onSubmit, onKsAuth, error, onSwitchToSignUp, onForgo
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showDemoAccounts, setShowDemoAccounts] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     try {
       await onSubmit(email, password);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSelectDemoUser = async (demoEmail: string) => {
+    setEmail(demoEmail);
+    setPassword('demo123'); // Mot de passe fictif pour les démos
+    setShowDemoAccounts(false);
+    
+    // Préparer la soumission du formulaire
+    setIsLoading(true);
+    
+    try {
+      console.log('Connexion avec compte de démo:', demoEmail);
+      // Attendre explicitement que la connexion soit terminée
+      await onSubmit(demoEmail, 'demo123');
+      
+      // Si onSubmit ne redirige pas (dans le cas où window.location.href n'est pas utilisé), on peut forcer ici
+      console.log('Connexion réussie, vérification de la redirection...');
+      
+      // Donner un peu de temps pour que la redirection s'effectue normalement
+      setTimeout(() => {
+        // Vérifier si on est toujours sur la page de login
+        if (window.location.pathname.includes('login')) {
+          console.log('Redirection forcée vers le dashboard');
+          window.location.href = '/dashboard';
+        }
+      }, 500);
+      
+    } catch (err) {
+      console.error("Erreur lors de la connexion avec le compte de démo:", err);
     } finally {
       setIsLoading(false);
     }
@@ -104,6 +138,71 @@ export function LoginForm({ onSubmit, onKsAuth, error, onSwitchToSignUp, onForgo
         >
           {isLoading ? t('auth.login.loading') : t('auth.login.submit')}
         </button>
+
+        {/* Afficher les comptes de démonstration uniquement si USE_MOCK_AUTH est activé */}
+        {USE_MOCK_AUTH && (
+          <>
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">Comptes de démonstration</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowDemoAccounts(!showDemoAccounts)}
+              className="w-full flex justify-center items-center py-2 px-4 border border-green-500 text-green-500 rounded-md hover:bg-green-500 hover:text-white transition-colors duration-200"
+            >
+              <Users className="w-5 h-5 mr-2" />
+              {showDemoAccounts ? 'Masquer les comptes' : 'Choisir un compte de démonstration'}
+            </button>
+
+            {showDemoAccounts && (
+              <div className="mt-3 space-y-2 border p-3 rounded-md">
+                <h3 className="font-medium text-gray-700 mb-2">Sélectionner un rôle:</h3>
+                
+                <button
+                  type="button"
+                  onClick={() => handleSelectDemoUser(demoUsers.superAdmin.email)}
+                  className="w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 flex items-center"
+                >
+                  <span className="w-8 h-8 rounded-full bg-purple-100 text-purple-800 mr-3 flex items-center justify-center font-bold">SA</span>
+                  Super Admin - {demoUsers.superAdmin.email}
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={() => handleSelectDemoUser(demoUsers.cto.email)}
+                  className="w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 flex items-center"
+                >
+                  <span className="w-8 h-8 rounded-full bg-blue-100 text-blue-800 mr-3 flex items-center justify-center font-bold">CT</span>
+                  CTO - {demoUsers.cto.email}
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={() => handleSelectDemoUser(demoUsers.finance.email)}
+                  className="w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 flex items-center"
+                >
+                  <span className="w-8 h-8 rounded-full bg-green-100 text-green-800 mr-3 flex items-center justify-center font-bold">FI</span>
+                  Finance - {demoUsers.finance.email}
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={() => handleSelectDemoUser(demoUsers.support.email)}
+                  className="w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 flex items-center"
+                >
+                  <span className="w-8 h-8 rounded-full bg-yellow-100 text-yellow-800 mr-3 flex items-center justify-center font-bold">CS</span>
+                  Support - {demoUsers.support.email}
+                </button>
+              </div>
+            )}
+          </>
+        )}
 
         <div className="relative">
           <div className="absolute inset-0 flex items-center">

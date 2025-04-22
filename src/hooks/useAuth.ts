@@ -45,12 +45,43 @@ export const useAuth = create<AuthState>((set, get) => ({
 // Hook utilitaire pour accéder rapidement aux informations de l'utilisateur
 export function useUserInfo() {
   const { user } = useAuth();
+  
+  // Fonction pour mapper le rôle d'authentification au rôle de navigation
+  const mapAuthRoleToUserRole = (authRole?: string) => {
+    switch(authRole) {
+      case 'admin':
+      case 'superadmin':
+        return 'super_admin';
+      case 'cto':
+        return 'cto';
+      case 'growth_finance':
+        return 'growth_finance';
+      case 'customer_support':
+        return 'customer_support';
+      case 'content_manager':
+        return 'content_manager';
+      default:
+        // Si le rôle est déjà un UserRole connu, le retourner tel quel
+        if(['super_admin', 'cto', 'growth_finance', 'customer_support', 'content_manager'].includes(authRole || '')) {
+          return authRole;
+        }
+        // Valeur par défaut pour éviter les erreurs
+        return 'customer_support';
+    }
+  };
+
+  const mappedRole = mapAuthRoleToUserRole(user?.role);
+  
   return {
     id: user?.id,
     email: user?.email,
     name: user?.name,
     picture: user?.picture,
-    role: user?.role,
-    isAdmin: user?.role === 'admin'
+    role: mappedRole,
+    // Fonctions utilitaires pour vérifier les rôles
+    isSuperAdmin: mappedRole === 'super_admin',
+    hasRole: (requiredRole: string) => {
+      return mappedRole === requiredRole || mappedRole === 'super_admin';
+    }
   };
 }

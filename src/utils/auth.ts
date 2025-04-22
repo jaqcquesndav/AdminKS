@@ -10,7 +10,7 @@ const SUPERADMIN_PASSWORD = 'K10t@Adm1n2024!';
 const SUPERADMIN_USER: AuthUser = {
   id: 'sa-01-kiota',
   email: SUPERADMIN_EMAIL,
-  role: 'superadmin',
+  role: 'admin', // Modifié de 'superadmin' à 'admin' pour être compatible avec AuthUser
   name: 'Administrateur Système',
 };
 

@@ -1,42 +1,73 @@
 import React from 'react';
-import { ArrowUp, ArrowDown, DivideIcon as LucideIcon } from 'lucide-react';
+import { ArrowUpIcon, ArrowDownIcon } from 'lucide-react';
 
 interface StatCardProps {
-  name: string;
-  value: string;
-  icon: LucideIcon;
-  trend?: string;
-  trendDirection?: 'up' | 'down';
+  title: string;
+  value: string | number;
+  icon: React.ReactNode;
+  change?: {
+    value: number;
+    isPositive: boolean;
+    text?: string;
+  };
+  color?: 'primary' | 'success' | 'warning' | 'danger' | 'info';
+  loading?: boolean;
 }
 
-export function StatCard({ name, value, icon: Icon, trend, trendDirection }: StatCardProps) {
+export const StatCard = ({
+  title,
+  value,
+  icon,
+  change,
+  color = 'primary',
+  loading = false
+}: StatCardProps) => {
+  const iconColorClasses = {
+    primary: 'bg-blue-100 text-blue-800',
+    success: 'bg-green-100 text-green-800',
+    warning: 'bg-yellow-100 text-yellow-800',
+    danger: 'bg-red-100 text-red-800',
+    info: 'bg-indigo-100 text-indigo-800',
+  };
+
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
-      <div className="flex items-center justify-between mb-4">
-        <div className="p-2 bg-primary/10 rounded-lg">
-          <Icon className="w-6 h-6 text-primary" />
+    <div className="bg-white rounded-lg shadow p-4 flex flex-col h-full">
+      {loading ? (
+        <div className="animate-pulse h-full">
+          <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
+          <div className="h-8 bg-gray-200 rounded w-3/4 mb-4"></div>
+          <div className="h-4 bg-gray-200 rounded w-1/3"></div>
         </div>
-        {trend && (
-          <div className={`flex items-center text-sm ${
-            trendDirection === 'up' ? 'text-green-600' : 'text-red-600'
-          }`}>
-            {trendDirection === 'up' ? (
-              <ArrowUp className="w-4 h-4 mr-1" />
-            ) : (
-              <ArrowDown className="w-4 h-4 mr-1" />
-            )}
-            {trend}
+      ) : (
+        <>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-medium text-gray-500">{title}</h3>
+            <div className={`rounded-full p-2 ${iconColorClasses[color]}`}>
+              {icon}
+            </div>
           </div>
-        )}
-      </div>
-      <div>
-        <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
-          {value}
-        </h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          {name}
-        </p>
-      </div>
+          <div className="text-2xl font-bold mb-1">{value}</div>
+          {change && (
+            <div className="flex items-center mt-auto">
+              <span
+                className={`flex items-center text-sm ${
+                  change.isPositive ? 'text-green-600' : 'text-red-600'
+                }`}
+              >
+                {change.isPositive ? (
+                  <ArrowUpIcon className="w-4 h-4 mr-1" />
+                ) : (
+                  <ArrowDownIcon className="w-4 h-4 mr-1" />
+                )}
+                {Math.abs(change.value).toFixed(1)}%
+              </span>
+              {change.text && (
+                <span className="text-gray-500 text-xs ml-1">{change.text}</span>
+              )}
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
-}
+};

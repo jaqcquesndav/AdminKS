@@ -3,8 +3,8 @@ import { Menu, X, Sun, Moon } from 'lucide-react';
 import { NotificationsMenu } from './NotificationsMenu';
 import { UserMenu } from './UserMenu';
 import { ChatButton } from '../chat/ChatButton';
-import { COMPANY_INFO } from '../../types/payment';
 import { useUserInfo } from '../../hooks/useAuth';
+import { useLocation } from 'react-router-dom';
 
 interface HeaderProps {
   onMobileMenuToggle: () => void;
@@ -15,15 +15,32 @@ interface HeaderProps {
 
 export function Header({ onMobileMenuToggle, isMobileMenuOpen, onThemeToggle, isDark }: HeaderProps) {
   const userInfo = useUserInfo();
+  const location = useLocation();
+  
+  // Déterminer le titre de la page basé sur le chemin actuel
+  const getPageTitle = () => {
+    const path = location.pathname;
+    if (path === '/dashboard') return 'Tableau de bord';
+    if (path.startsWith('/users')) return 'Gestion des utilisateurs';
+    if (path.startsWith('/company')) return 'Profil entreprise';
+    if (path.startsWith('/settings')) return 'Paramètres';
+    if (path.startsWith('/customers')) return 'Clients';
+    if (path.startsWith('/finance')) return 'Finance';
+    if (path.startsWith('/reports')) return 'Rapports';
+    if (path.startsWith('/activities')) return 'Activités';
+    if (path.startsWith('/subscription')) return 'Abonnement';
+    if (path.startsWith('/profile')) return 'Profil';
+    return 'K-Suite Admin';
+  };
 
   return (
     <header className="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 fixed top-0 left-0 right-0 z-30">
       <div className="h-full px-4 flex items-center justify-between">
-        {/* Logo et menu mobile */}
-        <div className="flex items-center lg:hidden">
+        {/* Bouton menu mobile et titre de la page */}
+        <div className="flex items-center">
           <button
             onClick={onMobileMenuToggle}
-            className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+            className="p-2 mr-3 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
             aria-label="Menu"
           >
             {isMobileMenuOpen ? (
@@ -32,16 +49,11 @@ export function Header({ onMobileMenuToggle, isMobileMenuOpen, onThemeToggle, is
               <Menu className="w-6 h-6" />
             )}
           </button>
-          <div className="ml-3">
-            <h1 className="text-xl font-semibold text-gray-800 dark:text-gray-200">{COMPANY_INFO.name}</h1>
-            <p className="text-xs text-gray-500">{COMPANY_INFO.slogan}</p>
+          <div>
+            <h1 className="text-xl font-semibold text-gray-800 dark:text-gray-200">
+              {getPageTitle()}
+            </h1>
           </div>
-        </div>
-
-        {/* Logo desktop */}
-        <div className="hidden lg:flex lg:items-center lg:flex-col lg:items-start">
-          <h1 className="text-xl font-semibold text-gray-800 dark:text-gray-200">{COMPANY_INFO.name}</h1>
-          <p className="text-sm text-gray-500">{COMPANY_INFO.slogan}</p>
         </div>
 
         {/* Actions à droite */}
