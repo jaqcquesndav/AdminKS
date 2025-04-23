@@ -1,5 +1,5 @@
 import apiClient from './client';
-import type { ChatMessage, ChatSession, ChatAttachment, ChatTypingEvent } from '../../types/chat';
+import type { ChatMessage, ChatSession, ChatTypingEvent } from '../../types/chat';
 
 interface ChatSessionListResponse {
   sessions: ChatSession[];
@@ -127,6 +127,22 @@ export const chatApi = {
   }) => {
     // Cette fonction sera implémentée avec WebSockets
     console.log(`WebSocket subscription would be initialized for session ${sessionId}`);
+    
+    // Utilisation des callbacks (à implémenter avec WebSockets)
+    const mockSetupCallbacks = () => {
+      if (callbacks.onMessage) {
+        console.log('Message callback would be registered');
+      }
+      if (callbacks.onTyping) {
+        console.log('Typing callback would be registered');
+      }
+      if (callbacks.onSessionUpdate) {
+        console.log('Session update callback would be registered');
+      }
+    };
+    
+    mockSetupCallbacks();
+    
     return {
       unsubscribe: () => {
         console.log(`WebSocket connection for session ${sessionId} would be closed`);

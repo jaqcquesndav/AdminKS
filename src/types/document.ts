@@ -15,3 +15,13 @@ export interface DocumentUpload {
   type: Document['type'];
   companyId: string;
 }
+
+export interface DocumentUploadResponse {
+  id: string;
+  fileName: string;
+  fileUrl: string;
+  type: Document['type'];
+  status: 'pending';
+  uploadedAt: Date;
+  message: string;
+}

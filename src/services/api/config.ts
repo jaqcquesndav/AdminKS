@@ -21,6 +21,11 @@ export const API_ENDPOINTS = {
     documents: '/company/documents',
     uploadDocument: '/company/documents/upload'
   },
+  // Added dedicated document endpoints
+  DOCUMENTS: '/company/:companyId/documents',
+  DOCUMENT_DETAIL: '/documents/:documentId',
+  UPLOAD_DOCUMENT: '/company/:companyId/documents/upload',
+  DOCUMENT_STATUS: '/documents/:documentId/status',
   subscriptions: {
     list: '/subscriptions',
     plans: '/subscriptions/plans',

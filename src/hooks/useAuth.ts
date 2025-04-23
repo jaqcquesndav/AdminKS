@@ -50,7 +50,10 @@ export function useUserInfo() {
   const mapAuthRoleToUserRole = (authRole?: string) => {
     switch(authRole) {
       case 'admin':
-      case 'superadmin':
+        return 'customer_support';
+      case 'user':
+        return 'content_manager';
+      case 'super_admin':
         return 'super_admin';
       case 'cto':
         return 'cto';
@@ -61,10 +64,6 @@ export function useUserInfo() {
       case 'content_manager':
         return 'content_manager';
       default:
-        // Si le rôle est déjà un UserRole connu, le retourner tel quel
-        if(['super_admin', 'cto', 'growth_finance', 'customer_support', 'content_manager'].includes(authRole || '')) {
-          return authRole;
-        }
         // Valeur par défaut pour éviter les erreurs
         return 'customer_support';
     }

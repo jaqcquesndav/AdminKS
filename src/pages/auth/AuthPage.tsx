@@ -30,7 +30,7 @@ export function AuthPage({ mode }: AuthPageProps) {
   // Gestion de la connexion
   const handleLogin = async (email: string, password: string) => {
     try {
-      const response = await authService.login({ username: email, password });
+      const response = await authService.login(email, password);
       
       // Vérifier si la connexion a réussi
       if (response) {

@@ -1,4 +1,4 @@
-import { SupportedCurrency } from '../utils/currency';
+import { CustomerType } from './customer';
 
 export interface ApplicationGroup {
   id: string;
@@ -109,64 +109,163 @@ export const FINANCE_GROUP: ApplicationGroup = {
 // Types pour la gestion des abonnements et tokens dans Kiota Suit
 
 export type SubscriptionPlan = 'basic' | 'standard' | 'premium' | 'enterprise';
-export type PlanStatus = 'active' | 'expired' | 'trial' | 'canceled' | 'pending';
+export type PlanStatus = 'active' | 'expired' | 'cancelled' | 'pending' | 'payment_failed';
+export type PlanFeature = 'basic_support' | 'premium_support' | 'custom_domain' | 'api_access' | 'advanced_analytics' | 'white_label' | 'dedicated_account_manager' | 'custom_integration';
+export type PlanCategory = 'base' | 'standard' | 'premium' | 'enterprise' | 'custom';
+export type CustomerCategory = 'starter' | 'growth' | 'scale' | 'enterprise';
+export type PlanBillingCycle = 'monthly' | 'quarterly' | 'yearly';
 export type AppType = 'accounting_mobile' | 'accounting_web' | 'portfolio_management';
-export type PaymentMethod = 'credit_card' | 'mobile_money' | 'manual_payment';
-export type PaymentStatus = 'completed' | 'pending' | 'failed' | 'refunded';
+export type PaymentMethod = 'credit_card' | 'bank_transfer' | 'mobile_money' | 'cash' | 'check';
+export type PaymentStatus = 'pending' | 'completed' | 'failed' | 'refunded' | 'cancelled' | 'pending_validation';
+export type TokenTransactionType = 'purchase' | 'consumption' | 'refund' | 'expiration' | 'bonus';
 
+// Interface pour les métadonnées client pour les prix différents par segment
+export interface CustomerTypeSpecificMetadata {
+  customerType: CustomerType;
+  pricingMultiplier?: number;
+  minimumTokenPurchase?: number;
+  paymentTerms?: string;
+  discountPercentage?: number;
+}
+
+// Interface pour la définition d'un plan d'abonnement
 export interface SubscriptionPlanDefinition {
   id: string;
   name: string;
-  type: SubscriptionPlan;
-  price: number;
-  currency: SupportedCurrency;
-  interval: 'monthly' | 'yearly';
-  features: string[];
-  tokensIncluded: number;
-  maxUsers: number;
-  applicableFor: OrganizationType[];
-  availableApps: AppType[];
+  description: string;
+  category: PlanCategory;
+  features: PlanFeature[];
+  targetCustomerTypes: CustomerType[];
+  basePriceUSD: number;
+  basePriceLocal?: number;
+  localCurrency?: string;
+  tokenAllocation: number;
+  billingCycles: PlanBillingCycle[];
+  discountPercentage: {
+    quarterly: number;
+    yearly: number;
+  };
+  customerTypeSpecific: CustomerTypeSpecificMetadata[];
+  trialDays?: number;
+  isCustomizablePlan: boolean;
+  isHidden?: boolean;
+  isPromoted?: boolean;
+  maxUsers?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-export interface TokenPackage {
-  id: string;
-  name: string;
-  tokenAmount: number;
-  price: number;
-  currency: SupportedCurrency;
-  discount?: number;
-}
-
+// Interface pour un abonnement client
 export interface CustomerSubscription {
   id: string;
   customerId: string;
+  customerName?: string;
+  customerType?: CustomerType;
   planId: string;
-  status: PlanStatus;
+  planName?: string;
+  planCategory: PlanCategory;
   startDate: string;
   endDate: string;
-  renewalDate?: string;
-  autoRenew: boolean;
+  tokenAllocation: number;
+  tokensRemaining: number;
+  priceUSD: number;
+  priceLocal?: number;
+  localCurrency?: string;
+  status: PlanStatus;
   paymentMethod: PaymentMethod;
-  price: number;
-  currency: SupportedCurrency;
+  billingCycle: PlanBillingCycle;
+  autoRenew: boolean;
+  createdAt: string;
+  updatedAt?: string;
   lastPaymentDate?: string;
   nextPaymentDate?: string;
+  cancelledAt?: string;
+  cancelReason?: string;
+  features?: PlanFeature[];
+  customFeatures?: string[];
+  paymentStatus: PaymentStatus;
+  paymentTransactions?: PaymentTransaction[];
+  metaData?: {
+    accountManager?: string;
+    specialConditions?: string;
+    notes?: string;
+    tags?: string[];
+  };
 }
 
+// Interface pour une transaction de paiement
+export interface PaymentTransaction {
+  id: string;
+  subscriptionId?: string;
+  customerId: string;
+  amount: number;
+  currency: string;
+  method: PaymentMethod;
+  status: PaymentStatus;
+  transactionDate: string;
+  transactionReference?: string;
+  gatewayReference?: string;
+  gatewayResponse?: Record<string, unknown>;
+  description?: string;
+  metadata?: {
+    receiptUrl?: string;
+    validatedBy?: string;
+    validatedAt?: string;
+    notes?: string;
+  };
+}
+
+// Interface pour un package de tokens
+export interface TokenPackage {
+  id: string;
+  name: string;
+  description?: string;
+  tokenAmount: number;
+  priceUSD: number;
+  priceLocal?: number;
+  localCurrency?: string;
+  isPopular?: boolean;
+  validityDays: number;
+  targetCustomerTypes: CustomerType[];
+  customerTypeSpecific: CustomerTypeSpecificMetadata[];
+  minimumPurchase?: number;
+  discountPercentages?: {
+    tier1: {
+      minAmount: number;
+      percentage: number;
+    };
+    tier2: {
+      minAmount: number;
+      percentage: number;
+    };
+    tier3: {
+      minAmount: number;
+      percentage: number;
+    };
+  };
+}
+
+// Interface pour une transaction de token
 export interface TokenTransaction {
   id: string;
   customerId: string;
+  subscriptionId?: string;
   packageId?: string;
+  type: TokenTransactionType;
   amount: number;
-  cost: number;
-  currency: SupportedCurrency;
-  date: string;
-  paymentMethod: PaymentMethod;
-  paymentStatus: PaymentStatus;
-  transactionId: string;
-  receipt?: string;
+  balance: number;
+  description?: string;
+  timestamp: string;
+  expiryDate?: string;
+  metadata?: {
+    operation?: string;
+    apiEndpoint?: string;
+    sessionId?: string;
+    paymentId?: string;
+  };
 }
 
+// Interface pour une utilisation de token
 export interface TokenUsage {
   id: string;
   customerId: string;
@@ -181,64 +280,77 @@ export interface TokenUsage {
   cost: number;
 }
 
-export interface TokenCostConfiguration {
-  provider: string;
-  modelName: string;
-  inputCostPer1K: number;
-  outputCostPer1K: number;
-  markup: number;  // pourcentage de marge sur le coût brut
-  currency: SupportedCurrency;
-}
-
-export interface PaymentTransaction {
-  id: string;
-  customerId: string;
-  amount: number;
-  currency: SupportedCurrency;
-  method: PaymentMethod;
-  status: PaymentStatus;
-  date: string;
-  description: string;
-  referenceNumber?: string;
-  receiptUrl?: string;
-  proofDocument?: string; // URL vers un document pour les paiements manuels
-  validatedBy?: string; // ID de l'admin qui a validé un paiement manuel
-  validatedAt?: string;
-  notes?: string;
-}
-
+// Interface pour les statistiques de revenus
 export interface RevenueStatistics {
-  totalRevenue: number;
-  subscriptionRevenue: number;
+  totalRevenue: {
+    usd: number;
+    local?: number;
+    localCurrency?: string;
+  };
+  revenueByPeriod: Array<{
+    period: string;
+    revenue: number;
+    currency: string;
+  }>;
+  averageRevenuePerCustomer: number;
+  revenueByCustomerType: {
+    pme: number;
+    financial: number;
+  };
+  revenueByPlan: Record<PlanCategory, number>;
+  revenueByPaymentMethod: Record<PaymentMethod, number>;
+  recurringRevenue: number;
+  oneTimeRevenue: number;
   tokenRevenue: number;
-  revenueTrend: {
+  revenueTrend: Array<{
     date: string;
     amount: number;
     type: 'subscription' | 'token';
-  }[];
-  revenueByCountry: Record<string, number>;
-  revenueByPlan: Record<string, number>;
-  conversionRate: number;
-  churnRate: number;
-  averageRevenuePerUser: number;
+  }>;
 }
 
+// Interface pour les statistiques de tokens
 export interface TokenStatistics {
+  totalTokensAllocated: number;
   totalTokensUsed: number;
-  totalTokensSold: number;
-  tokensUsedToday: number;
-  tokensCostToday: number;
-  revenueFromTokens: number;
-  profitFromTokens: number;
-  tokenUsageByApp: Record<AppType, number>;
-  tokenUsageByFeature: Record<string, number>;
-  tokenUsageTrend: {
+  totalTokensPurchased: number;
+  tokenUsageByPeriod: Array<{
+    period: string;
+    tokensUsed: number;
+  }>;
+  tokenUsageByCustomerType: {
+    pme: number;
+    financial: number;
+  };
+  averageTokensPerCustomer: number;
+  top10TokenConsumers: Array<{
+    customerId: string;
+    customerName: string;
+    tokensConsumed: number;
+  }>;
+  tokenUsageTrend: Array<{
     date: string;
     used: number;
     cost: number;
     revenue: number;
-  }[];
+  }>;
 }
 
-// Type pour représenter l'interface OrganizationType importée d'user.ts
-import { OrganizationType } from './user';
+// Interface pour le tableau de bord financier
+export interface FinancialDashboardData {
+  revenue: RevenueStatistics;
+  tokenStats: TokenStatistics;
+  subscriptionSummary: {
+    totalActive: number;
+    totalExpiring30Days: number;
+    totalExpired: number;
+    totalCancelled: number;
+    renewalRate: number;
+    churnRate: number;
+  };
+  predictions: {
+    nextMonthRevenue: number;
+    nextMonthGrowthRate: number;
+    customerLifetimeValue: number;
+  };
+}

@@ -1,6 +1,7 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { authService } from '../authService';
 import { API_BASE_URL, API_HEADERS } from './config';
+import { USE_MOCK_AUTH, isDemoEmail } from '../../utils/mockAuth';
 
 // Créer l'instance axios avec la configuration de base
 const apiClient = axios.create({
@@ -9,12 +10,28 @@ const apiClient = axios.create({
   timeout: 30000
 });
 
+// Variable pour suivre si l'utilisateur actuel est un utilisateur de démonstration
+let isUsingDemoAccount = false;
+
 // Intercepteur pour ajouter le token aux requêtes
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = authService.getToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      
+      // Vérifier si l'utilisateur actuel est un utilisateur démo
+      if (USE_MOCK_AUTH) {
+        const currentUser = authService.getStoredUser();
+        if (currentUser && isDemoEmail(currentUser.email)) {
+          isUsingDemoAccount = true;
+          
+          // Ajouter un header spécial pour les utilisateurs de démo (peut être utile pour le débogage)
+          config.headers['X-Demo-User'] = 'true';
+        } else {
+          isUsingDemoAccount = false;
+        }
+      }
     }
     return config;
   },
@@ -31,36 +48,47 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config;
     
     // Gérer les erreurs d'authentification
-    if (error.response?.status === 401) {
-      // Si le token est expiré et qu'on n'a pas déjà essayé de rafraîchir
-      if (error.response.data?.code === 'token_expired' && !originalRequest?._retry) {
-        originalRequest._retry = true;
-        
-        try {
-          // Rediriger vers la page d'authentification
-          authService.logout();
-          return Promise.reject(error);
-        } catch (refreshError) {
-          return Promise.reject(refreshError);
-        }
+    if (error.response && error.response.status === 401) {
+      // Si nous utilisons un compte démo, ne pas tenter de rafraîchir le token
+      if (isUsingDemoAccount) {
+        console.warn('Demo account authentication error - redirecting to login');
+        authService.logout();
+        window.location.href = '/auth/login';
+        return Promise.reject(error);
       }
       
-      // Autres erreurs d'authentification
-      authService.logout();
-      return Promise.reject(error);
+      // Pour un utilisateur normal, essayer de rafraîchir le token
+      try {
+        const newToken = await authService.refreshToken();
+        
+        if (newToken && originalRequest) {
+          // Mettre à jour l'en-tête d'autorisation avec le nouveau token
+          originalRequest.headers.Authorization = `Bearer ${newToken}`;
+          
+          // Réessayer la requête avec le nouveau token
+          return axios(originalRequest);
+        }
+      } catch (refreshError) {
+        console.error('Token refresh failed:', refreshError);
+        
+        // Rediriger vers la page de connexion en cas d'échec
+        authService.logout();
+        window.location.href = '/auth/login';
+        return Promise.reject(refreshError);
+      }
     }
-
-    // Gérer les erreurs de validation (422)
-    if (error.response?.status === 422) {
+    
+    // Gérer les erreurs de validation
+    if (error.response && error.response.status === 422) {
       return Promise.reject({
         ...error,
-        message: 'Validation failed',
-        errors: error.response.data.errors
+        isValidationError: true,
+        validationErrors: error.response.data.errors
       });
     }
-
-    // Gérer les erreurs serveur (500)
-    if (error.response?.status === 500) {
+    
+    // Gérer les erreurs de serveur
+    if (error.response && error.response.status >= 500) {
       return Promise.reject({
         ...error,
         message: 'Internal server error'
@@ -79,24 +107,23 @@ apiClient.interceptors.response.use(
   }
 );
 
+// Fonction pour déterminer si l'utilisateur actuel est un compte de démonstration
+export function isUsingDemoUser(): boolean {
+  return isUsingDemoAccount;
+}
+
 // Fonction utilitaire pour gérer les erreurs
 export function handleApiError(error: any): { message: string; errors?: Record<string, string[]> } {
-  if (error.response?.data?.errors) {
+  if (error.isValidationError && error.validationErrors) {
     return {
-      message: error.response.data.message || 'Validation error',
-      errors: error.response.data.errors
+      message: 'Validation error',
+      errors: error.validationErrors
     };
   }
-
-  if (error.response?.data?.message) {
-    return { message: error.response.data.message };
-  }
-
-  if (error.message) {
-    return { message: error.message };
-  }
-
-  return { message: 'An unexpected error occurred' };
+  
+  return {
+    message: error.message || 'An error occurred'
+  };
 }
 
 export default apiClient;

@@ -18,7 +18,7 @@ interface UserActivityResponse {
     ipAddress: string;
     device: string;
     browser: string;
-    details?: Record<string, any>;
+    details?: Record<string, unknown>;
   }>;
   totalCount: number;
 }

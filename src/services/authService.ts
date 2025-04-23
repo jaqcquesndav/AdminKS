@@ -1,96 +1,134 @@
-import { jwtDecode } from 'jwt-decode';
-import type { AuthUser, LoginCredentials, AuthResponse as AuthResponseBase } from '../types/auth';
-import { User, UserRole } from '../types/user';
-import { USE_MOCK_AUTH, AUTO_LOGIN, getInitialAuthState, getCurrentDemoUser, getCurrentDemoToken, mockLogin, mockLogout, mockVerifyTwoFactor } from '../utils/mockAuth';
+import { mockLogin, mockLogout, USE_MOCK_AUTH, AUTO_LOGIN, getInitialAuthState, isDemoEmail, getCurrentDemoUser, getCurrentDemoToken } from '../utils/mockAuth';
+import type { User, UserRole } from '../types/user';
+import type { AuthUser } from '../types/auth';
+import apiClient from './api/client';
+import type { AuthResponseBase, AuthResponseExtended, AuthState } from '../types/auth';
 
-// Extension de l'interface AuthResponse de base pour l'adapter à notre besoin interne
-interface AuthResponseExtended extends AuthResponseBase {
-  refreshToken?: string;
-  user: User; // Type User complet
-}
-
-// Interface pour la mise en cache des données d'authentification
-interface CachedAuthState {
-  user: User | null;
-  token: string | null;
-  isAuthenticated: boolean;
-}
-
-interface JwtPayload {
-  sub: string;
-  email?: string;
-  name?: string;
-  picture?: string;
-  azp?: string;
-  scope?: string;
-  role?: string;
-  exp?: number;
-  [key: string]: unknown;
-}
-
-// Fonction utilitaire pour convertir les rôles UserRole en rôles AuthUser
-function convertUserRoleToAuthRole(role: UserRole): AuthUser['role'] {
-  // Mapping des rôles UserRole vers les rôles AuthUser
+// Fonction de conversion des rôles d'utilisateur
+function convertUserRoleToAuthRole(role: UserRole | string): AuthUser['role'] {
+  // Mapping des rôles internes vers les rôles de l'API d'authentification
   switch (role) {
-    case 'super_admin': return 'superadmin';
-    case 'cto': return 'cto';
-    case 'growth_finance': return 'growth_finance';
-    case 'customer_support': return 'customer_support';
-    case 'content_manager': return 'admin'; // Fallback pour content_manager
-    default: return 'user';
+    case 'super_admin':
+      return 'super_admin';
+    case 'customer_support':
+      return 'customer_support';
+    case 'growth_finance':
+      return 'growth_finance';
+    case 'cto':
+      return 'cto';
+    case 'content_manager':
+      return 'content_manager';
+    default:
+      // Si le rôle n'est pas reconnu, par défaut, retourner 'user'
+      return 'user';
+  }
+}
+
+// Fonction de conversion inverse pour les rôles
+function convertAuthRoleToUserRole(role: string): UserRole {
+  switch (role) {
+    case 'superadmin':
+      return 'super_admin';
+    case 'customer_support':
+      return 'customer_support';
+    case 'growth_finance':
+      return 'growth_finance';
+    case 'cto':
+      return 'cto';
+    case 'content_manager':
+      return 'content_manager';
+    case 'admin':
+      return 'customer_support'; // Map admin to customer_support as fallback
+    default:
+      // Si le rôle n'est pas reconnu, assumer un rôle par défaut
+      return 'customer_support';
   }
 }
 
 class AuthService {
-  private readonly storageKey = 'auth-storage';
-  private user: User | null = null;
-  private token: string | null = null;
-  private refreshToken: string | null = null;
+  private storageKey: string = 'auth-storage';
+  private cachedAuthState: AuthState | null = null;
   
-  // Cache pour éviter des lectures répétées du localStorage
-  private cachedAuthState: CachedAuthState | null = null;
-
+  // Initialiser le service d'authentification
   initialize(): void {
+    console.log('Initializing auth service...');
     // Vérifier si l'authentification existante est valide dans localStorage
     const authData = localStorage.getItem(this.storageKey);
     if (authData) {
       try {
         const { state } = JSON.parse(authData);
         if (state && state.isAuthenticated && state.user && state.token) {
+          // Valider que le token est encore valide (peut être expiré)
+          const tokenExpired = this.isTokenExpired(state.token);
+          
+          if (tokenExpired) {
+            console.warn('Token expired, cleaning up session');
+            this.clearSession();
+            return;
+          }
+          
           // Mettre en cache l'état d'authentification pour les futures vérifications
           this.cachedAuthState = {
-            user: state.user as User,
+            user: state.user as AuthUser,
             token: state.token,
             isAuthenticated: true
           };
+          console.log('User authenticated from stored session');
           return; // Authentifié, ne rien faire de plus
+        } else {
+          console.log('Invalid stored auth state, clearing session');
+          this.clearSession(); // Nettoyer la session si elle est invalide
         }
       } catch (e) {
         console.error('Error parsing auth data:', e);
+        this.clearSession(); // Nettoyer en cas d'erreur
       }
+    } else {
+      console.log('No stored auth data found');
     }
     
     // Si le mode mock est activé mais pas de session active
     if (USE_MOCK_AUTH) {
       // Seulement si AUTO_LOGIN est activé, initialiser avec l'utilisateur de démo
       if (AUTO_LOGIN) {
+        console.log('AUTO_LOGIN is enabled, initializing mock auth');
         this.initializeMockAuth();
       } else {
-        // S'assurer qu'il n'y a pas de restes d'authentification précédente
-        localStorage.removeItem(this.storageKey);
+        console.log('AUTO_LOGIN is disabled, skipping mock auth initialization');
       }
-      return;
-    }
-    
-    // Logique normale pour Auth0
-    const token = this.getTokenFromUrl();
-    if (token) {
-      this.handleToken(token);
-      // Remove token from URL without reloading the page
-      window.history.replaceState({}, document.title, window.location.pathname);
     }
   }
+  
+  // Nouvelle méthode pour nettoyer la session
+  private clearSession(): void {
+    this.cachedAuthState = null;
+    localStorage.removeItem(this.storageKey);
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('refresh_token');
+  }
+  
+  // Vérifier si un token est expiré (simple vérification basique)
+  private isTokenExpired(token: string): boolean {
+    try {
+      // Si c'est un JWT, on peut vérifier l'expiration
+      const base64Url = token.split('.')[1];
+      if (!base64Url) return true; // Si ce n'est pas un JWT valide, considérer comme expiré
+      
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
 
+      const { exp } = JSON.parse(jsonPayload);
+      if (!exp) return false; // Si pas de date d'expiration, considérer comme valide
+      
+      return Date.now() >= exp * 1000;
+    } catch (e) {
+      console.error('Error checking token expiration:', e);
+      return false; // En cas d'erreur, on considère que le token est valide
+    }
+  }
+  
   // Initialiser avec l'utilisateur de démo
   private initializeMockAuth(): void {
     const initialState = getInitialAuthState();
@@ -101,7 +139,7 @@ class AuthService {
       
       // Mettre à jour le cache avec l'utilisateur complet
       this.cachedAuthState = {
-        user: fullUser,
+        user: initialState.user,
         token: initialState.token,
         isAuthenticated: true
       };
@@ -112,7 +150,7 @@ class AuthService {
       // Mise à jour du localStorage avec l'état complet
       localStorage.setItem(this.storageKey, JSON.stringify({
         state: {
-          user: fullUser,
+          user: initialState.user,
           token: initialState.token,
           isAuthenticated: true
         }
@@ -123,73 +161,52 @@ class AuthService {
       console.warn('Auto-login enabled but no valid demo user was found.');
     }
   }
-
-  private getTokenFromUrl(): string | null {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('token');
-  }
-
-  // Convertit un AuthUser en User complet
+  
+  // Convertir un AuthUser basique en utilisateur complet
   private convertToFullUser(authUser: AuthUser): User {
-    // Mapper le rôle de AuthUser vers UserRole
-    let userRole: UserRole = 'customer_support'; // Valeur par défaut
-    
-    // Mapping des rôles entre AuthUser et UserRole
-    if (authUser.role === 'admin' || authUser.role === 'superadmin') {
-      userRole = 'super_admin';
-    } else if (['cto', 'growth_finance', 'customer_support', 'content_manager'].includes(authUser.role)) {
-      userRole = authUser.role as UserRole;
-    }
-    
+    // Transformation en structure User complète
     return {
       id: authUser.id,
       name: authUser.name,
       email: authUser.email,
-      role: userRole,
+      role: convertAuthRoleToUserRole(authUser.role),
       status: 'active',
       createdAt: new Date().toISOString(),
-      permissions: []
+      permissions: [], // Les permissions devraient idéalement être basées sur le rôle
+      avatar: authUser.picture
     };
   }
-
-  private handleToken(token: string): void {
+  
+  // Vérifier si un email est celui d'un compte de démonstration
+  private isUsingMockAuth(email?: string): boolean {
+    if (!USE_MOCK_AUTH) return false;
+    if (!email) return AUTO_LOGIN; // Si pas d'email, utiliser le paramètre global
+    
+    return isDemoEmail(email);
+  }
+  
+  // Connexion d'un utilisateur
+  async login(email: string, password: string): Promise<AuthResponseExtended> {
     try {
-      const decoded = jwtDecode<JwtPayload>(token);
-
-      // Assurons-nous que le rôle est soit 'user' soit 'admin'
-      const role = decoded.role && ['admin', 'user'].includes(decoded.role) ? decoded.role as 'admin' | 'user' : 'user';
-
-      const authUser: AuthUser = {
-        id: decoded.sub,
-        email: decoded.email || '',
-        name: decoded.name || '',
-        picture: decoded.picture,
-        role: role,
-      };
+      // Utiliser l'authentification simulée pour les utilisateurs de démo
+      if (this.isUsingMockAuth(email)) {
+        const response = await mockLogin({ username: email, password });
+        return this.convertAuthResponse(response);
+      }
       
-      // Convertir AuthUser en User complet
-      const user = this.convertToFullUser(authUser);
-      
-      // Mettre à jour le cache
-      this.cachedAuthState = {
-        user,
-        token,
-        isAuthenticated: true
-      };
-
-      localStorage.setItem(this.storageKey, JSON.stringify({
-        state: this.cachedAuthState
-      }));
-    } catch (err) {
-      console.error('Error handling token:', err);
-      this.logout();
+      // Authentification réelle pour les utilisateurs normaux
+      const response = await apiClient.post('/auth/login', { email, password });
+      return this.convertAuthResponse(response.data);
+    } catch (error) {
+      console.error('Erreur de connexion:', error);
+      throw error;
     }
   }
-
+  
   // Adapter la réponse d'authentification de base à notre format étendu
   private convertAuthResponse(response: AuthResponseBase): AuthResponseExtended {
     // En mode mock, récupérer les données complètes de l'utilisateur de démo
-    if (USE_MOCK_AUTH) {
+    if (USE_MOCK_AUTH && response.user && (!response.user.email || isDemoEmail(response.user.email))) {
       const demoUser = getCurrentDemoUser();
       
       // Créer une version User complète en utilisant les données de démo
@@ -197,10 +214,11 @@ class AuthService {
         id: response.user.id || demoUser.id,
         name: response.user.name || demoUser.name,
         email: demoUser.email || '',
-        role: 'super_admin', // Utiliser un rôle valide
+        role: convertAuthRoleToUserRole(demoUser.role || 'superadmin'),
         status: 'active',
         createdAt: new Date().toISOString(),
-        permissions: []
+        permissions: [],
+        avatar: demoUser.picture
       };
       
       return {
@@ -210,66 +228,84 @@ class AuthService {
     }
     
     // Pour l'authentification normale
+    const authRole = typeof response.user?.role === 'string' ? response.user.role : 'user';
     const fullUser: User = {
       id: response.user.id,
       name: response.user.name,
-      email: '', 
-      role: 'customer_support',
+      email: response.user?.email || '',
+      role: convertAuthRoleToUserRole(authRole),
       status: 'active',
       createdAt: new Date().toISOString(),
-      permissions: []
+      permissions: [],
+      avatar: response.user?.picture
     };
-
+    
     return {
       ...response,
       user: fullUser
     };
   }
-
-  // La méthode handleAuthResponse peut maintenant utiliser l'interface étendue
-  private processAuthResponse(response: AuthResponseExtended): User {
-    this.user = response.user;
-    this.token = response.token;
-    this.refreshToken = response.refreshToken || null;
-    
-    // Stocker le token séparément (pour compatibilité)
-    localStorage.setItem('auth_token', this.token);
-    if (this.refreshToken) {
-      localStorage.setItem('refresh_token', this.refreshToken);
+  
+  // Enregistrement d'un nouvel utilisateur
+  async register(userData: {
+    name: string;
+    email: string;
+    password: string;
+  }): Promise<AuthResponseExtended> {
+    try {
+      // Utiliser l'authentification simulée pour les utilisateurs de démo
+      if (this.isUsingMockAuth(userData.email)) {
+        // Simuler un enregistrement réussi
+        const response = await mockLogin({ username: userData.email, password: userData.password });
+        return this.convertAuthResponse(response);
+      }
+      
+      // Enregistrement réel pour les utilisateurs normaux
+      const response = await apiClient.post('/auth/register', userData);
+      return this.convertAuthResponse(response.data);
+    } catch (error) {
+      console.error('Erreur d\'enregistrement:', error);
+      throw error;
     }
-    
-    // Mettre à jour le cache
-    this.cachedAuthState = {
-      user: this.user,
-      token: this.token,
-      isAuthenticated: true
-    };
-    
-    // Stocker l'état d'authentification complet dans localStorage
-    localStorage.setItem(this.storageKey, JSON.stringify({
-      state: this.cachedAuthState
-    }));
-    
-    return this.user;
   }
-
+  
+  // Déconnexion de l'utilisateur
+  async logout(): Promise<void> {
+    try {
+      // Si nous utilisons un utilisateur de démo
+      if (USE_MOCK_AUTH && this.cachedAuthState?.user) {
+        const user = this.cachedAuthState.user;
+        if (user.email && isDemoEmail(user.email)) {
+          await mockLogout();
+          this.cachedAuthState = null;
+          localStorage.removeItem(this.storageKey);
+          localStorage.removeItem('auth_token');
+          return;
+        }
+      }
+      
+      // Déconnexion réelle pour les utilisateurs normaux
+      await apiClient.post('/auth/logout');
+      
+      // Nettoyer les données locales
+      this.cachedAuthState = null;
+      localStorage.removeItem(this.storageKey);
+      localStorage.removeItem('auth_token');
+    } catch (error) {
+      console.error('Erreur de déconnexion:', error);
+      throw error;
+    }
+  }
+  
+  // Récupérer l'utilisateur stocké
   getStoredUser(): AuthUser | null {
     // Utiliser le cache si disponible
     if (this.cachedAuthState && this.cachedAuthState.user) {
-      const user = this.cachedAuthState.user;
-      // Convertir User en AuthUser pour la compatibilité
-      const authUser: AuthUser = {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: convertUserRoleToAuthRole(user.role), // Utiliser la fonction pour convertir le rôle
-        picture: user.avatar
-      };
-      return authUser;
+      return this.cachedAuthState.user;
     }
     
     // Si le mode mock est activé, retourner l'utilisateur de démo
-    if (USE_MOCK_AUTH) {
+    if (USE_MOCK_AUTH && AUTO_LOGIN) {
       return getCurrentDemoUser();
     }
 
@@ -280,189 +316,226 @@ class AuthService {
 
     try {
       const { state } = JSON.parse(authData);
-      
-      // Mettre à jour le cache
-      if (state && state.user) {
-        this.cachedAuthState = {
-          user: state.user as User,
-          token: state.token,
-          isAuthenticated: Boolean(state.isAuthenticated)
-        };
-        
-        // Convertir User en AuthUser pour la compatibilité
-        const user = state.user as User;
-        const authUser: AuthUser = {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: convertUserRoleToAuthRole(user.role), // Utiliser la fonction pour convertir le rôle
-          picture: user.avatar
-        };
-        return authUser;
+      if (!state || !state.user) {
+        return null;
       }
-      
-      return null;
+
+      // Conversion du rôle si nécessaire
+      const userRole = state.user.role;
+      const role: AuthUser['role'] = 
+        typeof userRole === 'string' ? 
+        (convertUserRoleToAuthRole(userRole) as AuthUser['role']) : 
+        'user';
+
+      return {
+        id: state.user.id,
+        name: state.user.name,
+        email: state.user.email,
+        role,
+        picture: state.user.avatar || state.user.picture
+      };
     } catch (error) {
       console.error('Error parsing stored user:', error);
       return null;
     }
   }
-
+  
+  // Récupérer le token stocké
   getToken(): string | null {
     // Utiliser le cache si disponible
     if (this.cachedAuthState && this.cachedAuthState.token) {
       return this.cachedAuthState.token;
     }
     
-    // Si le mode mock est activé, retourner un token de démonstration
-    if (USE_MOCK_AUTH) {
+    // Si le mode mock est activé et l'utilisateur a une session active
+    if (USE_MOCK_AUTH && this.getStoredUser()) {
       return getCurrentDemoToken();
     }
-
-    const authData = localStorage.getItem(this.storageKey);
-    if (!authData) return null;
-
+    
+    // Essayer de récupérer depuis localStorage
     try {
+      const authData = localStorage.getItem(this.storageKey);
+      if (!authData) {
+        return null;
+      }
+      
       const { state } = JSON.parse(authData);
-      return state.token;
-    } catch {
+      return state && state.token ? state.token : null;
+    } catch (error) {
+      console.error('Error getting token:', error);
       return null;
     }
   }
-
-  isAuthenticated(): boolean {
+  
+  // Restaurer la session utilisateur depuis le localStorage
+  restoreSession(): {
+    user: AuthUser | null;
+    token: string | null;
+    isAuthenticated: boolean;
+  } {
     // Utiliser le cache si disponible
-    if (this.cachedAuthState !== null) {
-      return this.cachedAuthState.isAuthenticated;
+    if (this.cachedAuthState) {
+      return this.cachedAuthState;
     }
     
-    // En mode mock, vérification plus simple et robuste du localStorage
-    if (USE_MOCK_AUTH) {
+    // Si le mode mock est activé, récupérer l'utilisateur de démo
+    if (USE_MOCK_AUTH && AUTO_LOGIN) {
+      const initialState = getInitialAuthState();
+      if (initialState.isAuthenticated) {
+        return {
+          user: initialState.user,
+          token: initialState.token,
+          isAuthenticated: true
+        };
+      }
+    }
+    
+    // Essayer de récupérer depuis localStorage
+    try {
       const authData = localStorage.getItem(this.storageKey);
       if (!authData) {
-        return false;
+        return { user: null, token: null, isAuthenticated: false };
       }
       
-      try {
-        const { state } = JSON.parse(authData);
-        const isValid = Boolean(state && state.isAuthenticated);
-        
-        // Mettre à jour le cache
-        this.cachedAuthState = {
-          user: state?.user as User || null,
-          token: state?.token || null,
-          isAuthenticated: isValid
-        };
-        
-        return isValid;
-      } catch (error) {
-        // Logger l'erreur au lieu de l'ignorer
-        console.error('Error parsing authentication state:', error);
-        return false;
-      }
-    }
-    
-    // Pour l'authentification normale (non-mock)
-    const authData = localStorage.getItem(this.storageKey);
-    if (!authData) {
-      return false;
-    }
-    
-    try {
       const { state } = JSON.parse(authData);
-      if (!state || !state.isAuthenticated || !state.token) {
-        return false;
+      if (!state || !state.isAuthenticated || !state.user || !state.token) {
+        return { user: null, token: null, isAuthenticated: false };
       }
-
-      // Vérifier la validité du token
-      const token = state.token;
-      const decoded = jwtDecode<JwtPayload>(token);
-      const isValid = decoded.exp ? decoded.exp * 1000 > Date.now() : false;
       
-      // Mettre à jour le cache
-      this.cachedAuthState = {
-        user: state.user as User,
-        token: state.token,
-        isAuthenticated: isValid
+      // Conversion du rôle si nécessaire
+      const userRole = state.user.role;
+      const role: AuthUser['role'] = 
+        typeof userRole === 'string' ? 
+        (convertUserRoleToAuthRole(userRole) as AuthUser['role']) : 
+        'user';
+      
+      // Convertir l'utilisateur stocké au format AuthUser
+      const authUser: AuthUser = {
+        id: state.user.id,
+        name: state.user.name,
+        email: state.user.email,
+        role,
+        picture: state.user.avatar || state.user.picture
       };
       
-      return isValid;
+      return {
+        user: authUser,
+        token: state.token,
+        isAuthenticated: true
+      };
     } catch (error) {
-      // Logger l'erreur au lieu de l'ignorer
-      console.error('Error validating authentication token:', error);
-      return false;
+      console.error('Error restoring session:', error);
+      return { user: null, token: null, isAuthenticated: false };
     }
-  }
-
-  isAdmin(): boolean {
-    // Utiliser le cache si disponible
-    if (this.cachedAuthState && this.cachedAuthState.user) {
-      // Vérifier si le rôle de l'utilisateur est super_admin (équivalent à admin)
-      return this.cachedAuthState.user.role === 'super_admin';
-    }
-    
-    // Si le mode mock est activé, l'utilisateur démo est admin si son rôle est admin
-    if (USE_MOCK_AUTH) {
-      const demoUser = getCurrentDemoUser();
-      return demoUser.role === 'admin' || demoUser.role === 'superadmin';
-    }
-
-    const user = this.getStoredUser();
-    // Vérifier les rôles qui correspondent à un admin
-    return user?.role === 'admin' || user?.role === 'superadmin';
-  }
-
-  // Mettre à jour la méthode login pour utiliser l'interface étendue et processAuthResponse
-  async login(credentials: LoginCredentials): Promise<AuthResponseExtended> {
-    if (USE_MOCK_AUTH) {
-      const response = await mockLogin(credentials);
-      const extendedResponse = this.convertAuthResponse(response);
-      this.processAuthResponse(extendedResponse);
-      return extendedResponse;
-    }
-    
-    // Logic for real authentication
-    throw new Error('Real authentication not implemented');
   }
   
-  // Mettre à jour la méthode verifyTwoFactor pour utiliser l'interface étendue et processAuthResponse
-  async verifyTwoFactor(verification: { code: string, method: 'email' | 'sms' }): Promise<AuthResponseExtended> {
-    if (USE_MOCK_AUTH) {
-      const response = await mockVerifyTwoFactor(verification.code);
-      const extendedResponse = this.convertAuthResponse(response);
-      this.processAuthResponse(extendedResponse);
-      return extendedResponse;
+  // Vérifier si un utilisateur est authentifié
+  isAuthenticated(): boolean {
+    console.log('Checking authentication status...');
+    
+    // Récupérer les informations d'authentification
+    const token = this.getToken();
+    const user = this.getStoredUser();
+    
+    // Vérifier que le token et l'utilisateur sont présents
+    if (!token || !user) {
+      console.log('Authentication failed: Missing token or user data');
+      return false;
     }
     
-    // Logic for real 2FA verification
-    throw new Error('Real 2FA verification not implemented');
+    // Vérifier si le token est expiré
+    if (this.isTokenExpired(token)) {
+      console.log('Authentication failed: Token is expired');
+      this.clearSession();
+      return false;
+    }
+    
+    // Tout est valide, l'utilisateur est authentifié
+    console.log('User is authenticated', user.name);
+    
+    // Mettre à jour le cache pour optimiser les futures vérifications
+    this.cachedAuthState = {
+      user,
+      token,
+      isAuthenticated: true
+    };
+    
+    return true;
   }
-
-  logout(): void {
-    // Réinitialiser le cache
-    this.cachedAuthState = null;
-    
-    // Nettoyer les tokens locaux
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem(this.storageKey);
-    
-    // Si mode mock, utiliser la déconnexion simulée
-    if (USE_MOCK_AUTH) {
-      mockLogout();
+  
+  // Actualiser le token d'authentification
+  async refreshToken(): Promise<string | null> {
+    try {
+      if (USE_MOCK_AUTH) {
+        // Si nous utilisons le mode démo, simuler le rafraîchissement du token
+        const response = await mockRefreshToken();
+        
+        // Mettre à jour le cache et le stockage local
+        this.cachedAuthState = {
+          user: getCurrentDemoUser(),
+          token: response.token,
+          isAuthenticated: true
+        };
+        
+        localStorage.setItem('auth_token', response.token);
+        localStorage.setItem(this.storageKey, JSON.stringify({
+          state: {
+            user: getCurrentDemoUser(),
+            token: response.token,
+            isAuthenticated: true
+          }
+        }));
+        
+        return response.token;
+      }
       
-      // Forcer la redirection vers la page de login
-      setTimeout(() => {
-        window.location.replace('/login');
-      }, 100);
-      return;
+      // Utiliser un endpoint d'API pour rafraîchir le token
+      const refreshToken = localStorage.getItem('refresh_token');
+      if (!refreshToken) {
+        return null;
+      }
+      
+      const response = await apiClient.post('/auth/refresh', { refresh_token: refreshToken });
+      const { token, refreshToken: newRefreshToken } = response.data;
+      
+      // Mettre à jour les tokens en cache et stockage local
+      if (this.cachedAuthState) {
+        this.cachedAuthState.token = token;
+      }
+      
+      localStorage.setItem('auth_token', token);
+      localStorage.setItem('refresh_token', newRefreshToken);
+      
+      // Mettre à jour le stockage avec le nouvel état
+      const currentState = this.restoreSession();
+      if (currentState.isAuthenticated && currentState.user) {
+        localStorage.setItem(this.storageKey, JSON.stringify({
+          state: {
+            ...currentState,
+            token
+          }
+        }));
+      }
+      
+      return token;
+    } catch (error) {
+      console.error('Error refreshing token:', error);
+      return null;
     }
-    
-    // Pour l'authentification réelle
-    const logoutUrl = import.meta.env.VITE_AUTH_LOGOUT_URL || 'http://localhost:5173/auth/apps/sme';
-    const currentPath = encodeURIComponent(window.location.pathname);
-    window.location.href = `${logoutUrl}?redirect=${currentPath}`;
   }
 }
 
 export const authService = new AuthService();
+
+// Fonction manquante pour la compatibilité
+const mockRefreshToken = async () => {
+  console.log('Refreshing demo token');
+  await new Promise(resolve => setTimeout(resolve, 300));
+  return {
+    token: getCurrentDemoToken(),
+    user: {
+      id: getCurrentDemoUser().id,
+      name: getCurrentDemoUser().name
+    }
+  };
+};

@@ -56,7 +56,11 @@ export function DashboardPage() {
     if (!revenueStats?.revenueTrend) return [];
     
     // Grouper les données par date et type
-    const groupedData = revenueStats.revenueTrend.reduce((acc, item) => {
+    const groupedData = revenueStats.revenueTrend.reduce((acc: Array<{
+      date: string;
+      subscription: number;
+      token: number;
+    }>, item) => {
       const existingItem = acc.find(i => i.date === item.date);
       if (existingItem) {
         if (item.type === 'subscription') {
@@ -84,7 +88,7 @@ export function DashboardPage() {
   // Données pour les graphiques d'utilisation de tokens
   const tokenUsageData = useMemo(() => {
     if (!tokenStats?.tokenUsageTrend) return [];
-    return tokenStats.tokenUsageTrend.map(item => ({
+    return tokenStats.tokenUsageTrend.map((item: { date: string; used: number; cost: number; revenue: number }) => ({
       date: item.date,
       used: item.used,
       cost: item.cost,
@@ -140,7 +144,7 @@ export function DashboardPage() {
         {showFinancialMetrics && (
           <StatCard
             title="Revenu Total"
-            value={formatCurrency(revenueStats.totalRevenue)}
+            value={formatCurrency(revenueStats.totalRevenue.usd)}
             icon={<DollarSign size={20} />}
             change={{
               value: revenueGrowth,

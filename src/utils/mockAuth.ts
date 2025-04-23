@@ -1,7 +1,7 @@
 import { AuthUser, AuthState, LoginCredentials, AuthResponse } from '../types/auth';
 
 // Type pour les rôles des utilisateurs de démonstration, aligné avec AuthUser
-type DemoUserRole = 'admin' | 'user' | 'superadmin' | 'cto' | 'growth_finance' | 'customer_support';
+type DemoUserRole = 'admin' | 'user' | 'super_admin' | 'cto' | 'growth_finance' | 'customer_support';
 
 // Plusieurs utilisateurs de démonstration avec différents rôles
 export const demoUsers: Record<string, AuthUser> = {
@@ -10,7 +10,7 @@ export const demoUsers: Record<string, AuthUser> = {
     email: 'super-admin@example.com',
     name: 'Super Admin Demo',
     picture: 'https://via.placeholder.com/150?text=SA',
-    role: 'superadmin' as DemoUserRole, // 'superadmin' sera mappé vers 'super_admin' dans useUserInfo
+    role: 'super_admin' as DemoUserRole,
   },
   cto: {
     id: 'demo-cto-123',
@@ -51,6 +51,14 @@ export const USE_MOCK_AUTH = true;
 
 // Nouvelle constante pour contrôler l'auto-connexion - Activée pour résoudre le problème de connexion des comptes démo
 export const AUTO_LOGIN = true;
+
+// Nouvelle constante pour détecter le mode démo basé sur les emails spéciaux
+export const isDemoEmail = (email: string): boolean => {
+  return Object.values(demoUsers).some(user => user.email === email) ||
+         email.endsWith('@example.com') || 
+         email.includes('demo') || 
+         email === 'admin@kiota-suite.com';
+};
 
 // Stocker l'utilisateur sélectionné dans le localStorage pour maintenir la session
 const SELECTED_DEMO_USER_KEY = 'selected_demo_user_role';
