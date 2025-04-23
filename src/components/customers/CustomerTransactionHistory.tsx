@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CreditCard, ArrowDownCircle, ArrowUpCircle, Calendar, ChevronsUpDown, Search, Filter } from 'lucide-react';
 import { formatCurrency } from '../../utils/currency';
+import { useCurrencySettings } from '../../hooks/useCurrencySettings';
 
 export interface CustomerTransaction {
   id: string;
@@ -30,6 +31,7 @@ export function CustomerTransactionHistory({
   className = ''
 }: CustomerTransactionHistoryProps) {
   const { t } = useTranslation();
+  const { activeCurrency } = useCurrencySettings();
   const [transactions, setTransactions] = useState<CustomerTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -357,7 +359,7 @@ export function CustomerTransactionHistory({
                       {formatDate(transaction.transactionDate)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      {formatCurrency(transaction.amount, transaction.currency)}
+                      {formatCurrency(transaction.amount, activeCurrency || transaction.currency)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(transaction.status)}`}>

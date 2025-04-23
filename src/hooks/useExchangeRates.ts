@@ -1,49 +1,66 @@
-import { useState, useEffect } from 'react';
-import { SupportedCurrency } from '../utils/currency';
-
-interface ExchangeRate {
-  from: SupportedCurrency;
-  to: SupportedCurrency;
-  rate: number;
-  date: string;
-}
+import { useState, useEffect, useCallback } from 'react';
+import { 
+  SupportedCurrency, 
+  ExchangeRate,
+  DEFAULT_EXCHANGE_RATES
+} from '../types/currency';
+import { updateExchangeRates, getCurrentExchangeRates } from '../utils/currency';
 
 interface ExchangeRatesHistory {
   rates: ExchangeRate[];
   loading: boolean;
   error: string | null;
+  lastUpdated: string;
   getRate: (from: SupportedCurrency, to: SupportedCurrency) => number;
   getRateHistory: (from: SupportedCurrency, to: SupportedCurrency, days?: number) => ExchangeRate[];
+  refreshRates: () => Promise<void>;
 }
+
+// Intervalle de rafraîchissement des taux de change en ms (1 heure par défaut)
+const DEFAULT_REFRESH_INTERVAL = 60 * 60 * 1000;
 
 /**
  * Hook pour suivre l'historique des taux de change entre les devises supportées
  * @param days Nombre de jours d'historique à récupérer (par défaut 30)
+ * @param autoRefresh Active le rafraîchissement automatique des taux de change
+ * @param refreshInterval Intervalle de rafraîchissement en ms
  */
-export function useExchangeRates(days: number = 30): ExchangeRatesHistory {
+export function useExchangeRates(
+  days: number = 30, 
+  autoRefresh: boolean = true,
+  refreshInterval: number = DEFAULT_REFRESH_INTERVAL
+): ExchangeRatesHistory {
   const [rates, setRates] = useState<ExchangeRate[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<string>(getCurrentExchangeRates().lastUpdated);
 
-  useEffect(() => {
-    // Dans une application réelle, vous feriez un appel API ici
-    // pour récupérer les taux de change actuels et historiques
-    const fetchRates = async () => {
-      try {
-        setLoading(true);
-        
-        // Simuler un appel API avec des données fictives
+  /**
+   * Récupère les taux de change depuis l'API et met à jour le système
+   */
+  const fetchRates = useCallback(async () => {
+    try {
+      setLoading(true);
+      
+      // Dans une application réelle, vous feriez un appel API ici pour les taux actuels
+      // Exemple:
+      // const response = await fetch('https://api.exchangerate.host/latest?base=USD');
+      // const data = await response.json();
+      // if (data && data.rates) { ... }
+      
+      // Simuler un appel API avec des données fictives
+      return new Promise<void>((resolve) => {
         setTimeout(() => {
           const baseRates = {
-            'USD-CDF': 2500,
-            'USD-FCFA': 600,
-            'CDF-FCFA': 0.24, // 1 CDF = 0.24 FCFA (approximatif)
+            'USD-CDF': DEFAULT_EXCHANGE_RATES.rates.CDF,
+            'USD-FCFA': DEFAULT_EXCHANGE_RATES.rates.FCFA,
+            'CDF-FCFA': DEFAULT_EXCHANGE_RATES.rates.FCFA / DEFAULT_EXCHANGE_RATES.rates.CDF,
           };
           
           const today = new Date();
           const generatedRates: ExchangeRate[] = [];
           
-          // Générer un historique fictif pour les 30 derniers jours
+          // Générer un historique fictif pour les jours demandés
           for (let i = 0; i < days; i++) {
             const date = new Date(today);
             date.setDate(date.getDate() - i);
@@ -94,17 +111,56 @@ export function useExchangeRates(days: number = 30): ExchangeRatesHistory {
           }
           
           setRates(generatedRates);
+          
+          // IMPORTANT: Mettre à jour les taux de change du système
+          // Prendre les taux les plus récents pour mettre à jour le système
+          const latestRates = generatedRates.filter(r => r.date === generatedRates[0]?.date);
+          
+          const systemRates: Record<SupportedCurrency, number> = {
+            USD: 1,
+            CDF: latestRates.find(r => r.from === 'USD' && r.to === 'CDF')?.rate || DEFAULT_EXCHANGE_RATES.rates.CDF,
+            FCFA: latestRates.find(r => r.from === 'USD' && r.to === 'FCFA')?.rate || DEFAULT_EXCHANGE_RATES.rates.FCFA
+          };
+          
+          const timestamp = new Date().toISOString();
+          
+          // Mettre à jour les taux de change dans le système global
+          updateExchangeRates(systemRates, timestamp);
+          setLastUpdated(timestamp);
+          
           setLoading(false);
+          resolve();
         }, 1000);
-        
-      } catch (err) {
-        setError("Erreur lors de la récupération des taux de change");
-        setLoading(false);
+      });
+      
+    } catch (err) {
+      const errorMsg = "Erreur lors de la récupération des taux de change";
+      console.error(errorMsg, err);
+      setError(errorMsg);
+      setLoading(false);
+      throw new Error(errorMsg);
+    }
+  }, [days]);
+  
+  // Récupérer les taux de change au chargement et configurer un intervalle de rafraîchissement
+  useEffect(() => {
+    fetchRates();
+    
+    // Configuration du rafraîchissement automatique si activé
+    let intervalId: number | undefined;
+    if (autoRefresh) {
+      intervalId = window.setInterval(() => {
+        fetchRates().catch(console.error);
+      }, refreshInterval);
+    }
+    
+    // Nettoyer l'intervalle lors du démontage du composant
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
       }
     };
-    
-    fetchRates();
-  }, [days]);
+  }, [fetchRates, autoRefresh, refreshInterval]);
   
   /**
    * Récupère le taux de change actuel entre deux devises
@@ -125,17 +181,18 @@ export function useExchangeRates(days: number = 30): ExchangeRatesHistory {
       return fromToUSD.rate * usdToTarget.rate;
     }
     
-    // Valeurs par défaut au cas où les données ne sont pas disponibles
-    const defaultRates: Record<string, number> = {
-      'USD-CDF': 2500,
-      'USD-FCFA': 600,
-      'CDF-USD': 1/2500,
-      'CDF-FCFA': 0.24,
-      'FCFA-USD': 1/600,
-      'FCFA-CDF': 1/0.24,
-    };
+    // Utiliser les taux de change du système comme valeurs par défaut
+    const currentRates = getCurrentExchangeRates().rates;
     
-    return defaultRates[`${from}-${to}`] || 1;
+    // Valeurs par défaut au cas où les données ne sont pas disponibles
+    if (from === 'USD' && to === 'CDF') return currentRates.CDF;
+    if (from === 'USD' && to === 'FCFA') return currentRates.FCFA;
+    if (from === 'CDF' && to === 'USD') return 1 / currentRates.CDF;
+    if (from === 'FCFA' && to === 'USD') return 1 / currentRates.FCFA;
+    if (from === 'CDF' && to === 'FCFA') return currentRates.FCFA / currentRates.CDF;
+    if (from === 'FCFA' && to === 'CDF') return currentRates.CDF / currentRates.FCFA;
+    
+    return 1;
   };
   
   /**
@@ -157,17 +214,50 @@ export function useExchangeRates(days: number = 30): ExchangeRatesHistory {
     }
     
     // Filtrer l'historique pour les devises demandées
-    return rates
+    const directRates = rates
       .filter(r => r.from === from && r.to === to)
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, period);
+      
+    if (directRates.length > 0) {
+      return directRates;
+    }
+    
+    // Si pas de taux direct, essayer de calculer via USD
+    const uniqueDates = [...new Set(rates.map(r => r.date))].sort().reverse().slice(0, period);
+    
+    return uniqueDates.map(date => {
+      const dayRates = rates.filter(r => r.date === date);
+      const fromToUsd = dayRates.find(r => r.from === from && r.to === 'USD');
+      const usdToTo = dayRates.find(r => r.from === 'USD' && r.to === to);
+      
+      let rate = 1;
+      if (fromToUsd && usdToTo) {
+        rate = fromToUsd.rate * usdToTo.rate;
+      } else {
+        // Utiliser les taux par défaut
+        const currentRates = getCurrentExchangeRates().rates;
+        if (from === 'USD') rate = currentRates[to];
+        else if (to === 'USD') rate = 1 / currentRates[from];
+        else rate = currentRates[to] / currentRates[from];
+      }
+      
+      return {
+        from,
+        to,
+        rate,
+        date
+      };
+    });
   };
   
   return {
     rates,
     loading,
     error,
+    lastUpdated,
     getRate,
-    getRateHistory
+    getRateHistory,
+    refreshRates: fetchRates
   };
 }

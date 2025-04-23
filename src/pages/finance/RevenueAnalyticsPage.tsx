@@ -6,7 +6,8 @@ import {
   ChevronDown, RefreshCw, Users, Package
 } from 'lucide-react';
 import { useToastContext } from '../../contexts/ToastContext';
-import { formatCurrency, SupportedCurrency } from '../../utils/currency';
+import { formatCurrency } from '../../utils/currency';
+import { useCurrencySettings } from '../../hooks/useCurrencySettings';
 
 // Types pour les données de revenus
 interface RevenueMetrics {
@@ -65,6 +66,7 @@ interface RevenueStats {
 export function RevenueAnalyticsPage() {
   const { t } = useTranslation();
   const { showToast } = useToastContext();
+  const { activeCurrency } = useCurrencySettings();
   
   const [timeFrame, setTimeFrame] = useState<'month' | 'quarter' | 'year'>('month');
   const [loading, setLoading] = useState(true);
@@ -326,7 +328,7 @@ export function RevenueAnalyticsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <MetricCard
                   title={t('finance.revenue.metrics.totalRevenue', 'Revenu Total')}
-                  value={formatCurrency(revenueStats.currentPeriod.metrics.totalRevenue, 'USD')}
+                  value={formatCurrency(revenueStats.currentPeriod.metrics.totalRevenue, activeCurrency)}
                   trend={totalRevenueVariation}
                   icon={<DollarSign />}
                   color="text-primary"
@@ -334,7 +336,7 @@ export function RevenueAnalyticsPage() {
                 
                 <MetricCard
                   title={t('finance.revenue.metrics.recurringRevenue', 'Revenu Récurrent')}
-                  value={formatCurrency(revenueStats.currentPeriod.metrics.recurringRevenue, 'USD')}
+                  value={formatCurrency(revenueStats.currentPeriod.metrics.recurringRevenue, activeCurrency)}
                   trend={recurringRevenueVariation}
                   icon={<TrendingUp />}
                   color="text-green-600"
@@ -342,7 +344,7 @@ export function RevenueAnalyticsPage() {
                 
                 <MetricCard
                   title={t('finance.revenue.metrics.oneTimeRevenue', 'Revenu Ponctuel')}
-                  value={formatCurrency(revenueStats.currentPeriod.metrics.oneTimeRevenue, 'USD')}
+                  value={formatCurrency(revenueStats.currentPeriod.metrics.oneTimeRevenue, activeCurrency)}
                   trend={oneTimeRevenueVariation}
                   icon={<Package />}
                   color="text-purple-600"
@@ -351,7 +353,7 @@ export function RevenueAnalyticsPage() {
                 <MetricCard
                   title={t('finance.revenue.metrics.customers', 'Clients Actifs')}
                   value={formatNumber(revenueStats.currentPeriod.byCustomerType.reduce((acc, curr) => acc + curr.count, 0))}
-                  subtitle={formatCurrency(revenueStats.currentPeriod.metrics.averageRevenuePerCustomer, 'USD') + ' par client'}
+                  subtitle={formatCurrency(revenueStats.currentPeriod.metrics.averageRevenuePerCustomer, activeCurrency) + ' par client'}
                   icon={<Users />}
                   color="text-blue-600"
                 />
@@ -428,7 +430,7 @@ export function RevenueAnalyticsPage() {
                     {t('finance.revenue.metrics.arpc', 'Revenu moyen par client')}
                   </h3>
                   <p className="text-2xl font-semibold text-gray-900 dark:text-white">
-                    {formatCurrency(revenueStats.currentPeriod.metrics.averageRevenuePerCustomer, 'USD')}
+                    {formatCurrency(revenueStats.currentPeriod.metrics.averageRevenuePerCustomer, activeCurrency)}
                   </p>
                   <div className="mt-2 flex items-center text-sm">
                     <TrendIndicator value={5.8} />
@@ -441,7 +443,7 @@ export function RevenueAnalyticsPage() {
                     {t('finance.revenue.metrics.ltv', 'Valeur client à vie (LTV)')}
                   </h3>
                   <p className="text-2xl font-semibold text-gray-900 dark:text-white">
-                    {formatCurrency(revenueStats.currentPeriod.metrics.customerLifetimeValue, 'USD')}
+                    {formatCurrency(revenueStats.currentPeriod.metrics.customerLifetimeValue, activeCurrency)}
                   </p>
                   <div className="mt-2 flex items-center text-sm">
                     <TrendIndicator value={3.2} />
@@ -499,7 +501,7 @@ export function RevenueAnalyticsPage() {
                               {type.type === 'pme' ? 'PME' : 'Institutions Financières'}
                             </p>
                             <div className="flex space-x-3 text-xs text-gray-500 dark:text-gray-400">
-                              <span>{formatCurrency(type.amount, 'USD')}</span>
+                              <span>{formatCurrency(type.amount, activeCurrency)}</span>
                               <span>{formatPercentage(type.percentage)}</span>
                               <span>{formatNumber(type.count)} clients</span>
                             </div>
@@ -525,7 +527,7 @@ export function RevenueAnalyticsPage() {
                           </span>
                           <div className="flex items-center space-x-2">
                             <p className="text-base font-semibold text-gray-900 dark:text-white">
-                              {formatCurrency(category.amount, 'USD')}
+                              {formatCurrency(category.amount, activeCurrency)}
                             </p>
                             <span className="text-xs text-gray-500 dark:text-gray-400">
                               ({formatPercentage(category.percentage)})
@@ -589,7 +591,7 @@ export function RevenueAnalyticsPage() {
                             {formatNumber(plan.customers)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                            {formatCurrency(plan.amount, 'USD')}
+                            {formatCurrency(plan.amount, activeCurrency)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-right">
                             {formatPercentage(plan.percentage)}
@@ -605,7 +607,7 @@ export function RevenueAnalyticsPage() {
                           {formatNumber(revenueStats.currentPeriod.byPlan.reduce((acc, plan) => acc + plan.customers, 0))}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                          {formatCurrency(revenueStats.currentPeriod.metrics.totalRevenue, 'USD')}
+                          {formatCurrency(revenueStats.currentPeriod.metrics.totalRevenue, activeCurrency)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white text-right">
                           100%
@@ -660,13 +662,13 @@ export function RevenueAnalyticsPage() {
                       <div>
                         <p className="text-xs text-gray-500 dark:text-gray-400">Actuel</p>
                         <p className="text-base font-semibold text-gray-900 dark:text-white">
-                          {formatCurrency(revenueStats.currentPeriod.metrics.totalRevenue, 'USD')}
+                          {formatCurrency(revenueStats.currentPeriod.metrics.totalRevenue, activeCurrency)}
                         </p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-500 dark:text-gray-400">Précédent</p>
                         <p className="text-base font-semibold text-gray-900 dark:text-white">
-                          {formatCurrency(revenueStats.comparison.totalRevenue, 'USD')}
+                          {formatCurrency(revenueStats.comparison.totalRevenue, activeCurrency)}
                         </p>
                       </div>
                     </div>
@@ -684,13 +686,13 @@ export function RevenueAnalyticsPage() {
                       <div>
                         <p className="text-xs text-gray-500 dark:text-gray-400">Actuel</p>
                         <p className="text-base font-semibold text-gray-900 dark:text-white">
-                          {formatCurrency(revenueStats.currentPeriod.metrics.recurringRevenue, 'USD')}
+                          {formatCurrency(revenueStats.currentPeriod.metrics.recurringRevenue, activeCurrency)}
                         </p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-500 dark:text-gray-400">Précédent</p>
                         <p className="text-base font-semibold text-gray-900 dark:text-white">
-                          {formatCurrency(revenueStats.comparison.recurringRevenue, 'USD')}
+                          {formatCurrency(revenueStats.comparison.recurringRevenue, activeCurrency)}
                         </p>
                       </div>
                     </div>
@@ -708,13 +710,13 @@ export function RevenueAnalyticsPage() {
                       <div>
                         <p className="text-xs text-gray-500 dark:text-gray-400">Actuel</p>
                         <p className="text-base font-semibold text-gray-900 dark:text-white">
-                          {formatCurrency(revenueStats.currentPeriod.metrics.oneTimeRevenue, 'USD')}
+                          {formatCurrency(revenueStats.currentPeriod.metrics.oneTimeRevenue, activeCurrency)}
                         </p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-500 dark:text-gray-400">Précédent</p>
                         <p className="text-base font-semibold text-gray-900 dark:text-white">
-                          {formatCurrency(revenueStats.comparison.oneTimeRevenue, 'USD')}
+                          {formatCurrency(revenueStats.comparison.oneTimeRevenue, activeCurrency)}
                         </p>
                       </div>
                     </div>

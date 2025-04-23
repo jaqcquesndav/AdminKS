@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TrendingUp, TrendingDown, DollarSign, Filter, Calendar } from 'lucide-react';
-import { formatCurrency } from '../../utils/currency';
+import { useCurrencySettings } from '../../hooks/useCurrencySettings';
 
 interface RevenueData {
   date: string;
@@ -25,6 +25,8 @@ interface FinancialAnalyticsProps {
 
 export function FinancialAnalytics({ customerId, className = '' }: FinancialAnalyticsProps) {
   const { t } = useTranslation();
+  const { format: formatCurrency } = useCurrencySettings();
+  
   const [loading, setLoading] = useState(true);
   const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
   const [summaryStats, setSummaryStats] = useState<SummaryStats | null>(null);
@@ -265,6 +267,18 @@ export function FinancialAnalytics({ customerId, className = '' }: FinancialAnal
     }).join(' ');
   };
   
+  // Formater les valeurs monétaires dans le graphique
+  const formatCompactCurrency = (amount: number) => {
+    // Formatter en format compact (k, M, etc.)
+    const formatted = new Intl.NumberFormat('fr-FR', { 
+      notation: 'compact', 
+      compactDisplay: 'short',
+      maximumFractionDigits: 1
+    }).format(amount);
+    
+    return formatted;
+  };
+  
   return (
     <div className={`bg-white dark:bg-gray-800 shadow overflow-hidden rounded-lg ${className}`}>
       <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
@@ -328,7 +342,7 @@ export function FinancialAnalytics({ customerId, className = '' }: FinancialAnal
                     </p>
                     <div className="flex items-end">
                       <p className="text-xl font-semibold text-gray-900 dark:text-white">
-                        {formatCurrency(summaryStats.totalRevenue, 'EUR')}
+                        {formatCurrency(summaryStats.totalRevenue)}
                       </p>
                       <div className="ml-2 mb-1 flex items-center">
                         {calculateChange(summaryStats.totalRevenue, summaryStats.comparisonRevenue) >= 0 ? (
@@ -398,7 +412,7 @@ export function FinancialAnalytics({ customerId, className = '' }: FinancialAnal
                     </p>
                     <div className="flex items-end">
                       <p className="text-xl font-semibold text-gray-900 dark:text-white">
-                        {formatCurrency(summaryStats.averageTransactionValue, 'EUR')}
+                        {formatCurrency(summaryStats.averageTransactionValue)}
                       </p>
                       <div className="ml-2 mb-1 flex items-center">
                         {calculateChange(summaryStats.averageTransactionValue, summaryStats.comparisonAverageValue) >= 0 ? (
@@ -434,7 +448,7 @@ export function FinancialAnalytics({ customerId, className = '' }: FinancialAnal
                   const value = chartScale.max - i * chartScale.step;
                   return (
                     <div key={i} className="flex items-center">
-                      <span>{formatCurrency(value, 'EUR', { notation: 'compact' })}</span>
+                      <span>{formatCompactCurrency(value)}</span>
                     </div>
                   );
                 })}

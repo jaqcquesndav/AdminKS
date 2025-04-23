@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Search, Filter, Download, Eye, PlusCircle, CheckCircle, XCircle, AlertTriangle, Clock, MoreHorizontal } from 'lucide-react';
 import { useToastContext } from '../../contexts/ToastContext';
 import { formatCurrency } from '../../utils/currency';
+import { useCurrencySettings } from '../../hooks/useCurrencySettings'; // Ajout de l'import
 
 // Types pour les paiements
 interface Payment {
@@ -20,6 +21,7 @@ interface Payment {
 
 export function PaymentsPage() {
   const { showToast } = useToastContext();
+  const { activeCurrency } = useCurrencySettings(); // Utilisation du hook pour obtenir la devise active
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -351,7 +353,7 @@ export function PaymentsPage() {
           <div className="ml-4">
             <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Revenus confirmés</h3>
             <p className="mt-1 text-lg font-semibold text-gray-900 dark:text-white">
-              {formatCurrency(totalRevenue, 'USD')}
+              {formatCurrency(totalRevenue, activeCurrency)} {/* Utilisation de la devise active */}
             </p>
           </div>
         </div>
@@ -362,7 +364,7 @@ export function PaymentsPage() {
           <div className="ml-4">
             <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Paiements en attente</h3>
             <p className="mt-1 text-lg font-semibold text-gray-900 dark:text-white">
-              {formatCurrency(pendingRevenue, 'USD')}
+              {formatCurrency(pendingRevenue, activeCurrency)} {/* Utilisation de la devise active */}
             </p>
           </div>
         </div>
@@ -373,7 +375,7 @@ export function PaymentsPage() {
           <div className="ml-4">
             <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Montants remboursés</h3>
             <p className="mt-1 text-lg font-semibold text-gray-900 dark:text-white">
-              {formatCurrency(refundedAmount, 'USD')}
+              {formatCurrency(refundedAmount, activeCurrency)} {/* Utilisation de la devise active */}
             </p>
           </div>
         </div>
@@ -432,7 +434,7 @@ export function PaymentsPage() {
                       {payment.description}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
-                      {formatCurrency(payment.amount, 'USD')}
+                      {formatCurrency(payment.amount, activeCurrency)} {/* Utilisation de la devise active */}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                       {payment.date}

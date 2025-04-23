@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useState, useEffect } from 'react';
 import { Search, Filter, Calendar, AlertCircle, RefreshCcw, CheckCircle, XCircle, MoreHorizontal, Building, CreditCard, PlusCircle } from 'lucide-react';
 import { useToastContext } from '../../contexts/ToastContext';
 import { formatCurrency } from '../../utils/currency';
+import { SupportedCurrency } from '../../types/currency';
 
 // Types pour les abonnements
 interface SubscriptionPlan {
   id: string;
   name: string;
   price: number;
-  currency: string;
+  currency: SupportedCurrency;
   billingCycle: 'monthly' | 'quarterly' | 'yearly';
   features: string[];
 }
@@ -24,14 +24,13 @@ interface Subscription {
   startDate: string;
   currentPeriodEnd: string;
   amount: number;
-  currency: string;
+  currency: SupportedCurrency;
   autoRenew: boolean;
   paymentMethod: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export function SubscriptionsPage() {
-  const { t } = useTranslation();
   const { showToast } = useToastContext();
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,7 +51,7 @@ export function SubscriptionsPage() {
             id: 'plan_starter',
             name: 'Starter',
             price: 49.99,
-            currency: 'EUR',
+            currency: 'USD',
             billingCycle: 'monthly',
             features: ['5 utilisateurs', '10 projets', 'Support par email'],
           },
@@ -60,7 +59,7 @@ export function SubscriptionsPage() {
             id: 'plan_pro',
             name: 'Professional',
             price: 199.99,
-            currency: 'EUR',
+            currency: 'USD',
             billingCycle: 'monthly',
             features: ['20 utilisateurs', 'Projets illimités', 'Support prioritaire'],
           },
@@ -68,7 +67,7 @@ export function SubscriptionsPage() {
             id: 'plan_enterprise',
             name: 'Enterprise',
             price: 499.99,
-            currency: 'EUR',
+            currency: 'USD',
             billingCycle: 'monthly',
             features: ['Utilisateurs illimités', 'Fonctionnalités avancées', 'Support dédié'],
           },
@@ -76,7 +75,7 @@ export function SubscriptionsPage() {
             id: 'plan_financial',
             name: 'Financial Institution',
             price: 1299.99,
-            currency: 'EUR',
+            currency: 'USD',
             billingCycle: 'monthly',
             features: ['Accès API complet', 'Intégration système bancaire', 'SLA garantie'],
           },
@@ -110,7 +109,7 @@ export function SubscriptionsPage() {
             startDate: '2023-01-15',
             currentPeriodEnd: '2023-05-15',
             amount: 499.99,
-            currency: 'EUR',
+            currency: 'USD',
             autoRenew: true,
             paymentMethod: 'card',
           },
@@ -124,7 +123,7 @@ export function SubscriptionsPage() {
             startDate: '2023-02-01',
             currentPeriodEnd: '2023-05-01',
             amount: 199.99,
-            currency: 'EUR',
+            currency: 'USD',
             autoRenew: true,
             paymentMethod: 'bank_transfer',
           },
@@ -138,7 +137,7 @@ export function SubscriptionsPage() {
             startDate: '2022-12-01',
             currentPeriodEnd: '2023-06-01',
             amount: 1299.99,
-            currency: 'EUR',
+            currency: 'USD',
             autoRenew: false,
             paymentMethod: 'bank_transfer',
           },
@@ -152,7 +151,7 @@ export function SubscriptionsPage() {
             startDate: '2023-01-10',
             currentPeriodEnd: '2023-04-10',
             amount: 49.99,
-            currency: 'EUR',
+            currency: 'USD',
             autoRenew: false,
             paymentMethod: 'card',
           },
@@ -166,7 +165,7 @@ export function SubscriptionsPage() {
             startDate: '2023-04-01',
             currentPeriodEnd: '2023-05-01',
             amount: 0,
-            currency: 'EUR',
+            currency: 'USD',
             autoRenew: true,
             paymentMethod: 'card',
           },

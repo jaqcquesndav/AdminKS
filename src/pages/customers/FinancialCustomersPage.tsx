@@ -1,130 +1,124 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Search, Plus, Filter, Edit, Trash2, Eye, Landmark } from 'lucide-react';
-import { CustomerFormModal, CustomerFormData } from '../../components/customers/CustomerFormModal';
+import { CustomerFormModal } from '../../components/customers/CustomerFormModal';
 import { useToastContext } from '../../contexts/ToastContext';
+import { customersApi } from '../../services/api';
+import type { Customer, CustomerType, CustomerStatus, CustomerFilterParams } from '../../types/customer';
+
+// Define a type for the form data that allows 'pme' and 'financial' types
+interface ExtendedCustomerFormData extends Omit<Customer, 'type'> {
+  type: CustomerType | 'pme' | 'financial';
+}
 
 export function FinancialCustomersPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { showToast } = useToastContext();
-  const [customers, setCustomers] = useState<CustomerFormData[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      setLoading(true);
-      try {
-        // Simuler une requête API
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Données mockées pour les institutions financières
-        const mockCustomers: CustomerFormData[] = [
-          {
-            id: '201',
-            name: 'Banque Nationale de Paris',
-            type: 'financial',
-            email: 'contact@bnp.fr',
-            phone: '+33 1 40 14 45 46',
-            address: '16 Boulevard des Italiens',
-            city: 'Paris',
-            country: 'France',
-            status: 'active',
-            billingContactName: 'Jean Dupont',
-            billingContactEmail: 'j.dupont@bnp.fr',
-          },
-          {
-            id: '202',
-            name: 'Crédit Agricole',
-            type: 'financial',
-            email: 'contact@ca.fr',
-            phone: '+33 1 43 23 52 02',
-            address: '12 Place des États-Unis',
-            city: 'Paris',
-            country: 'France',
-            status: 'active',
-            billingContactName: 'Marie Laurent',
-            billingContactEmail: 'marie.laurent@ca.fr',
-          },
-          {
-            id: '203',
-            name: 'Société Générale',
-            type: 'financial',
-            email: 'contact@societegenerale.fr',
-            phone: '+33 1 42 14 20 00',
-            address: '29 Boulevard Haussmann',
-            city: 'Paris',
-            country: 'France',
-            status: 'active',
-            billingContactName: 'Pierre Martin',
-            billingContactEmail: 'p.martin@socgen.fr',
-          },
-          {
-            id: '204',
-            name: 'HSBC France',
-            type: 'financial',
-            email: 'info@hsbc.fr',
-            phone: '+33 1 40 70 70 40',
-            address: '103 Avenue des Champs-Élysées',
-            city: 'Paris',
-            country: 'France',
-            status: 'suspended',
-            billingContactName: 'Sophie Bernard',
-            billingContactEmail: 'sophie.bernard@hsbc.fr',
-          },
-          {
-            id: '205',
-            name: 'Crédit Mutuel',
-            type: 'financial',
-            email: 'contact@creditmutuel.fr',
-            phone: '+33 3 88 14 88 14',
-            address: '4 Rue Frédéric-Guillaume Raiffeisen',
-            city: 'Strasbourg',
-            country: 'France',
-            status: 'inactive',
-            billingContactName: 'Thomas Petit',
-            billingContactEmail: 'thomas.petit@cm.fr',
-          }
-        ];
-        
-        setCustomers(mockCustomers);
-      } catch (error) {
-        console.error('Erreur lors du chargement des institutions financières:', error);
-        showToast('error', 'Erreur lors du chargement des institutions financières');
-      } finally {
-        setLoading(false);
+  const fetchCustomers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params: CustomerFilterParams = {
+        type: 'financial',
+        page,
+        limit: 10
+      };
+      
+      if (searchQuery) {
+        params.search = searchQuery;
       }
-    };
-    
+      
+      if (filterStatus !== 'all') {
+        params.status = filterStatus as CustomerStatus;
+      }
+      
+      const response = await customersApi.getFinancialCustomers(params);
+      setCustomers(response.customers);
+      setTotalPages(response.totalPages);
+    } catch (error) {
+      console.error('Erreur lors du chargement des institutions financières:', error);
+      showToast('error', 'Erreur lors du chargement des institutions financières');
+      
+      // Fallback vers des données mockées en cas d'échec de l'API (pour le développement)
+      const mockCustomers: Customer[] = [
+        {
+          id: 'fin-1',
+          name: 'Banque Centrale du Congo',
+          type: 'financial',
+          email: 'contact@bcc.cd',
+          phone: '+243 123 456 789',
+          address: '263 Avenue Kasavubu',
+          city: 'Kinshasa',
+          country: 'RDC',
+          status: 'active',
+          billingContactName: 'Jean-Claude Masangu',
+          billingContactEmail: 'jc.masangu@bcc.cd',
+          tokenAllocation: 10000000,
+          accountType: 'premium'
+        },
+        // ...autres institutions mockées...
+      ];
+      
+      setCustomers(mockCustomers);
+    } finally {
+      setLoading(false);
+    }
+  }, [showToast, page, filterStatus, searchQuery]);
+  
+  useEffect(() => {
     fetchCustomers();
-  }, [showToast]);
+  }, [fetchCustomers]);
+  
+  // Debounce pour la recherche
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      fetchCustomers();
+    }, 500);
+    
+    return () => clearTimeout(handler);
+  }, [searchQuery, fetchCustomers]);
 
-  const handleCreateCustomer = (customer: CustomerFormData) => {
-    setCustomers(prev => [...prev, { ...customer, id: Date.now().toString() }]);
-    setShowModal(false);
-    showToast('success', 'Institution financière créée avec succès');
+  const handleCreateCustomer = async (customer: ExtendedCustomerFormData) => {
+    try {
+      // Map extended form data to proper Customer type
+      const customerData: Customer = {
+        ...customer,
+        type: customer.type === 'pme' ? 'financial' : customer.type as CustomerType
+      };
+      
+      await customersApi.create(customerData);
+      showToast('success', 'Institution financière créée avec succès');
+      setShowModal(false);
+      fetchCustomers(); // Recharger la liste
+    } catch (error) {
+      console.error('Erreur lors de la création de l\'institution:', error);
+      showToast('error', 'Erreur lors de la création de l\'institution financière');
+    }
   };
 
   const handleViewCustomer = (id: string) => {
     navigate(`/customers/${id}`);
   };
 
-  const handleDeleteCustomer = (id: string) => {
-    setCustomers(prev => prev.filter(customer => customer.id !== id));
-    showToast('success', 'Institution financière supprimée avec succès');
+  const handleDeleteCustomer = async (id: string) => {
+    try {
+      await customersApi.delete(id);
+      showToast('success', 'Institution financière supprimée avec succès');
+      fetchCustomers(); // Recharger la liste
+    } catch (error) {
+      console.error('Erreur lors de la suppression:', error);
+      showToast('error', 'Erreur lors de la suppression de l\'institution financière');
+    }
   };
-
-  const filteredCustomers = customers
-    .filter(customer => customer.type === 'financial')
-    .filter(customer => 
-      customer.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      customer.email.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-    .filter(customer => filterStatus === 'all' ? true : customer.status === filterStatus);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -194,7 +188,7 @@ export function FinancialCustomersPage() {
             <div className="inline-block mx-auto animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
             <p className="mt-4 text-gray-500">{t('common.loading', 'Chargement...')}</p>
           </div>
-        ) : filteredCustomers.length === 0 ? (
+        ) : customers.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <p className="text-gray-500">{t('customers.noFinancialFound', 'Aucune institution financière trouvée')}</p>
             <button
@@ -228,7 +222,7 @@ export function FinancialCustomersPage() {
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {filteredCustomers.map((customer) => (
+                {customers.map((customer) => (
                   <tr key={customer.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                       <div className="flex items-center">
@@ -260,8 +254,8 @@ export function FinancialCustomersPage() {
                         </button>
                         <button
                           onClick={() => {
-                            // Dans une vraie application, vous implémenteriez l'édition ici
-                            showToast('info', 'Fonctionnalité d\'édition à implémenter');
+                            // Navigation vers la page d'édition
+                            navigate(`/customers/${customer.id}/edit`);
                           }}
                           className="text-yellow-600 hover:text-yellow-800"
                           title={t('customers.actions.edit', 'Modifier') as string}
@@ -283,6 +277,34 @@ export function FinancialCustomersPage() {
             </table>
           </div>
         )}
+        
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="px-6 py-4 flex items-center justify-between border-t border-gray-200 dark:border-gray-700">
+            <div>
+              <p className="text-sm text-gray-700 dark:text-gray-300">
+                Page <span className="font-medium">{page}</span> sur{' '}
+                <span className="font-medium">{totalPages}</span>
+              </p>
+            </div>
+            <div className="flex-1 flex justify-end">
+              <button
+                onClick={() => setPage(prev => Math.max(prev - 1, 1))}
+                disabled={page === 1}
+                className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50"
+              >
+                Précédent
+              </button>
+              <button
+                onClick={() => setPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={page === totalPages}
+                className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50"
+              >
+                Suivant
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Create Customer Modal */}
@@ -302,6 +324,8 @@ export function FinancialCustomersPage() {
           status: 'pending',
           billingContactName: '',
           billingContactEmail: '',
+          tokenAllocation: 10000000, // Default for financial institutions
+          accountType: 'freemium' as const // Start with freemium
         }}
       />
     </div>

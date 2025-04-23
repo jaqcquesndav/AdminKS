@@ -1,74 +1,138 @@
-import api from './client';
-import { cloudinaryService } from '../cloudinary';
-import type { ChatMessage, ChatAttachment } from '../../types/chat';
+import apiClient from './client';
+import type { ChatMessage, ChatSession, ChatAttachment, ChatTypingEvent } from '../../types/chat';
+
+interface ChatSessionListResponse {
+  sessions: ChatSession[];
+  totalCount: number;
+}
+
+interface ChatMessageListResponse {
+  messages: ChatMessage[];
+  totalCount: number;
+  hasMore: boolean;
+}
 
 export const chatApi = {
-  getMessages: async (params?: { 
-    page?: number; 
+  // Obtenir toutes les sessions de chat
+  getSessions: async (params?: {
+    status?: 'active' | 'closed';
+    page?: number;
     limit?: number;
-    before?: Date;
-  }): Promise<ChatMessage[]> => {
-    const response = await api.get('/chat/messages', { params });
+  }): Promise<ChatSessionListResponse> => {
+    const response = await apiClient.get('/chat/sessions', { params });
     return response.data;
   },
 
-  sendMessage: async (content: string): Promise<ChatMessage> => {
-    const response = await api.post('/chat/messages', { content });
+  // Obtenir une session de chat par son ID
+  getSessionById: async (sessionId: string): Promise<ChatSession> => {
+    const response = await apiClient.get(`/chat/sessions/${sessionId}`);
     return response.data;
   },
 
-  uploadAttachment: async (file: File): Promise<ChatAttachment> => {
-    // Upload to Cloudinary first
-    const cloudinaryResponse = await cloudinaryService.upload(file, 'chat');
+  // Créer une nouvelle session de chat
+  createSession: async (data: {
+    subject?: string;
+    priority?: 'low' | 'medium' | 'high';
+    tags?: string[];
+  }): Promise<ChatSession> => {
+    const response = await apiClient.post('/chat/sessions', data);
+    return response.data;
+  },
 
-    // Then send attachment metadata to our API
-    const response = await api.post('/chat/attachments', {
-      url: cloudinaryResponse.secure_url,
-      publicId: cloudinaryResponse.public_id,
-      type: file.type,
-      name: file.name
+  // Fermer une session de chat
+  closeSession: async (sessionId: string): Promise<ChatSession> => {
+    const response = await apiClient.put(`/chat/sessions/${sessionId}/close`);
+    return response.data;
+  },
+
+  // Attribuer un agent à une session de chat
+  assignAgent: async (sessionId: string, agentId: string): Promise<ChatSession> => {
+    const response = await apiClient.put(`/chat/sessions/${sessionId}/assign`, { agentId });
+    return response.data;
+  },
+
+  // Obtenir les messages d'une session de chat
+  getMessages: async (sessionId: string, params?: {
+    before?: string; // ID du message pour pagination
+    limit?: number;
+  }): Promise<ChatMessageListResponse> => {
+    const response = await apiClient.get(`/chat/sessions/${sessionId}/messages`, { params });
+    return response.data;
+  },
+
+  // Envoyer un message dans une session de chat
+  sendMessage: async (sessionId: string, data: {
+    content: string;
+    attachments?: File[];
+  }): Promise<ChatMessage> => {
+    if (!data.attachments || data.attachments.length === 0) {
+      // Envoi sans pièces jointes
+      const response = await apiClient.post(`/chat/sessions/${sessionId}/messages`, {
+        content: data.content
+      });
+      return response.data;
+    } else {
+      // Envoi avec pièces jointes
+      const formData = new FormData();
+      formData.append('content', data.content);
+      
+      data.attachments.forEach((file, index) => {
+        formData.append(`attachments[${index}]`, file);
+      });
+
+      const response = await apiClient.post(`/chat/sessions/${sessionId}/messages`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      return response.data;
+    }
+  },
+
+  // Télécharger une pièce jointe
+  downloadAttachment: async (attachmentId: string): Promise<Blob> => {
+    const response = await apiClient.get(`/chat/attachments/${attachmentId}`, {
+      responseType: 'blob'
     });
-    
     return response.data;
   },
 
-  markAsRead: async (messageIds: string[]): Promise<void> => {
-    await api.post('/chat/messages/read', { messageIds });
+  // Marquer les messages comme lus
+  markAsRead: async (sessionId: string, messageIds: string[]): Promise<void> => {
+    await apiClient.put(`/chat/sessions/${sessionId}/read`, { messageIds });
   },
 
-  startTyping: async (): Promise<void> => {
-    await api.post('/chat/typing/start');
+  // Envoyer un événement de frappe
+  sendTypingEvent: async (sessionId: string, isTyping: boolean): Promise<void> => {
+    await apiClient.post(`/chat/sessions/${sessionId}/typing`, { isTyping });
   },
 
-  stopTyping: async (): Promise<void> => {
-    await api.post('/chat/typing/stop');
+  // Obtenir les statistiques du chat
+  getChatStats: async (): Promise<{
+    totalSessions: number;
+    activeSessions: number;
+    averageResponseTime: number;
+    messagesExchanged: number;
+  }> => {
+    const response = await apiClient.get('/chat/stats');
+    return response.data;
   },
-
-  connectToWebSocket: (callbacks: {
-    onMessage: (message: ChatMessage) => void;
-    onTyping: (isTyping: boolean) => void;
-    onError: (error: Error) => void;
+  
+  // S'abonner aux mises à jour du chat en temps réel
+  subscribeToChat: (sessionId: string, callbacks: {
+    onMessage?: (message: ChatMessage) => void;
+    onTyping?: (event: ChatTypingEvent) => void;
+    onSessionUpdate?: (session: ChatSession) => void;
   }) => {
-    const ws = new WebSocket(`${import.meta.env.VITE_WS_URL}/chat`);
-
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      switch (data.type) {
-        case 'message':
-          callbacks.onMessage(data.message);
-          break;
-        case 'typing':
-          callbacks.onTyping(data.isTyping);
-          break;
-        case 'error':
-          callbacks.onError(new Error(data.message));
-          break;
-      }
-    };
-
+    // Cette fonction sera implémentée avec WebSockets
+    console.log(`WebSocket subscription would be initialized for session ${sessionId}`);
     return {
-      disconnect: () => ws.close(),
-      send: (message: any) => ws.send(JSON.stringify(message))
+      unsubscribe: () => {
+        console.log(`WebSocket connection for session ${sessionId} would be closed`);
+      }
     };
   }
 };
+
+export default chatApi;

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { User, Shield, Bell, Globe, HelpCircle, Layout } from 'lucide-react';
+import { User, Shield, Bell, Globe, HelpCircle, Layout, Coins } from 'lucide-react';
 import { useCurrencySettings } from '../../hooks/useCurrencySettings';
 import { useExchangeRates } from '../../hooks/useExchangeRates';
 import { CurrencySelector } from '../../components/common/CurrencySelector';
@@ -423,11 +423,9 @@ const DisplaySettings = () => {
   );
 };
 
-// Nouveau composant pour les paramètres de langue et devise
+// Nouveau composant pour les paramètres de langue
 const LanguageSettings = () => {
   const { t } = useTranslation();
-  const { currency, format, formatInCurrency } = useCurrencySettings();
-  const { getRate, loading } = useExchangeRates();
   
   return (
     <div className="space-y-6">
@@ -456,66 +454,6 @@ const LanguageSettings = () => {
                 <p className="font-medium">English</p>
                 <p className="text-sm text-gray-500">English language</p>
               </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      {/* Section devise */}
-      <div className="p-4 border rounded-lg">
-        <h3 className="text-lg font-medium mb-4">
-          {t('settings.currency.title', 'Devise préférée')}
-        </h3>
-        <p className="text-sm text-gray-500 mb-4">
-          {t('settings.currency.description', 'Choisissez la devise principale pour l\'affichage des montants dans l\'application')}
-        </p>
-        
-        {/* Utiliser notre nouveau composant CurrencySelector */}
-        <div className="mb-6">
-          <CurrencySelector variant="buttons" className="mb-4" />
-        </div>
-        
-        {/* Afficher les taux de change */}
-        <div className="border-t pt-4 mt-4">
-          <h4 className="font-medium mb-3">{t('settings.currency.exchangeRates', 'Taux de change actuels')}</h4>
-          
-          {loading ? (
-            <div className="flex justify-center py-4">
-              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                <span>1 USD =</span>
-                <span className="font-medium">{getRate('USD', 'CDF').toFixed(2)} CDF</span>
-              </div>
-              <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                <span>1 USD =</span>
-                <span className="font-medium">{getRate('USD', 'FCFA').toFixed(2)} FCFA</span>
-              </div>
-              <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                <span>1 CDF =</span>
-                <span className="font-medium">{getRate('CDF', 'FCFA').toFixed(4)} FCFA</span>
-              </div>
-            </div>
-          )}
-          
-          <div className="mt-4">
-            <p className="text-xs text-gray-500">
-              {t('settings.currency.updatedAt', 'Taux mis à jour le')} {new Date().toLocaleDateString('fr-FR')}
-            </p>
-          </div>
-          
-          {/* Exemple de conversion */}
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-            <h4 className="font-medium mb-2">{t('settings.currency.example', 'Exemple')}</h4>
-            <p className="mb-2">
-              {t('settings.currency.exampleDescription', 'Un abonnement mensuel à notre Suite ERP coûte:')}
-            </p>
-            <div className="space-y-1 font-medium">
-              <p>{formatInCurrency(15, 'USD')}</p>
-              <p>{formatInCurrency(15 * getRate('USD', 'CDF'), 'CDF')}</p>
-              <p>{formatInCurrency(15 * getRate('USD', 'FCFA'), 'FCFA')}</p>
             </div>
           </div>
         </div>
@@ -593,6 +531,148 @@ const SupportSettings = () => {
   );
 };
 
+// Nouveau composant pour les paramètres de devise
+const CurrencySettings = () => {
+  const { t } = useTranslation();
+  const { formatInCurrency } = useCurrencySettings();
+  const { getRate, loading, refreshRates } = useExchangeRates();
+  
+  return (
+    <div className="space-y-6">
+      {/* Section sélection de devise */}
+      <div className="p-4 border rounded-lg">
+        <h3 className="text-lg font-medium mb-4">
+          {t('settings.currency.title', 'Devise préférée')}
+        </h3>
+        <p className="text-sm text-gray-500 mb-4">
+          {t('settings.currency.description', 'Choisissez la devise principale pour l\'affichage des montants dans l\'application')}
+        </p>
+        
+        {/* Utiliser le composant CurrencySelector avec des boutons plus grands */}
+        <div className="mb-6">
+          <CurrencySelector variant="buttons" className="mb-4" />
+        </div>
+        
+        <p className="text-sm text-gray-500 mt-2">
+          {t('settings.currency.selectedInfo', 'La devise sélectionnée sera utilisée dans toute l\'application pour afficher les prix et montants.')}
+        </p>
+      </div>
+      
+      {/* Taux de change */}
+      <div className="p-4 border rounded-lg">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-medium">
+            {t('settings.currency.exchangeRates', 'Taux de change')}
+          </h3>
+          <button 
+            onClick={() => refreshRates()}
+            className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-md flex items-center gap-2"
+            disabled={loading}
+          >
+            {loading ? (
+              <span className="inline-block w-4 h-4 border-2 border-t-transparent border-primary rounded-full animate-spin"></span>
+            ) : null}
+            {t('settings.currency.refresh', 'Actualiser')}
+          </button>
+        </div>
+        
+        {loading ? (
+          <div className="flex justify-center py-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
+              <span>1 USD =</span>
+              <span className="font-medium">{getRate('USD', 'CDF').toFixed(2)} CDF</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
+              <span>1 USD =</span>
+              <span className="font-medium">{getRate('USD', 'FCFA').toFixed(2)} FCFA</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
+              <span>1 CDF =</span>
+              <span className="font-medium">{getRate('CDF', 'FCFA').toFixed(4)} FCFA</span>
+            </div>
+          </div>
+        )}
+        
+        <div className="mt-4">
+          <p className="text-xs text-gray-500">
+            {t('settings.currency.updatedAt', 'Taux mis à jour le')} {new Date().toLocaleDateString('fr-FR')}
+          </p>
+        </div>
+      </div>
+      
+      {/* Exemple de conversion */}
+      <div className="p-4 border rounded-lg">
+        <h3 className="text-lg font-medium mb-4">
+          {t('settings.currency.preview', 'Aperçu des conversions')}
+        </h3>
+        
+        <div className="p-4 bg-blue-50 rounded-lg">
+          <h4 className="font-medium mb-2">{t('settings.currency.example', 'Exemple')}</h4>
+          <p className="mb-2">
+            {t('settings.currency.exampleDescription', 'Un abonnement mensuel à notre Suite ERP coûte:')}
+          </p>
+          <div className="space-y-1 font-medium">
+            <p>{formatInCurrency(15, 'USD')}</p>
+            <p>{formatInCurrency(15 * getRate('USD', 'CDF'), 'CDF')}</p>
+            <p>{formatInCurrency(15 * getRate('USD', 'FCFA'), 'FCFA')}</p>
+          </div>
+        </div>
+      </div>
+      
+      {/* Options de formatage */}
+      <div className="p-4 border rounded-lg">
+        <h3 className="text-lg font-medium mb-4">
+          {t('settings.currency.formatting', 'Options de formatage')}
+        </h3>
+        
+        <div className="space-y-4">
+          <div className="flex items-center p-3 border rounded-lg bg-primary/5">
+            <input 
+              type="radio" 
+              id="format_symbol_first" 
+              name="currencyFormat" 
+              className="form-radio text-primary" 
+              checked 
+            />
+            <label htmlFor="format_symbol_first" className="ml-2 flex-grow">
+              {t('settings.currency.symbolFirst', 'Symbole d\'abord')}
+              <span className="text-sm text-gray-500 ml-2">Ex: $15.00</span>
+            </label>
+          </div>
+          <div className="flex items-center p-3 border rounded-lg">
+            <input 
+              type="radio" 
+              id="format_symbol_last" 
+              name="currencyFormat" 
+              className="form-radio text-primary"
+            />
+            <label htmlFor="format_symbol_last" className="ml-2 flex-grow">
+              {t('settings.currency.symbolLast', 'Symbole après')}
+              <span className="text-sm text-gray-500 ml-2">Ex: 15.00$</span>
+            </label>
+          </div>
+          <div className="flex items-center p-3 border rounded-lg">
+            <input 
+              type="radio" 
+              id="format_code" 
+              name="currencyFormat" 
+              className="form-radio text-primary"
+            />
+            <label htmlFor="format_code" className="ml-2 flex-grow">
+              {t('settings.currency.code', 'Code de devise')}
+              <span className="text-sm text-gray-500 ml-2">Ex: 15.00 USD</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Composant principal SettingsPage
 export function SettingsPage() {
   const { t } = useTranslation();
@@ -605,6 +685,7 @@ export function SettingsPage() {
     { id: 'notifications', label: t('settings.tabs.notifications'), icon: <Bell className="h-5 w-5" /> },
     { id: 'display', label: t('settings.tabs.display'), icon: <Layout className="h-5 w-5" /> },
     { id: 'language', label: t('settings.tabs.language'), icon: <Globe className="h-5 w-5" /> },
+    { id: 'currency', label: t('settings.tabs.currency', 'Devise'), icon: <Coins className="h-5 w-5" /> },
     { id: 'support', label: t('settings.tabs.support'), icon: <HelpCircle className="h-5 w-5" /> },
   ];
   
@@ -621,6 +702,8 @@ export function SettingsPage() {
         return <DisplaySettings />;
       case 'language':
         return <LanguageSettings />;
+      case 'currency':
+        return <CurrencySettings />;
       case 'support':
         return <SupportSettings />;
       default:

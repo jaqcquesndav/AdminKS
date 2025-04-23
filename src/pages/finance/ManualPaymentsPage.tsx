@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { 
   Search, Filter, Download, Check, X, Clock, FileText, 
   ChevronDown, ExternalLink, Image, User, FileCheck, Calendar
 } from 'lucide-react';
 import { useToastContext } from '../../contexts/ToastContext';
+import { useCurrencySettings } from '../../hooks/useCurrencySettings';
 
 // Types pour les paiements manuels
 interface ManualPayment {
@@ -47,6 +48,7 @@ const statusConfig = {
 export function ManualPaymentsPage() {
   const { t } = useTranslation();
   const { showToast } = useToastContext();
+  const { activeCurrency, formatInCurrency } = useCurrencySettings();
   
   // États
   const [payments, setPayments] = useState<ManualPayment[]>([]);
@@ -239,7 +241,7 @@ export function ManualPaymentsPage() {
 
   // Formatage du montant
   const formatAmount = (amount: number, currency: string) => {
-    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency }).format(amount);
+    return formatInCurrency(amount, activeCurrency || currency);
   };
 
   // Ouvrir le modal de détails d'un paiement

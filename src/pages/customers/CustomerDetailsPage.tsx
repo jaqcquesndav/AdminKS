@@ -3,21 +3,47 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Edit, Trash2, AlertTriangle, Shield, Check, User, ChevronRight } from 'lucide-react';
 import { CustomerFormModal, CustomerFormData } from '../../components/customers/CustomerFormModal';
-import { CustomerDetails, CustomerDetailsCard } from '../../components/customers/CustomerDetailsCard';
-import { SubscriptionInfo, SubscriptionInfoCard } from '../../components/customers/SubscriptionInfoCard';
+import { CustomerDetailsCard } from '../../components/customers/CustomerDetailsCard';
+import { SubscriptionInfoCard } from '../../components/customers/SubscriptionInfoCard';
 import { TokenUsagePanel } from '../../components/customers/TokenUsagePanel';
 import { CustomerTransactionHistory } from '../../components/customers/CustomerTransactionHistory';
-import { CustomerUsersList, CustomerUser } from '../../components/customers/CustomerUsersList';
+import { CustomerUsersList } from '../../components/customers/CustomerUsersList';
 import { CustomerInviteUserModal, InviteUserData } from '../../components/customers/CustomerInviteUserModal';
 import { useToastContext } from '../../contexts/ToastContext';
 
 // Types pour le client complet
-interface Customer extends CustomerFormData, CustomerDetails, SubscriptionInfo {
+interface Customer {
   id: string;
+  name: string;
+  type: 'pme' | 'financial';
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  country: string;
+  status: 'active' | 'pending' | 'suspended' | 'inactive';
   createdAt: string;
   updatedAt: string;
   usersCount: number;
   validationHistory?: ValidationEvent[];
+  // From CustomerFormData
+  billingContactName: string;
+  billingContactEmail: string;
+  planId?: string;
+  validatedAt?: string;
+  validatedBy?: string;
+  ownerId?: string;
+  ownerEmail?: string;
+  tokenAllocation: number;
+  tokenUsage?: number;
+  nextTokenRenewalDate?: string;
+  accountType: 'freemium' | 'standard' | 'premium' | 'enterprise';
+  // From SubscriptionInfo
+  subscriptionStatus: 'active' | 'trial' | 'expired' | 'canceled' | 'none';
+  subscriptionPlan: string;
+  subscriptionExpiry: string;
+  lastInvoiceAmount: number;
+  lastInvoiceDate: string;
 }
 
 interface ValidationEvent {

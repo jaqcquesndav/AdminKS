@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useDashboardData } from '../../hooks/useDashboardData';
 import { useAuth } from '../../hooks/useAuth';
+import { useCurrencySettings } from '../../hooks/useCurrencySettings';
 import { StatCard } from '../../components/dashboard/stats/StatCard';
 import { RevenueChart } from '../../components/dashboard/charts/RevenueChart';
 import { TokenUsageChart } from '../../components/dashboard/charts/TokenUsageChart';
@@ -30,6 +31,7 @@ export function DashboardPage() {
     isLoading,
     error
   } = useDashboardData(user?.role || '');
+  const { formatCurrency } = useCurrencySettings();
 
   // Calculer la différence en pourcentage pour les tendances
   const userGrowth = useMemo(() => {
@@ -138,7 +140,7 @@ export function DashboardPage() {
         {showFinancialMetrics && (
           <StatCard
             title="Revenu Total"
-            value={`$${revenueStats.totalRevenue.toLocaleString()}`}
+            value={formatCurrency(revenueStats.totalRevenue)}
             icon={<DollarSign size={20} />}
             change={{
               value: revenueGrowth,
@@ -152,7 +154,7 @@ export function DashboardPage() {
         {showFinancialMetrics && (
           <StatCard
             title="Revenu Tokens IA"
-            value={`$${revenueStats.tokenRevenue.toLocaleString()}`}
+            value={formatCurrency(revenueStats.tokenRevenue)}
             icon={<Cpu size={20} />}
             color="info"
           />

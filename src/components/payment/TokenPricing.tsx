@@ -1,28 +1,37 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Coins, Percent } from 'lucide-react';
-import { TOKEN_PACKAGES, TOKEN_RATE } from '../../types/payment';
-import { formatCurrency } from '../../utils/currency';
+import { TOKEN_PACKAGES, TOKEN_RATE, TokenPackage } from '../../types/payment';
+import { useCurrencySettings } from '../../hooks/useCurrencySettings';
+import { useExchangeRates } from '../../hooks/useExchangeRates';
+import { SupportedCurrency } from '../../utils/currency';
 
 interface TokenPricingProps {
-  onSelect: (tokenPackage: typeof TOKEN_PACKAGES[0]) => void;
+  onSelect: (packageId: string) => void;
 }
 
 export function TokenPricing({ onSelect }: TokenPricingProps) {
   const { t } = useTranslation();
+  const { currency, formatInCurrency } = useCurrencySettings();
+  const { getRate } = useExchangeRates();
 
-  const getDiscount = (tokenPackage: typeof TOKEN_PACKAGES[0]) => {
+  const getDiscount = (tokenPackage: TokenPackage) => {
     const normalPrice = tokenPackage.tokens * TOKEN_RATE;
     const discount = ((normalPrice - tokenPackage.price) / normalPrice) * 100;
     return discount > 0 ? Math.round(discount) : 0;
   };
 
+  // Calcule le prix dans chaque devise supportée
+  const getPriceInCurrency = (usdPrice: number, targetCurrency: SupportedCurrency): number => {
+    return usdPrice * getRate('USD', targetCurrency);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium">Acheter des tokens</h3>
+        <h3 className="text-lg font-medium">{t('payment.tokens.buyTokens', 'Acheter des tokens')}</h3>
         <div className="text-sm text-gray-500">
-          1M tokens = {formatCurrency(10, 'USD')}
+          1M tokens = {formatInCurrency(TOKEN_RATE * 1000000, currency)}
         </div>
       </div>
       
@@ -33,37 +42,43 @@ export function TokenPricing({ onSelect }: TokenPricingProps) {
           return (
             <div
               key={index}
-              className="border rounded-lg p-4 hover:border-primary hover:bg-primary/5 transition-colors cursor-pointer"
-              onClick={() => onSelect(pkg)}
+              className="border rounded-lg p-4 hover:border-primary transition-colors cursor-pointer"
+              onClick={() => onSelect(pkg.id || index.toString())}
             >
-              <div className="flex items-center justify-between mb-2">
-                <Coins className="w-5 h-5 text-primary" />
+              <div className="flex items-center justify-between mb-4">
+                <div className="bg-primary/10 text-primary rounded-full p-2">
+                  <Coins className="h-6 w-6" />
+                </div>
                 {discount > 0 && (
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    <Percent className="w-3 h-3 mr-1" />
-                    {discount}% off
-                  </span>
+                  <div className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium flex items-center">
+                    <Percent className="h-3 w-3 mr-1" />
+                    {discount}% {t('common.discount', 'Réduction')}
+                  </div>
                 )}
               </div>
               
-              <div className="space-y-1">
-                <p className="text-2xl font-bold">
-                  {(pkg.tokens / 1_000_000).toFixed(1)}M
-                </p>
-                <p className="text-sm text-gray-500">tokens</p>
-                <div className="flex items-baseline space-x-2">
+              <h4 className="font-medium text-lg mb-1">
+                {(pkg.tokens / 1000000).toFixed(1)}M tokens
+              </h4>
+              
+              <div className="mt-4">
+                <div className="flex items-end">
                   <p className="text-lg font-medium text-primary">
-                    {formatCurrency(pkg.price, 'USD')}
+                    {formatInCurrency(pkg.price, currency)}
                   </p>
                   {discount > 0 && (
-                    <p className="text-sm text-gray-500 line-through">
-                      {formatCurrency(pkg.tokens * TOKEN_RATE, 'USD')}
+                    <p className="text-sm text-gray-500 line-through ml-2">
+                      {formatInCurrency(pkg.tokens * TOKEN_RATE, currency)}
                     </p>
                   )}
                 </div>
-                <p className="text-xs text-gray-500">
-                  {formatCurrency(pkg.price * 2500, 'CDF')}
-                </p>
+                
+                {/* Afficher le prix dans les autres devises */}
+                <div className="text-xs text-gray-500 mt-1 space-y-1">
+                  {currency !== 'USD' && <p>{formatInCurrency(pkg.price, 'USD')}</p>}
+                  {currency !== 'CDF' && <p>{formatInCurrency(getPriceInCurrency(pkg.price, 'CDF'), 'CDF')}</p>}
+                  {currency !== 'FCFA' && <p>{formatInCurrency(getPriceInCurrency(pkg.price, 'FCFA'), 'FCFA')}</p>}
+                </div>
               </div>
             </div>
           );
@@ -71,8 +86,8 @@ export function TokenPricing({ onSelect }: TokenPricingProps) {
       </div>
 
       <p className="text-sm text-gray-500 mt-4">
-        Les tokens achetés n'expirent pas et peuvent être utilisés à tout moment.
-        Plus vous achetez de tokens, plus vous bénéficiez de réductions importantes.
+        {t('payment.tokens.neverExpire', 'Les tokens achetés n\'expirent pas et peuvent être utilisés à tout moment.')}
+        {t('payment.tokens.bulkDiscount', 'Plus vous achetez de tokens, plus vous bénéficiez de réductions importantes.')}
       </p>
     </div>
   );

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { notificationsApi } from '../services/api/notifications';
+import { notificationsApi } from '../services/api';
 import { useToastContext } from '../contexts/ToastContext';
 import type { Notification, NotificationType } from '../types/notification';
 
@@ -34,10 +34,10 @@ export function useNotifications() {
 
   const loadNotifications = useCallback(async () => {
     try {
-      const data = await notificationsApi.getNotifications();
-      setNotifications(data);
-      const count = await notificationsApi.getUnreadCount();
-      setUnreadCount(count);
+      const data = await notificationsApi.getAll();
+      setNotifications(data.notifications);
+      const unreadCountData = await notificationsApi.getUnreadCount();
+      setUnreadCount(unreadCountData.count);
     } catch (error) {
       console.error('Failed to load notifications:', error);
       showToast('error', 'Erreur lors du chargement des notifications');
@@ -48,7 +48,11 @@ export function useNotifications() {
 
   const markAsRead = useCallback(async (notificationIds: string[]) => {
     try {
-      await notificationsApi.markAsRead(notificationIds);
+      // API accepts only one ID at a time, so we need to call it for each ID
+      for (const id of notificationIds) {
+        await notificationsApi.markAsRead(id);
+      }
+      
       setNotifications(prev => 
         prev.map(n => 
           notificationIds.includes(n.id) ? { ...n, read: true } : n
@@ -74,7 +78,7 @@ export function useNotifications() {
 
   const deleteNotification = useCallback(async (notificationId: string) => {
     try {
-      await notificationsApi.deleteNotification(notificationId);
+      await notificationsApi.delete(notificationId);
       setNotifications(prev => {
         const notification = prev.find(n => n.id === notificationId);
         if (notification && !notification.read) {
@@ -104,8 +108,9 @@ export function useNotifications() {
     const setupRealTimeUpdates = async () => {
       // Essayer d'abord Server-Sent Events (SSE)
       try {
-        cleanup = notificationsApi.subscribeToNotifications(handleNewNotification);
+        const subscription = notificationsApi.subscribeToRealtime(handleNewNotification);
         setWsConnected(true);
+        cleanup = subscription.unsubscribe;
         return;
       } catch {
         console.log('SSE not available, falling back to polling');

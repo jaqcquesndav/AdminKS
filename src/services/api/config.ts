@@ -33,6 +33,43 @@ export const API_ENDPOINTS = {
     purchase: '/tokens/purchase',
     usage: '/tokens/usage',
     history: '/tokens/history'
+  },
+  customers: {
+    list: '/customers',
+    financial: '/customers/financial',
+    corporate: '/customers/corporate',
+    individual: '/customers/individual',
+    create: '/customers/create',
+    update: '/customers/:id',
+    delete: '/customers/:id',
+    getById: '/customers/:id',
+    statistics: '/customers/statistics'
+  },
+  finance: {
+    transactions: '/finance/transactions',
+    invoices: '/finance/invoices',
+    payments: '/finance/payments',
+    revenue: '/finance/revenue',
+    expenses: '/finance/expenses',
+    createTransaction: '/finance/transactions/create',
+    createInvoice: '/finance/invoices/create',
+    getInvoice: '/finance/invoices/:id',
+    payInvoice: '/finance/invoices/:id/pay'
+  },
+  dashboard: {
+    summary: '/dashboard/summary',
+    customerStats: '/dashboard/customers',
+    financialStats: '/dashboard/financial',
+    tokenStats: '/dashboard/tokens',
+    activityStream: '/dashboard/activities'
+  },
+  settings: {
+    general: '/settings/general',
+    security: '/settings/security',
+    notifications: '/settings/notifications',
+    billing: '/settings/billing',
+    appearance: '/settings/appearance',
+    update: '/settings/:section'
   }
 } as const;
 

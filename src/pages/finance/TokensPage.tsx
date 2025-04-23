@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { 
-  Search, Filter, ChevronDown, MoreVertical, Clock, 
-  Download, FileText, BarChart2, ArrowUp, ArrowDown,
-  RefreshCw, AlertTriangle, ChevronRight, Calendar
+  BarChart2, FileText, 
+  Download, RefreshCw, Filter, ChevronDown, Search,
+  ArrowUp, ArrowDown, AlertTriangle, MoreVertical,
+  Calendar, ChevronRight, Clock
 } from 'lucide-react';
-import { useTokenStats } from '../../hooks/useTokenStats';
 import { useToastContext } from '../../contexts/ToastContext';
+import { useCurrencySettings } from '../../hooks/useCurrencySettings';
+import { useTokenStats } from '../../hooks/useTokenStats';
 
 // Types
 interface TokenUsage {
@@ -54,7 +57,9 @@ interface TokenStats {
 export function TokensPage() {
   const { t } = useTranslation();
   const { showToast } = useToastContext();
-  const { getTokenStats, loading: statsLoading } = useTokenStats();
+  const { getTokenStats } = useTokenStats();
+  const { formatCurrency } = useCurrencySettings();
+  const navigate = useNavigate();
   
   // États
   const [usageData, setUsageData] = useState<TokenUsage[]>([]);
@@ -63,12 +68,10 @@ export function TokensPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [serviceFilter, setServiceFilter] = useState('all');
-  const [customerFilter, setCustomerFilter] = useState('all');
   const [sortBy, setSortBy] = useState<keyof TokenUsage>('date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [dateRangeFilter, setDateRangeFilter] = useState('7d');
   const [showActionMenu, setShowActionMenu] = useState<string | null>(null);
-  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   
   // Configuration des types de service
   const serviceTypeConfig = {
@@ -226,6 +229,16 @@ export function TokensPage() {
         setFilteredUsage(mockUsageData);
         
         // Charger les statistiques
+        const fetchTokenStats = async () => {
+          try {
+            const tokenStats = await getTokenStats(dateRangeFilter);
+            setStats(tokenStats);
+          } catch (error) {
+            console.error('Erreur lors du chargement des statistiques:', error);
+            showToast('error', 'Erreur lors du chargement des statistiques');
+          }
+        };
+        
         await fetchTokenStats();
       } catch (error) {
         console.error('Erreur lors du chargement des données de consommation:', error);
@@ -236,17 +249,7 @@ export function TokensPage() {
     };
     
     fetchTokenUsage();
-  }, [showToast, t]);
-
-  const fetchTokenStats = async () => {
-    try {
-      const tokenStats = await getTokenStats(dateRangeFilter);
-      setStats(tokenStats);
-    } catch (error) {
-      console.error('Erreur lors du chargement des statistiques:', error);
-      showToast('error', 'Erreur lors du chargement des statistiques');
-    }
-  };
+  }, [showToast, t, getTokenStats, dateRangeFilter]);
 
   // Filtrage et tri des données
   useEffect(() => {
@@ -265,11 +268,6 @@ export function TokensPage() {
     // Appliquer le filtre par service
     if (serviceFilter !== 'all') {
       filtered = filtered.filter(usage => usage.serviceType === serviceFilter);
-    }
-    
-    // Appliquer le filtre par client
-    if (customerFilter !== 'all') {
-      filtered = filtered.filter(usage => usage.customerId === customerFilter);
     }
     
     // Filtre par date
@@ -317,7 +315,7 @@ export function TokensPage() {
     });
     
     setFilteredUsage(filtered);
-  }, [usageData, searchTerm, serviceFilter, customerFilter, dateRangeFilter, sortBy, sortDirection]);
+  }, [usageData, searchTerm, serviceFilter, dateRangeFilter, sortBy, sortDirection]);
 
   // Gestion des actions sur une entrée
   const handleToggleActionMenu = (id: string, e: React.MouseEvent) => {
@@ -349,10 +347,6 @@ export function TokensPage() {
 
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat('fr-FR').format(num);
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(amount);
   };
 
   const formatDate = (dateString: string) => {
@@ -956,12 +950,12 @@ export function TokensPage() {
           <div className="text-center py-12">
             <Clock className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">
-              {searchTerm || serviceFilter !== 'all' || customerFilter !== 'all'
+              {searchTerm || serviceFilter !== 'all'
                 ? t('finance.tokens.noResults', 'Aucun résultat trouvé')
                 : t('finance.tokens.noUsage', 'Aucune consommation enregistrée')}
             </h3>
             <p className="mt-1 text-sm text-gray-500">
-              {searchTerm || serviceFilter !== 'all' || customerFilter !== 'all'
+              {searchTerm || serviceFilter !== 'all'
                 ? t('finance.tokens.tryDifferentSearch', 'Essayez une recherche différente')
                 : t('finance.tokens.checkLater', 'Les nouvelles consommations apparaîtront ici.')}
             </p>

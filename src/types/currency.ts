@@ -61,6 +61,7 @@ export interface CurrencyPreferences {
   format: 'symbol_first' | 'symbol_last' | 'code';
   showDecimals: boolean;
   showAlwaysSign: boolean;
+  currencySetManually: boolean;
 }
 
 /**

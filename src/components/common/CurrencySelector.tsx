@@ -18,9 +18,14 @@ export function CurrencySelector({
   const { currency, setCurrency, supportedCurrencies } = useCurrencySettings();
 
   const handleChange = (newCurrency: SupportedCurrency) => {
-    setCurrency(newCurrency);
-    if (onChange) {
-      onChange(newCurrency);
+    console.log(`CurrencySelector: Button clicked for ${newCurrency}`);
+    try {
+      setCurrency(newCurrency);
+      if (onChange) {
+        onChange(newCurrency);
+      }
+    } catch (error) {
+      console.error('Erreur lors du changement de devise:', error);
     }
   };
 

@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { X, CreditCard, Building, CalendarClock, FileText } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useCurrencySettings } from '../../hooks/useCurrencySettings';
+import { SupportedCurrency } from '../../types/currency';
+import { DEFAULT_CURRENCY_INFO } from '../../types/currency';
 
 interface PaymentFormModalProps {
   isOpen: boolean;
@@ -15,7 +18,7 @@ export interface PaymentFormData {
   customerId: string;
   customerName: string;
   amount: string;
-  currency: string;
+  currency: SupportedCurrency;
   description: string;
   paymentMethod: 'card' | 'bank_transfer' | 'manual' | 'subscription';
   invoiceNumber?: string;
@@ -36,6 +39,7 @@ export function PaymentFormModal({
   title = 'Ajouter un paiement manuel'
 }: PaymentFormModalProps) {
   const { t } = useTranslation();
+  const { currency: defaultCurrency, supportedCurrencies } = useCurrencySettings();
   const [customers, setCustomers] = useState<CustomerOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<PaymentFormData>(
@@ -43,7 +47,7 @@ export function PaymentFormModal({
       customerId: '',
       customerName: '',
       amount: '',
-      currency: 'EUR',
+      currency: defaultCurrency,
       description: '',
       paymentMethod: 'manual',
       paymentDate: new Date().toISOString().split('T')[0],
@@ -51,10 +55,15 @@ export function PaymentFormModal({
   );
 
   useEffect(() => {
+    if (!payment && !formData.id) {
+      setFormData(prev => ({ ...prev, currency: defaultCurrency }));
+    }
+  }, [defaultCurrency, payment, formData.id]);
+
+  useEffect(() => {
     const fetchCustomers = async () => {
       setLoading(true);
       try {
-        // Simuler une requête API pour les clients
         await new Promise(resolve => setTimeout(resolve, 500));
         
         const mockCustomers: CustomerOption[] = [
@@ -82,7 +91,6 @@ export function PaymentFormModal({
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     
-    // Si le client change, mettre à jour le nom du client automatiquement
     if (name === 'customerId') {
       const selectedCustomer = customers.find(c => c.id === value);
       if (selectedCustomer) {
@@ -114,7 +122,6 @@ export function PaymentFormModal({
         
         <div className="overflow-y-auto p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Sélection du client */}
             <div>
               <label htmlFor="customerId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 <Building className="inline-block w-4 h-4 mr-1" />
@@ -144,7 +151,6 @@ export function PaymentFormModal({
               )}
             </div>
 
-            {/* Montant et devise */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label htmlFor="amount" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -177,15 +183,15 @@ export function PaymentFormModal({
                   onChange={handleChange}
                   className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                 >
-                  <option value="EUR">EUR (€)</option>
-                  <option value="USD">USD ($)</option>
-                  <option value="GBP">GBP (£)</option>
-                  <option value="XOF">XOF (FCFA)</option>
+                  {supportedCurrencies.map((currCode) => (
+                    <option key={currCode} value={currCode}>
+                      {currCode} ({DEFAULT_CURRENCY_INFO[currCode].symbol})
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
 
-            {/* Date de paiement */}
             <div>
               <label htmlFor="paymentDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 <CalendarClock className="inline-block w-4 h-4 mr-1" />
@@ -202,7 +208,6 @@ export function PaymentFormModal({
               />
             </div>
 
-            {/* Méthode de paiement */}
             <div>
               <label htmlFor="paymentMethod" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 {t('payments.form.paymentMethod', 'Méthode de paiement')}*
@@ -222,7 +227,6 @@ export function PaymentFormModal({
               </select>
             </div>
 
-            {/* Description */}
             <div>
               <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 {t('payments.form.description', 'Description')}*
@@ -239,7 +243,6 @@ export function PaymentFormModal({
               />
             </div>
 
-            {/* Numéro de facture */}
             <div>
               <label htmlFor="invoiceNumber" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 <FileText className="inline-block w-4 h-4 mr-1" />
@@ -256,7 +259,6 @@ export function PaymentFormModal({
               />
             </div>
 
-            {/* Notes */}
             <div>
               <label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 {t('payments.form.notes', 'Notes internes')}
