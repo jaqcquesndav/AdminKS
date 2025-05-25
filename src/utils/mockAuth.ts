@@ -1,4 +1,4 @@
-import { AuthUser, AuthState, LoginCredentials, AuthResponse } from '../types/auth';
+import { AuthUser, AuthState, AuthResponse } from '../types/auth';
 
 // Type pour les rôles des utilisateurs de démonstration, aligné avec AuthUser
 type DemoUserRole = 'admin' | 'user' | 'super_admin' | 'cto' | 'growth_finance' | 'customer_support';
@@ -85,12 +85,28 @@ export const getCurrentDemoToken = (): string => {
   return DEMO_TOKENS[role as keyof typeof DEMO_TOKENS] || DEMO_TOKENS.superAdmin;
 };
 
-// Fonction de connexion simulée avec support pour sélectionner l'utilisateur
-export const mockLogin = async (credentials?: LoginCredentials): Promise<AuthResponse> => {
-  console.log('Connexion avec utilisateur démo (bypass Auth0)');
+// Fonction de connexion simulée
+export const mockLogin = async (credentials: { username: string, password: string }): Promise<AuthResponse> => {
+  console.log('Tentative de connexion avec:', credentials.username);
   
-  // Si des identifiants ont été fournis, utiliser le username pour déterminer quel utilisateur utiliser
-  if (credentials?.username) {
+  // Simuler le besoin d'authentification à deux facteurs (pour tester cette fonctionnalité)
+  // Si le nom d'utilisateur contient "2fa", simuler une réponse avec 2FA
+  if (credentials.username.toLowerCase().includes('2fa')) {
+    console.log('Authentification à deux facteurs requise pour:', credentials.username);
+    return {
+      requiresTwoFactor: true,
+      twoFactorMethods: ['email', 'sms'],
+      tempToken: 'temp-token-for-2fa-verification',
+      token: '', // Pas de token valide avant vérification 2FA
+      user: {
+        id: '',
+        name: ''
+      }
+    };
+  }
+  
+  // Vérifier si le nom d'utilisateur correspond à un utilisateur de démo
+  if (credentials.username) {
     const matchingRole = Object.entries(demoUsers).find(
       ([, user]) => user.email === credentials.username
     )?.[0];

@@ -202,9 +202,16 @@ class AuthService {
       throw error;
     }
   }
-  
   // Adapter la réponse d'authentification de base à notre format étendu
-  private convertAuthResponse(response: AuthResponseBase): AuthResponseExtended {
+  private convertAuthResponse(response: AuthResponseBase): AuthResponseExtended {    // Si la réponse indique que l'authentification à deux facteurs est requise, 
+    // transmettre simplement les informations sans conversion supplémentaire
+    if (response.requiresTwoFactor) {
+      return {
+        ...response,
+        user: {} as User, // On n'a pas encore les données complètes de l'utilisateur
+      };
+    }
+    
     // En mode mock, récupérer les données complètes de l'utilisateur de démo
     if (USE_MOCK_AUTH && response.user && (!response.user.email || isDemoEmail(response.user.email))) {
       const demoUser = getCurrentDemoUser();
@@ -521,6 +528,127 @@ class AuthService {
     } catch (error) {
       console.error('Error refreshing token:', error);
       return null;
+    }
+  }
+
+  // Vérifier le code d'authentification à deux facteurs
+  async verifyTwoFactor(code: string, method: 'email' | 'sms' = 'email'): Promise<AuthResponseExtended> {
+    try {
+      // Utiliser l'authentification simulée pour le mode démo
+      if (USE_MOCK_AUTH) {
+        // Simuler une vérification réussie après un délai
+        console.log('Simulation de vérification 2FA avec code:', code);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        const mockResponse = {
+          token: getCurrentDemoToken(),
+          user: getCurrentDemoUser()
+        };
+        
+        return this.convertAuthResponse(mockResponse);
+      }
+      
+      // Vérification réelle pour les utilisateurs normaux
+      const response = await apiClient.post('/auth/2fa/verify', { 
+        code, 
+        method 
+      });
+      
+      return this.convertAuthResponse(response.data);
+    } catch (error) {
+      console.error('Erreur lors de la vérification 2FA:', error);
+      throw error;
+    }
+  }
+  
+  // Configuration de l'authentification à deux facteurs
+  async setupTwoFactor(): Promise<{
+    qrCode: string;
+    secret: string;
+  }> {
+    try {
+      // En mode démo, simuler une réponse
+      if (USE_MOCK_AUTH) {
+        // Simuler un délai de traitement
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        return {
+          qrCode: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAIAAADTED8xAAADMElEQVR4nO3dQY4bMRAFQdqY+59Z9i0GjC2ZEFXrH/FxJbfTj9fr9QOY82f7BwDbBABiBABiBABiBABiBABiBABiBABiBABi/l7+4OM49v4P8I9Xy9t0AYAYAYAYAYAYAYAYAYAYAYAYAYAYAYAYAYAYAYAYAYCYy3uAT9bzge3Jw/RdxfT/v3lPstkv+vYdwiVdACBGACBGACBGACBGACBGACBGACBGACBGACBGACBmfQ/waXqSsHkPsGn6Hd38/NzoBQExAgAxAgAxAgAxAgAxAgAxAgAxAgAxAgAxAgAx3+4B3jZ9nzC9R7hxQjH9jrZ7uTe6AECMAECMAECMAECMAECMAECMAECMAECMAECMAEDMw/YAb5vTh80TiukThM1TiG/3crt0AYAYAYAYAYAYAYAYAYAYAYAYAYAYAYAYAYAYAYCYavcA06YnCdO7hRu9o80+M10AIEYAIEYAIEYAIEYAIEYAIEYAIEYAIEYAIEYAIGZkD3Dj5GH6rmL6HmB697C5W7jRy+3SBQBiBABiBABiBABiBABiBABiBABiBABiBABiBABiRvYA05OH6buK6XuATdOnENNnJF7uf3QBgBgBgBgBgBgBgBgBgBgBgBgBgBgBgBgBgBgBgJiRPcCNk4cbu4XpXcWNfcX0Pcnm5+dGFwCIEQCIEQCIEQCIEQCIEQCIEQCIEQCIEQCIEQCIGdkDTE8DNncL07uK6T3Ct3vJ7+gCADECADECADECADECADECADECADECADECADECADEje4Dp04PNycP0PcD0KcT0PuHGXmeTLgAQIwAQIwAQIwAQIwAQIwAQIwAQIwAQIwAQIwAQ87A9wKbpaczmruLGCcWNE5Ibpzab7xAu6QIAMQIAMQIAMQIAMQIAMQIAMQIAMQIAMQIAMQIAMSN7gE/T9wDTJw83/r7N3cL0Pcnm5+dGFwCIEQCIEQCIEQCIEQCIEQCIEQCIEQCIEQCIEQCIWd8DwIN4gRoXdAGAGAGAGAGAGAGAGAGAGAGAGAGAGAGAGAGAmL8WYHrIQIIz4QAAAABJRU5ErkJggg==',
+          secret: 'ABCDEFGHIJKLMNOP'
+        };
+      }
+      
+      // Configuration réelle pour les utilisateurs normaux
+      const response = await apiClient.post('/auth/2fa/setup');
+      return response.data;
+    } catch (error) {
+      console.error('Erreur lors de la configuration 2FA:', error);
+      throw error;
+    }
+  }
+  
+  // Génération de codes de secours pour l'authentification à deux facteurs
+  async generateBackupCodes(): Promise<string[]> {
+    try {
+      // En mode démo, simuler des codes de secours
+      if (USE_MOCK_AUTH) {
+        // Simuler un délai de traitement
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        return [
+          '1234-5678-9012',
+          '2345-6789-0123',
+          '3456-7890-1234',
+          '4567-8901-2345',
+          '5678-9012-3456'
+        ];
+      }
+      
+      // Génération réelle pour les utilisateurs normaux
+      const response = await apiClient.post('/auth/2fa/backup-codes');
+      return response.data.codes;
+    } catch (error) {
+      console.error('Erreur lors de la génération des codes de secours:', error);
+      throw error;
+    }
+  }
+
+  // Demande de réinitialisation de mot de passe
+  async requestPasswordReset(email: string): Promise<void> {
+    try {
+      // Simuler la demande en mode démo
+      if (this.isUsingMockAuth(email)) {
+        console.log('Simulation de demande de réinitialisation pour:', email);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        return;
+      }
+      
+      // Demande réelle pour les utilisateurs normaux
+      await apiClient.post('/auth/forgot-password', { email });
+    } catch (error) {
+      console.error('Erreur lors de la demande de réinitialisation:', error);
+      throw error;
+    }
+  }
+  
+  // Réinitialisation du mot de passe avec le token
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    try {
+      // Simuler la réinitialisation en mode démo
+      if (USE_MOCK_AUTH) {
+        console.log('Simulation de réinitialisation de mot de passe avec token:', token);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        return;
+      }
+      
+      // Réinitialisation réelle pour les utilisateurs normaux
+      await apiClient.post('/auth/reset-password', { 
+        token, 
+        password: newPassword 
+      });
+    } catch (error) {
+      console.error('Erreur lors de la réinitialisation du mot de passe:', error);
+      throw error;
     }
   }
 }

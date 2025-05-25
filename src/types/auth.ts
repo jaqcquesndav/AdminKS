@@ -23,6 +23,10 @@ export interface AuthResponse {
     id: string;
     name: string;
   };
+  // Pour la réponse avec 2FA
+  requiresTwoFactor?: boolean;
+  twoFactorMethods?: ('email' | 'sms')[];
+  tempToken?: string;
 }
 
 // Adding missing types needed by services
@@ -35,11 +39,19 @@ export interface AuthResponseBase {
     role?: string;
     picture?: string;
   };
+  // Pour la réponse avec 2FA
+  requiresTwoFactor?: boolean;
+  twoFactorMethods?: ('email' | 'sms')[];
+  tempToken?: string;
 }
 
 export interface AuthResponseExtended {
   token: string;
   user: import('./user').User;
+  // Pour la réponse avec 2FA
+  requiresTwoFactor?: boolean;
+  twoFactorMethods?: ('email' | 'sms')[];
+  tempToken?: string;
 }
 
 export interface TwoFactorVerification {

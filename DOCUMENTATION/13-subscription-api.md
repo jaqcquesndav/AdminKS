@@ -2,6 +2,15 @@
 
 Cette documentation décrit les endpoints disponibles pour gérer les abonnements, les plans et les paiements associés dans l'application Admin de Kiota Suit. Cette application est utilisée exclusivement par l'équipe administrative de i-Kiotahub (propriétaire de Kiota Suit) pour gérer les abonnements et tokens de leurs clients.
 
+## Mode Démonstration
+
+L'application prend en charge un mode de démonstration pour faciliter les tests et le développement. Ce mode est activé via les constantes `USE_MOCK_AUTH` et `AUTO_LOGIN` dans le fichier `mockAuth.ts`.
+
+En mode démonstration :
+- Les abonnements et plans sont préchargés avec des exemples représentatifs
+- Les processus de paiement et de renouvellement sont simulés sans facturation réelle
+- Des scénarios complets de gestion du cycle de vie des abonnements peuvent être testés
+
 ## Table des matières
 - [Plans d'abonnement](#plans-dabonnement)
 - [Gestion des abonnements](#gestion-des-abonnements)
