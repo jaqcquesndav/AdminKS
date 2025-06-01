@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { BarChart4, CreditCard, CalendarDays, UserCircle, Mail } from 'lucide-react';
 import type { CustomerSubscription, PlanStatus } from '../../types/subscription';
-import { formatCurrency } from '../../utils/currency';
+import { useCurrencySettings } from '../../hooks/useCurrencySettings';
 import type { SupportedCurrency } from '../../types/currency';
 import type { TFunction } from 'i18next';
 
@@ -38,6 +38,7 @@ export function SubscriptionInfoCard({
     onManageSubscription 
 }: SubscriptionInfoCardProps) {
   const { t } = useTranslation();
+  const { formatInCurrency } = useCurrencySettings();
 
   if (!subscription) {
     return (
@@ -160,7 +161,7 @@ export function SubscriptionInfoCard({
                       {t('customers.subscription.amount', 'Amount Paid')}
                     </span>
                     <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                      {formatCurrency(subscription.priceUSD, (meta?.currency as SupportedCurrency) || (subscription.localCurrency as SupportedCurrency) || 'USD')}
+                      {formatInCurrency(subscription.priceUSD, meta?.currency as SupportedCurrency || subscription.localCurrency || 'USD')}
                     </span>
                   </div>
                 </>

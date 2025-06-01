@@ -29,80 +29,92 @@ export interface Application {
 }
 
 // Exchange rates
-const CDF_RATE = 2500; // 1 USD = 2500 CDF (approximate)
-const FCFA_RATE = 600; // 1 USD = 600 FCFA (approximate)
+/** @deprecated Exchange rates are now managed dynamically via CurrencyContext and useCurrencySettings. */
+// const CDF_RATE = 2500; // 1 USD = 2500 CDF (approximate)
+/** @deprecated Exchange rates are now managed dynamically via CurrencyContext and useCurrencySettings. */
+// const FCFA_RATE = 600; // 1 USD = 600 FCFA (approximate)
 
+/** 
+ * @deprecated Replaced by more specific plan definitions like FINANCIAL_INSTITUTION_ERP_PLAN_MONTHLY/YEARLY. 
+ * Pricing and token bonuses are now part of SubscriptionPlanDefinition. 
+ * Exchange rates are handled by CurrencyContext.
+ */
 export const ERP_GROUP: ApplicationGroup = {
   id: 'erp',
   name: 'ERP Suite',
-  description: 'Suite complète de gestion d\'entreprise',
+  description: "Suite complète de gestion d'entreprise", 
   applications: [
     {
       id: 'accounting',
       name: 'Comptabilité',
-      description: 'Gestion comptable et financière',
+      description: "Gestion comptable et financière", // Corrected string literal
       features: ['Grand livre', 'Journaux', 'États financiers', 'Rapports fiscaux']
     },
     {
       id: 'sales',
       name: 'Ventes',
-      description: 'Gestion commerciale',
+      description: "Gestion commerciale", // Corrected string literal
       features: ['Facturation', 'Devis', 'Gestion clients', 'Reporting commercial']
     },
     {
       id: 'inventory',
       name: 'Stocks',
-      description: 'Gestion des stocks',
+      description: "Gestion des stocks", // Corrected string literal
       features: ['Inventaire', 'Mouvements', 'Valorisation', 'Alertes']
     }
   ],
   monthlyPrice: {
     usd: 15,
-    cdf: 15 * CDF_RATE,
-    fcfa: 15 * FCFA_RATE
+    cdf: 15 * 2500, // Kept for historical reference, direct value used
+    fcfa: 15 * 600  // Kept for historical reference, direct value used
   },
   yearlyPrice: {
     usd: 150,
-    cdf: 150 * CDF_RATE,
-    fcfa: 150 * FCFA_RATE
+    cdf: 150 * 2500, // Kept for historical reference, direct value used
+    fcfa: 150 * 600   // Kept for historical reference, direct value used
   },
   tokenBonus: {
-    monthly: 1000, // 1000 tokens gratuits par mois
-    yearly: 15000  // 15000 tokens gratuits par an
+    monthly: 1000, 
+    yearly: 15000  
   }
 };
 
+/** 
+ * @deprecated Replaced by more specific plan definitions like FINANCIAL_INSTITUTION_FINANCE_PLAN_MONTHLY/YEARLY. 
+ * Pricing and token bonuses are now part of SubscriptionPlanDefinition. 
+ * Exchange rates are handled by CurrencyContext.
+ */
 export const FINANCE_GROUP: ApplicationGroup = {
   id: 'finance',
   name: 'Solutions Financières',
-  description: 'Suite d\'applications financières',
+  description: "Suite d'applications financières", 
   applications: [
     {
       id: 'portfolio',
       name: 'Gestion de Portefeuille',
-      description: 'Gestion des investissements',
+      description: "Gestion des investissements", // Corrected string literal
       features: ['Suivi des actifs', 'Analyse de performance', 'Reporting']
     },
     {
       id: 'leasing',
       name: 'Gestion de Leasing',
-      description: 'Solutions de crédit-bail',
+      description: "Solutions de crédit-bail", // Corrected string literal
       features: ['Contrats', 'Échéanciers', 'Facturation', 'Contentieux']
     }
   ],
   monthlyPrice: {
     usd: 20,
-    cdf: 20 * CDF_RATE,
-    fcfa: 20 * FCFA_RATE
+    cdf: 20 * 2500, // Kept for historical reference, direct value used
+    fcfa: 20 * 600  // Kept for historical reference, direct value used
   },
   yearlyPrice: {
     usd: 200,
-    cdf: 200 * CDF_RATE,
-    fcfa: 200 * FCFA_RATE
+    cdf: 200 * 2500, // Kept for historical reference, direct value used
+    fcfa: 200 * 600   // Kept for historical reference, direct value used
   },
   tokenBonus: {
-    monthly: 1500, // 1500 tokens gratuits par mois
-    yearly: 20000  // 20000 tokens gratuits par an
+    monthly: 1500, 
+    yearly: 20000  
   }
 };
 

@@ -1,13 +1,13 @@
-import React, { createContext, useState, useContext, useEffect, useMemo, useCallback } from 'react';
-import { SupportedCurrency, DEFAULT_CURRENCY_INFO, ExchangeRateConfig } from '../types/currency';
-import { formatCurrency, convertCurrency, getCurrentExchangeRates } from '../utils/currency';
+import React, { createContext, useState, useEffect, useMemo, useCallback } from 'react';
+import { SupportedCurrency, ExchangeRateConfig } from '../types/currency';
+import { formatCurrency, convertCurrency, getCurrentExchangeRates, updateExchangeRates } from '../utils/currency';
 import { CURRENCY_STORAGE_KEY, SUPPORTED_CURRENCIES } from '../constants/currencyConstants';
 
 type FormatOptions = Intl.NumberFormatOptions & {
   notation?: 'standard' | 'scientific' | 'engineering' | 'compact';
 };
 
-type CurrencyContextType = {
+export type CurrencyContextType = {
   currency: SupportedCurrency;
   setCurrency: (currency: SupportedCurrency) => void;
   supportedCurrencies: SupportedCurrency[];
@@ -16,118 +16,147 @@ type CurrencyContextType = {
   formatInCurrency: (amount: number, targetCurrency: SupportedCurrency, options?: FormatOptions) => string;
   exchangeRates: Record<SupportedCurrency, number>;
   lastRatesUpdate: string;
+  setUserExchangeRate: (targetCurrency: SupportedCurrency, rate: number) => void; // Added
+  baseCurrency: SupportedCurrency; // Added
 };
 
 // Création du contexte
-const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined);
+export const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined);
 
 // Provider du contexte
 export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   // État pour stocker la devise active
   const [currency, setCurrencyState] = useState<SupportedCurrency>(() => {
-    // Récupérer la devise depuis localStorage ou utiliser USD par défaut
     const savedCurrency = localStorage.getItem(CURRENCY_STORAGE_KEY) as SupportedCurrency | null;
-    return savedCurrency && Object.keys(DEFAULT_CURRENCY_INFO).includes(savedCurrency) 
+    return savedCurrency && SUPPORTED_CURRENCIES.includes(savedCurrency) 
       ? savedCurrency 
-      : 'USD';
+      : 'CDF'; // Default to CDF
   });
 
   // État pour stocker les taux de change actuels
   const [exchangeRatesConfig, setExchangeRatesConfig] = useState<ExchangeRateConfig>(
-    getCurrentExchangeRates()
+    getCurrentExchangeRates() // This will load from localStorage or defaults
   );
 
   // Fonction pour mettre à jour la devise avec gestion d'erreur et logging
   const setCurrency = useCallback((newCurrency: SupportedCurrency) => {
-    if (!Object.keys(DEFAULT_CURRENCY_INFO).includes(newCurrency)) {
+    if (!SUPPORTED_CURRENCIES.includes(newCurrency)) {
       console.error(`Devise non supportée: ${newCurrency}`);
       return;
     }
 
     console.log(`Changing currency from ${currency} to ${newCurrency}`);
     setCurrencyState(newCurrency);
-    // Forcer la mise à jour du localStorage immédiatement au lieu d'attendre l'effet
     localStorage.setItem(CURRENCY_STORAGE_KEY, newCurrency);
   }, [currency]);
 
-  // Surveiller les changements dans les taux de change globaux
+  // Fonction pour permettre à l'utilisateur de définir un taux de change spécifique
+  const setUserExchangeRate = useCallback((targetCurrency: SupportedCurrency, rate: number) => {
+    if (targetCurrency === exchangeRatesConfig.baseCurrency) {
+      console.warn(`Cannot set exchange rate for the base currency ${exchangeRatesConfig.baseCurrency}`);
+      return;
+    }
+    if (rate <= 0) {
+      console.error('Exchange rate must be positive');
+      return;
+    }
+    const newRates = { ...exchangeRatesConfig.rates, [targetCurrency]: rate };
+    updateExchangeRates(newRates, new Date().toISOString()); // updateExchangeRates in utils/currency.ts will save to localStorage
+    setExchangeRatesConfig(getCurrentExchangeRates()); // Re-fetch from storage to reflect update
+  }, [exchangeRatesConfig]);
+
+
+  // Surveiller les changements dans les taux de change globaux (e.g., from an API or localStorage)
   useEffect(() => {
-    // Créer une fonction pour mettre à jour les taux
-    const updateRatesFromGlobal = () => {
-      const currentRates = getCurrentExchangeRates();
-      setExchangeRatesConfig(currentRates);
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === 'exchange_rates') {
+        console.log('Exchange rates updated in localStorage, reloading in context.');
+        setExchangeRatesConfig(getCurrentExchangeRates());
+      }
+      if (event.key === CURRENCY_STORAGE_KEY) {
+        const newCurrencyFromStorage = localStorage.getItem(CURRENCY_STORAGE_KEY) as SupportedCurrency | null;
+        if (newCurrencyFromStorage && SUPPORTED_CURRENCIES.includes(newCurrencyFromStorage) && newCurrencyFromStorage !== currency) {
+          console.log('App currency changed in another tab, updating current tab.');
+          setCurrencyState(newCurrencyFromStorage);
+        }
+      }
     };
 
-    // Configurer un intervalle pour vérifier les mises à jour (toutes les 5 minutes)
-    const checkInterval = setInterval(updateRatesFromGlobal, 5 * 60 * 1000);
+    window.addEventListener('storage', handleStorageChange);
 
-    // Effectuer une vérification initiale
-    updateRatesFromGlobal();
+    // Initial load
+    setExchangeRatesConfig(getCurrentExchangeRates());
 
-    // Nettoyer l'intervalle lorsque le composant est démonté
-    return () => clearInterval(checkInterval);
-  }, []);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [currency]); // Added currency to dependency array to re-run if it changes programmatically elsewhere
 
   // Extraire les taux de change pour plus de facilité d'utilisation
   const exchangeRates = useMemo(() => exchangeRatesConfig.rates, [exchangeRatesConfig]);
+  const baseCurrency = useMemo(() => exchangeRatesConfig.baseCurrency, [exchangeRatesConfig]);
 
   // Formatter un montant dans la devise active
-  const format = (amount: number, options?: FormatOptions): string => {
+  const format = useCallback((amount: number, options?: FormatOptions): string => {
     return formatCurrency(amount, currency, options);
-  };
+  }, [currency]); // Added currency to dependency array
   
   // Convertir un montant d'une devise à une autre en utilisant les taux actuels
-  const convert = (amount: number, fromCurrency: SupportedCurrency, toCurrency: SupportedCurrency = currency): number => {
+  const convert = useCallback((amount: number, fromCurrency: SupportedCurrency, toCurrency: SupportedCurrency = currency): number => {
     if (fromCurrency === toCurrency) return amount;
     
+    const rates = exchangeRatesConfig.rates; // Use current rates from state
+
     try {
-      // Essayer d'utiliser les taux de change actuels
-      if (fromCurrency === 'USD') {
-        return amount * exchangeRates[toCurrency];
+      // Assumes all rates are relative to the baseCurrency (e.g., USD)
+      const fromRate = fromCurrency === exchangeRatesConfig.baseCurrency ? 1 : rates[fromCurrency];
+      const toRate = toCurrency === exchangeRatesConfig.baseCurrency ? 1 : rates[toCurrency];
+
+      if (!fromRate || !toRate) {
+        console.warn(`Exchange rate not found for ${fromCurrency} or ${toCurrency}. Falling back to default conversion.`);
+        return convertCurrency(amount, fromCurrency, toCurrency); // Fallback to util's default if rate missing
       }
       
-      if (toCurrency === 'USD') {
-        return amount / exchangeRates[fromCurrency];
-      }
-      
-      // Conversion via USD
-      const amountInUSD = amount / exchangeRates[fromCurrency];
-      return amountInUSD * exchangeRates[toCurrency];
+      const amountInBase = amount / fromRate;
+      return amountInBase * toRate;
     } catch (error) {
       console.warn('Erreur lors de la conversion avec les taux dynamiques', error);
       // Fallback sur la méthode standard
       return convertCurrency(amount, fromCurrency, toCurrency);
     }
-  };
+  }, [currency, exchangeRatesConfig]); // Added dependencies
   
   // Formatter un montant dans une devise spécifique
-  const formatInCurrency = (amount: number, targetCurrency: SupportedCurrency, options?: FormatOptions): string => {
+  const formatInCurrency = useCallback((amount: number, targetCurrency: SupportedCurrency, options?: FormatOptions): string => {
     return formatCurrency(amount, targetCurrency, options);
-  };
+  }, []); // No dependencies needed as formatCurrency is a stable import
 
-  const contextValue = {
+  const contextValue = useMemo(() => ({
     currency,
     setCurrency,
-    supportedCurrencies: SUPPORTED_CURRENCIES,
+    supportedCurrencies: SUPPORTED_CURRENCIES as SupportedCurrency[],
     format,
     convert,
     formatInCurrency,
     exchangeRates,
     lastRatesUpdate: exchangeRatesConfig.lastUpdated,
-  };
+    setUserExchangeRate,
+    baseCurrency
+  }), [
+    currency, 
+    setCurrency, 
+    format, // Now stable due to useCallback
+    convert, // Now stable due to useCallback
+    formatInCurrency, // Now stable due to useCallback
+    exchangeRates, 
+    exchangeRatesConfig.lastUpdated,
+    setUserExchangeRate,
+    baseCurrency
+  ]);
 
   return (
     <CurrencyContext.Provider value={contextValue}>
       {children}
     </CurrencyContext.Provider>
   );
-}
-
-// Hook personnalisé pour utiliser le contexte
-export function useCurrency(): CurrencyContextType {
-  const context = useContext(CurrencyContext);
-  if (context === undefined) {
-    throw new Error('useCurrency doit être utilisé dans un CurrencyProvider');
-  }
-  return context;
 }

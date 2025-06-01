@@ -1,20 +1,23 @@
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Building2, Users, CreditCard, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useCurrencySettings } from '../../../hooks/useCurrencySettings';
 
 export function CompanyOverview() {
   const { t } = useTranslation();
+  const { format, activeCurrency, convert } = useCurrencySettings();
 
   // Mock data - replace with real data from API
   const companyStats = {
     employees: 12,
     activeSubscriptions: 2,
     totalRevenue: {
-      usd: 1500,
-      cdf: 3750000
+      usd: 1500, // Assuming this is the base amount in USD
     }
   };
+
+  // Calculate revenue in active currency
+  const revenueInActiveCurrency = convert(companyStats.totalRevenue.usd, 'USD', activeCurrency);
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
@@ -68,13 +71,7 @@ export function CompanyOverview() {
             </span>
           </div>
           <p className="text-2xl font-bold">
-            ${companyStats.totalRevenue.usd}
-          </p>
-          <p className="text-sm text-gray-500">
-            {new Intl.NumberFormat('fr-CD', {
-              style: 'currency',
-              currency: 'CDF'
-            }).format(companyStats.totalRevenue.cdf)}
+            {format(revenueInActiveCurrency)} 
           </p>
         </div>
       </div>

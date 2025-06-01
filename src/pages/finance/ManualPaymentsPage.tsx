@@ -8,6 +8,7 @@ import { useToastContext } from '../../contexts/ToastContext';
 import { useCurrencySettings } from '../../hooks/useCurrencySettings';
 import { paymentsApiService } from '../../services/finance/paymentsApiService';
 import type { Payment as ManualPaymentType, TransactionFilterParams, TransactionStatus } from '../../types/finance';
+import type { SupportedCurrency } from '../../types/currency'; // Import SupportedCurrency
 
 // Statut du paiement avec les couleurs correspondantes
 const statusConfig: Record<TransactionStatus, { labelKey: string; defaultLabel: string; color: string; icon: JSX.Element; }> = {
@@ -60,7 +61,8 @@ const proofTypeLabels: Record<string, string> = {
 export function ManualPaymentsPage() {
   const { t } = useTranslation();
   const { showToast } = useToastContext();
-  const { activeCurrency, formatInCurrency } = useCurrencySettings();
+  // Destructure format and convert from useCurrencySettings. activeCurrency is also needed.
+  const { activeCurrency, format, convert } = useCurrencySettings(); 
   
   const [allPayments, setAllPayments] = useState<ManualPaymentType[]>([]); // Holds payments from current API page
   const [filteredPayments, setFilteredPayments] = useState<ManualPaymentType[]>([]); // Holds client-side filtered payments
@@ -164,8 +166,12 @@ export function ManualPaymentsPage() {
     });
   };
 
-  const formatAmount = (amount: number, currency: string) => {
-    return formatInCurrency(amount, activeCurrency || currency);
+  // Updated to use convert and format from useCurrencySettings
+  const formatPaymentAmount = (amount: number, originalCurrency: string) => {
+    // Cast originalCurrency to SupportedCurrency. Add validation if necessary.
+    const amountInActiveCurrency = convert(amount, originalCurrency as SupportedCurrency, activeCurrency);
+    // format function from useCurrencySettings implicitly uses activeCurrency
+    return format(amountInActiveCurrency);
   };
 
   const openDetailsModal = (payment: ManualPaymentType) => {
@@ -343,7 +349,7 @@ export function ManualPaymentsPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900 dark:text-white">
-                        {formatAmount(payment.amount, payment.currency)}
+                        {formatPaymentAmount(payment.amount, payment.currency)}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -487,7 +493,7 @@ export function ManualPaymentsPage() {
                     {t('finance.manualPayments.details.amount', 'Montant')}
                   </h4>
                   <p className="mt-1 text-sm font-medium text-gray-900 dark:text-white">
-                    {formatAmount(selectedPayment.amount, selectedPayment.currency)}
+                    {formatPaymentAmount(selectedPayment.amount, selectedPayment.currency)}
                   </p>
                 </div>
                 

@@ -31,7 +31,7 @@ export function DashboardPage() {
     isLoading,
     error
   } = useDashboardData(user?.role || '');
-  const { formatCurrency } = useCurrencySettings();
+  const { format: formatCurrency, convert, activeCurrency } = useCurrencySettings();
 
   // Calculer la différence en pourcentage pour les tendances
   const userGrowth = useMemo(() => {
@@ -46,10 +46,15 @@ export function DashboardPage() {
   const revenueGrowth = useMemo(() => {
     if (!revenueStats?.revenueTrend || revenueStats.revenueTrend.length < 4) return 0;
     const trend = revenueStats.revenueTrend;
-    const currentMonth = trend[trend.length - 2].amount + trend[trend.length - 1].amount;
-    const previousMonth = trend[trend.length - 4].amount + trend[trend.length - 3].amount;
+    // Ensure amounts are converted to active currency before comparison if they are not already
+    // Assuming revenueTrend amounts are in USD (base currency)
+    const convertToActive = (amount: number) => convert(amount, 'USD', activeCurrency);
+
+    const currentMonth = convertToActive(trend[trend.length - 2].amount) + convertToActive(trend[trend.length - 1].amount);
+    const previousMonth = convertToActive(trend[trend.length - 4].amount) + convertToActive(trend[trend.length - 3].amount);
+    if (previousMonth === 0) return currentMonth > 0 ? Infinity : 0; // Avoid division by zero
     return ((currentMonth - previousMonth) / previousMonth) * 100;
-  }, [revenueStats]);
+  }, [revenueStats, convert, activeCurrency]);
 
   // Données pour les graphiques de revenus
   const revenueChartData = useMemo(() => {
@@ -144,7 +149,7 @@ export function DashboardPage() {
         {showFinancialMetrics && (
           <StatCard
             title="Revenu Total"
-            value={formatCurrency(revenueStats.totalRevenue.usd)}
+            value={formatCurrency(revenueStats.totalRevenue.usd)} // Assuming totalRevenue.usd is in USD
             icon={<DollarSign size={20} />}
             change={{
               value: revenueGrowth,
@@ -158,7 +163,7 @@ export function DashboardPage() {
         {showFinancialMetrics && (
           <StatCard
             title="Revenu Tokens IA"
-            value={formatCurrency(revenueStats.tokenRevenue)}
+            value={formatCurrency(revenueStats.tokenRevenue)} // Assuming tokenRevenue is in USD
             icon={<Cpu size={20} />}
             color="info"
           />

@@ -21,9 +21,12 @@ interface TokenUsage {
   tokensConsumed: number;
   model: string;
   serviceType: 'text' | 'voice' | 'image' | 'chat';
-  cost: number;
+  cost: number; // This will store the cost in activeCurrency
   requestCount: number;
 }
+
+// Intermediate type for mock data with cost in base currency
+type TokenUsageInput = Omit<TokenUsage, 'cost'> & { costBase: number };
 
 interface TokenStats {
   totalTokensConsumed: number;
@@ -58,7 +61,8 @@ export function TokensPage() {
   const { t } = useTranslation();
   const { showToast } = useToastContext();
   const { getTokenStats } = useTokenStats();
-  const { formatCurrency } = useCurrencySettings();
+  // Ensure baseCurrency is available from the hook
+  const { formatCurrency, convert, activeCurrency, baseCurrency } = useCurrencySettings(); 
   const navigate = useNavigate();
   
   // États
@@ -98,11 +102,9 @@ export function TokensPage() {
     const fetchTokenUsage = async () => {
       setLoading(true);
       try {
-        // Simuler un appel API
         await new Promise(resolve => setTimeout(resolve, 800));
         
-        // Données mockées
-        const mockUsageData: TokenUsage[] = [
+        const mockUsageDataInput: TokenUsageInput[] = [
           {
             id: 'usage-1',
             customerId: 'cust-1',
@@ -112,7 +114,7 @@ export function TokensPage() {
             tokensConsumed: 156200,
             model: 'GPT-4',
             serviceType: 'text',
-            cost: 3.12,
+            costBase: 3.12, // USD
             requestCount: 45
           },
           {
@@ -124,7 +126,7 @@ export function TokensPage() {
             tokensConsumed: 423650,
             model: 'GPT-4',
             serviceType: 'chat',
-            cost: 8.47,
+            costBase: 8.47, // USD
             requestCount: 97
           },
           {
@@ -136,7 +138,7 @@ export function TokensPage() {
             tokensConsumed: 52800,
             model: 'GPT-3.5',
             serviceType: 'text',
-            cost: 0.84,
+            costBase: 0.84, // USD
             requestCount: 28
           },
           {
@@ -148,7 +150,7 @@ export function TokensPage() {
             tokensConsumed: 175000,
             model: 'Whisper',
             serviceType: 'voice',
-            cost: 5.25,
+            costBase: 5.25, // USD
             requestCount: 35
           },
           {
@@ -160,7 +162,7 @@ export function TokensPage() {
             tokensConsumed: 94000,
             model: 'DALL-E 3',
             serviceType: 'image',
-            cost: 9.40,
+            costBase: 9.40, // USD
             requestCount: 12
           },
           {
@@ -172,7 +174,7 @@ export function TokensPage() {
             tokensConsumed: 122500,
             model: 'GPT-4',
             serviceType: 'chat',
-            cost: 2.45,
+            costBase: 2.45, // USD
             requestCount: 32
           },
           {
@@ -184,7 +186,7 @@ export function TokensPage() {
             tokensConsumed: 318750,
             model: 'GPT-4',
             serviceType: 'text',
-            cost: 6.37,
+            costBase: 6.37, // USD
             requestCount: 65
           },
           {
@@ -196,7 +198,7 @@ export function TokensPage() {
             tokensConsumed: 68400,
             model: 'GPT-3.5',
             serviceType: 'chat',
-            cost: 1.09,
+            costBase: 1.09, // USD
             requestCount: 43
           },
           {
@@ -208,7 +210,7 @@ export function TokensPage() {
             tokensConsumed: 86000,
             model: 'DALL-E 3',
             serviceType: 'image',
-            cost: 8.60,
+            costBase: 8.60, // USD
             requestCount: 8
           },
           {
@@ -220,36 +222,65 @@ export function TokensPage() {
             tokensConsumed: 230000,
             model: 'Whisper',
             serviceType: 'voice',
-            cost: 6.90,
+            costBase: 6.90, // USD
             requestCount: 41
           }
         ];
 
-        setUsageData(mockUsageData);
-        setFilteredUsage(mockUsageData);
+        const convertedUsageData: TokenUsage[] = mockUsageDataInput.map(item => {
+          const { costBase, ...rest } = item;
+          return {
+            ...rest,
+            cost: convert(costBase, baseCurrency, activeCurrency)
+          };
+        });
+
+        setUsageData(convertedUsageData);
+        // setFilteredUsage will be updated by its own useEffect based on usageData changes
         
-        // Charger les statistiques
         const fetchTokenStats = async () => {
           try {
-            const tokenStats = await getTokenStats(dateRangeFilter);
-            setStats(tokenStats);
+            // Assume getTokenStats returns costs in baseCurrency (e.g., USD)
+            const rawStatsFromApi = await getTokenStats(dateRangeFilter);
+            
+            const convertedStats: TokenStats = {
+              ...rawStatsFromApi,
+              totalCost: convert(rawStatsFromApi.totalCost, baseCurrency, activeCurrency),
+              // Assuming averageCostPerToken is an amount, not a rate. If it's a rate, conversion might differ.
+              averageCostPerToken: convert(rawStatsFromApi.averageCostPerToken, baseCurrency, activeCurrency),
+              costPerService: {
+                text: convert(rawStatsFromApi.costPerService.text, baseCurrency, activeCurrency),
+                voice: convert(rawStatsFromApi.costPerService.voice, baseCurrency, activeCurrency),
+                image: convert(rawStatsFromApi.costPerService.image, baseCurrency, activeCurrency),
+                chat: convert(rawStatsFromApi.costPerService.chat, baseCurrency, activeCurrency),
+              },
+              topCustomers: rawStatsFromApi.topCustomers.map(customer => ({
+                ...customer,
+                cost: convert(customer.cost, baseCurrency, activeCurrency),
+              })),
+              dailyUsage: rawStatsFromApi.dailyUsage.map(day => ({
+                ...day,
+                cost: convert(day.cost, baseCurrency, activeCurrency),
+              })),
+            };
+            setStats(convertedStats);
           } catch (error) {
             console.error('Erreur lors du chargement des statistiques:', error);
-            showToast('error', 'Erreur lors du chargement des statistiques');
+            showToast('error', t('finance.tokens.errors.loadStats', 'Erreur lors du chargement des statistiques'));
           }
         };
         
         await fetchTokenStats();
       } catch (error) {
         console.error('Erreur lors du chargement des données de consommation:', error);
-        showToast('error', 'Erreur lors du chargement des données de consommation');
+        showToast('error', t('finance.tokens.errors.loadUsage', 'Erreur lors du chargement des données de consommation'));
       } finally {
         setLoading(false);
       }
     };
     
     fetchTokenUsage();
-  }, [showToast, t, getTokenStats, dateRangeFilter]);
+  }, [showToast, t, getTokenStats, dateRangeFilter, convert, activeCurrency, baseCurrency]); // Added convert, activeCurrency, baseCurrency
 
   // Filtrage et tri des données
   useEffect(() => {
@@ -357,11 +388,12 @@ export function TokensPage() {
     });
   };
 
-  // Simuler des statistiques pour l'affichage
-  const mockStats: TokenStats = {
+  // Simuler des statistiques pour l'affichage (fallback or initial structure)
+  // These costs are in USD and should be converted if stats object is null and these are used directly.
+  const mockStatsFallback: TokenStats = {
     totalTokensConsumed: 1727300,
-    totalCost: 52.49,
-    averageCostPerToken: 0.00003,
+    totalCost: 52.49, // USD
+    averageCostPerToken: 0.00003039, // USD
     tokensPerService: {
       text: 527750,
       voice: 405000,
@@ -369,57 +401,22 @@ export function TokensPage() {
       chat: 614550
     },
     costPerService: {
-      text: 10.33,
-      voice: 12.15,
-      image: 18.00,
-      chat: 12.01
+      text: 10.33, // USD
+      voice: 12.15, // USD
+      image: 18.00, // USD
+      chat: 12.01 // USD
     },
     topCustomers: [
-      {
-        id: 'cust-2',
-        name: 'Crédit Maritime',
-        tokensConsumed: 829650,
-        cost: 20.62
-      },
-      {
-        id: 'cust-1',
-        name: 'TechStart SAS',
-        tokensConsumed: 278700,
-        cost: 5.57
-      },
-      {
-        id: 'cust-5',
-        name: 'MicroFinance SA',
-        tokensConsumed: 318750,
-        cost: 6.37
-      }
+      { id: 'cust-2', name: 'Crédit Maritime', tokensConsumed: 829650, cost: 20.62 /* USD */ },
+      { id: 'cust-1', name: 'TechStart SAS', tokensConsumed: 278700, cost: 5.57 /* USD */ },
+      { id: 'cust-5', name: 'MicroFinance SA', tokensConsumed: 318750, cost: 6.37 /* USD */ }
     ],
     dailyUsage: [
-      {
-        date: '2025-04-17',
-        tokensConsumed: 316000,
-        cost: 15.50
-      },
-      {
-        date: '2025-04-18',
-        tokensConsumed: 387150,
-        cost: 7.46
-      },
-      {
-        date: '2025-04-19',
-        tokensConsumed: 216500,
-        cost: 11.85
-      },
-      {
-        date: '2025-04-20',
-        tokensConsumed: 227800,
-        cost: 6.09
-      },
-      {
-        date: '2025-04-21',
-        tokensConsumed: 579850,
-        cost: 11.59
-      }
+      { date: '2025-04-17', tokensConsumed: 316000, cost: 15.50 /* USD */ },
+      { date: '2025-04-18', tokensConsumed: 387150, cost: 7.46 /* USD */ },
+      { date: '2025-04-19', tokensConsumed: 216500, cost: 11.85 /* USD */ },
+      { date: '2025-04-20', tokensConsumed: 227800, cost: 6.09 /* USD */ },
+      { date: '2025-04-21', tokensConsumed: 579850, cost: 11.59 /* USD */ }
     ]
   };
 
@@ -494,7 +491,8 @@ export function TokensPage() {
                 </div>
                 <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
                   <span>{Math.round(percentage)}%</span>
-                  <span>{formatCurrency(cost)}</span>
+                  {/* Cost is already in activeCurrency from stats state */}
+                  <span>{formatCurrency(cost)}</span> 
                 </div>
               </div>
             );
@@ -535,7 +533,7 @@ export function TokensPage() {
                 </div>
                 <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
                   <span>{Math.round(percentage)}%</span>
-                  <span>{formatCurrency(customer.cost)}</span>
+                  <span>{formatCurrency(customer.cost, activeCurrency)}</span>
                 </div>
               </div>
             );
@@ -655,7 +653,7 @@ export function TokensPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard 
           title={t('finance.tokens.stats.totalTokens', 'Total tokens consommés')}
-          value={formatNumber(mockStats.totalTokensConsumed)}
+          value={formatNumber(mockStatsFallback.totalTokensConsumed)}
           icon={<BarChart2 className="h-6 w-6 text-primary" />}
           trend="up"
           trendValue="+8.3% depuis la période précédente"
@@ -663,7 +661,7 @@ export function TokensPage() {
         
         <StatCard 
           title={t('finance.tokens.stats.totalCost', 'Coût total')}
-          value={formatCurrency(mockStats.totalCost)}
+          value={formatCurrency(mockStatsFallback.totalCost, activeCurrency)}
           icon={<FileText className="h-6 w-6 text-primary" />}
           trend="up"
           trendValue="+6.1% depuis la période précédente"
@@ -671,7 +669,7 @@ export function TokensPage() {
         
         <StatCard 
           title={t('finance.tokens.stats.avgCost', 'Coût moyen / 1k tokens')}
-          value={formatCurrency(mockStats.averageCostPerToken * 1000)}
+          value={formatCurrency(mockStatsFallback.averageCostPerToken * 1000, activeCurrency)}
           icon={<AlertTriangle className="h-6 w-6 text-primary" />}
           info="Basé sur la consommation moyenne"
         />
@@ -913,10 +911,15 @@ export function TokensPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {formatDate(usage.date)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${serviceTypeConfig[usage.serviceType].color}`}>
-                        {serviceTypeConfig[usage.serviceType].label}
-                      </span>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                      {usage.customerName}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {formatNumber(usage.tokensConsumed)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    {/* usage.cost is already in activeCurrency from usageData state */}
+                    {formatCurrency(usage.cost)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {usage.model}
@@ -928,7 +931,7 @@ export function TokensPage() {
                       {usage.requestCount}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                      {formatCurrency(usage.cost)}
+                      {formatCurrency(usage.cost, activeCurrency)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="relative">

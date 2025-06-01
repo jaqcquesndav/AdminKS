@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CreditCard, ArrowDownCircle, ArrowUpCircle, Calendar, ChevronsUpDown, Search, Filter } from 'lucide-react';
-import { formatCurrency } from '../../utils/currency';
 import { useCurrencySettings } from '../../hooks/useCurrencySettings';
+import type { SupportedCurrency } from '../../types/currency'; // Import SupportedCurrency
 
 export interface CustomerTransaction {
   id: string;
   customerId: string;
-  amount: number;
-  currency: string;
+  amount: number; // This amount is assumed to be in baseCurrency (e.g., USD) or the currency specified in `currency` field.
+  currency: SupportedCurrency; // Changed type from string to SupportedCurrency
   type: 'payment' | 'refund' | 'subscription' | 'credit';
   description: string;
   status: 'completed' | 'pending' | 'failed' | 'refunded';
@@ -31,7 +31,7 @@ export function CustomerTransactionHistory({
   className = ''
 }: CustomerTransactionHistoryProps) {
   const { t } = useTranslation();
-  const { activeCurrency } = useCurrencySettings();
+  const { activeCurrency, format, convert } = useCurrencySettings();
   const [transactions, setTransactions] = useState<CustomerTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -52,7 +52,7 @@ export function CustomerTransactionHistory({
             id: 'txn-001',
             customerId,
             amount: 299.99,
-            currency: 'EUR',
+            currency: 'USD', // Assuming mock data amounts are in USD (baseCurrency)
             type: 'payment',
             description: 'Abonnement Premium - Janvier 2023',
             status: 'completed',
@@ -64,7 +64,7 @@ export function CustomerTransactionHistory({
             id: 'txn-002',
             customerId,
             amount: 299.99,
-            currency: 'EUR',
+            currency: 'USD', // Assuming mock data amounts are in USD (baseCurrency)
             type: 'payment',
             description: 'Abonnement Premium - Février 2023',
             status: 'completed',
@@ -76,7 +76,7 @@ export function CustomerTransactionHistory({
             id: 'txn-003',
             customerId,
             amount: 299.99,
-            currency: 'EUR',
+            currency: 'USD', // Assuming mock data amounts are in USD (baseCurrency)
             type: 'payment',
             description: 'Abonnement Premium - Mars 2023',
             status: 'completed',
@@ -88,7 +88,7 @@ export function CustomerTransactionHistory({
             id: 'txn-004',
             customerId,
             amount: 150.00,
-            currency: 'EUR',
+            currency: 'USD', // Assuming mock data amounts are in USD (baseCurrency)
             type: 'refund',
             description: 'Remboursement partiel - Service indisponible',
             status: 'refunded',
@@ -100,7 +100,7 @@ export function CustomerTransactionHistory({
             id: 'txn-005',
             customerId,
             amount: 299.99,
-            currency: 'EUR',
+            currency: 'USD', // Assuming mock data amounts are in USD (baseCurrency)
             type: 'payment',
             description: 'Abonnement Premium - Avril 2023',
             status: 'pending',
@@ -111,7 +111,7 @@ export function CustomerTransactionHistory({
             id: 'txn-006',
             customerId,
             amount: 500.00,
-            currency: 'EUR',
+            currency: 'USD', // Assuming mock data amounts are in USD (baseCurrency)
             type: 'credit',
             description: 'Crédit pour période de test prolongée',
             status: 'completed',
@@ -122,7 +122,7 @@ export function CustomerTransactionHistory({
             id: 'txn-007',
             customerId,
             amount: 299.99,
-            currency: 'EUR',
+            currency: 'USD', // Assuming mock data amounts are in USD (baseCurrency)
             type: 'payment',
             description: 'Abonnement Premium - Mai 2023',
             status: 'failed',
@@ -359,7 +359,7 @@ export function CustomerTransactionHistory({
                       {formatDate(transaction.transactionDate)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      {formatCurrency(transaction.amount, activeCurrency || transaction.currency)}
+                      {format(convert(transaction.amount, transaction.currency, activeCurrency))}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(transaction.status)}`}>

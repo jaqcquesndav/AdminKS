@@ -1,4 +1,3 @@
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { SupportedCurrency, CURRENCIES } from '../../utils/currency';
 import { useCurrencySettings } from '../../hooks/useCurrencySettings';

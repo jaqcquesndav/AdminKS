@@ -263,6 +263,54 @@ export const useSubscription = ({
     }
   }, [subscription, fetchSubscriptions, showToast]);
 
+  // CRUD operations for SubscriptionPlanDefinition
+  const createPlan = useCallback(async (planData: SubscriptionPlanDefinition, customerType?: CustomerType) => {
+    try {
+      setLoading(true);
+      const newPlan = await subscriptionService.createPlan(planData);
+      await fetchAvailablePlans(customerType); // Refresh plans list
+      showToast('success', 'Plan créé avec succès');
+      return newPlan;
+    } catch (error) {
+      console.error('Error creating plan:', error);
+      showToast('error', 'Échec de la création du plan');
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchAvailablePlans, showToast]);
+
+  const updatePlan = useCallback(async (planData: SubscriptionPlanDefinition, customerType?: CustomerType) => {
+    try {
+      setLoading(true);
+      const updatedPlan = await subscriptionService.updatePlan(planData.id, planData);
+      await fetchAvailablePlans(customerType); // Refresh plans list
+      showToast('success', 'Plan mis à jour avec succès');
+      return updatedPlan;
+    } catch (error) {
+      console.error(`Error updating plan ${planData.id}:`, error);
+      showToast('error', 'Échec de la mise à jour du plan');
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchAvailablePlans, showToast]);
+
+  const deletePlan = useCallback(async (planId: string, customerType?: CustomerType) => {
+    try {
+      setLoading(true);
+      await subscriptionService.deletePlan(planId);
+      await fetchAvailablePlans(customerType); // Refresh plans list
+      showToast('success', 'Plan supprimé avec succès');
+    } catch (error) {
+      console.error(`Error deleting plan ${planId}:`, error);
+      showToast('error', 'Échec de la suppression du plan');
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchAvailablePlans, showToast]);
+
   // Fonctions de gestion de l'état local
   const setActiveCustomerId = (id?: string) => {
     setCustomerId(id);
@@ -330,8 +378,10 @@ export const useSubscription = ({
     cancelSubscription,
     reactivateSubscription, // Ensure this is returned
     addTokensToSubscription,
-    // processPayment, // Removed as it is not defined
-    changeSubscriptionPlan, // Renamed from changePlan for consistency
+    changeSubscriptionPlan, 
+    createPlan, // Add to returned object
+    updatePlan, // Add to returned object
+    deletePlan, // Add to returned object
     calculatePriceForCustomer,
     getCustomerTypeSpecificMetadata,
     setActiveCustomerType,

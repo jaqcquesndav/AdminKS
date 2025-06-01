@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
   LineChart,
   Line,
@@ -10,15 +10,18 @@ import {
   Legend,
   BarChart,
   Bar,
-  ReferenceLine
+  ReferenceLine,
+  DotProps
 } from 'recharts';
-import { Button } from '../../common/Button';
+import { useCurrencySettings } from '../../../hooks/useCurrencySettings';
 
 interface TokenUsageData {
   date: string;
   used: number;
   cost: number;
   revenue: number;
+  isPrediction?: boolean;
+  formattedDate?: string;
 }
 
 interface FeatureUsageData {
@@ -47,6 +50,7 @@ export const TokenUsageChart = ({
 }: TokenUsageChartProps) => {
   const [timeFrame, setTimeFrame] = useState<TimeFrame>('weekly');
   const [showPrediction, setShowPrediction] = useState<boolean>(false);
+  const { format: formatAmountInActiveCurrency } = useCurrencySettings();
 
   // Formater les valeurs pour une meilleure lisibilité
   const formatNumber = (value: number): string => {
@@ -55,35 +59,31 @@ export const TokenUsageChart = ({
     return value.toString();
   };
 
-  const formatCurrency = (value: number): string => {
-    return `$${value.toLocaleString()}`;
-  };
-
   // Apply time frame filtering
   const filteredTimeData = useMemo(() => {
     const now = new Date();
-    let cutoffDate = new Date();
+    const cutoffDateValue = new Date(); // Changed to const
     
     switch(timeFrame) {
       case 'daily':
-        cutoffDate.setDate(now.getDate() - 7); // Last 7 days
+        cutoffDateValue.setDate(now.getDate() - 7);
         break;
       case 'weekly':
-        cutoffDate.setDate(now.getDate() - 30); // Last ~4 weeks
+        cutoffDateValue.setDate(now.getDate() - 30);
         break;
       case 'monthly':
-        cutoffDate.setMonth(now.getMonth() - 6); // Last 6 months
+        cutoffDateValue.setMonth(now.getMonth() - 6);
         break;
       case 'quarterly':
-        cutoffDate.setMonth(now.getMonth() - 12); // Last 4 quarters
+        cutoffDateValue.setMonth(now.getMonth() - 12);
         break;
     }
     
-    return timeData.filter(item => new Date(item.date) >= cutoffDate);
+    return timeData.filter(item => new Date(item.date) >= cutoffDateValue);
   }, [timeData, timeFrame]);
 
   // Formatage des données pour la série temporelle
-  const formattedTimeData = useMemo(() => {
+  const formattedTimeData: TokenUsageData[] = useMemo(() => {
     return filteredTimeData.map(item => {
       const date = new Date(item.date);
       return {
@@ -98,14 +98,13 @@ export const TokenUsageChart = ({
   }, [filteredTimeData, timeFrame]);
 
   // Calculate prediction data (simple linear regression)
-  const predictionData = useMemo(() => {
+  const predictionData: TokenUsageData[] | null = useMemo(() => {
     if (!showPrediction || formattedTimeData.length < 3) return null;
     
     const n = formattedTimeData.length;
     const xValues = Array.from({ length: n }, (_, i) => i);
     const yValues = formattedTimeData.map(item => item.used);
     
-    // Calculate slope and intercept
     let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
     for (let i = 0; i < n; i++) {
       sumX += xValues[i];
@@ -117,10 +116,8 @@ export const TokenUsageChart = ({
     const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
     const intercept = (sumY - slope * sumX) / n;
     
-    // Extend with prediction data (next 30% of the time range)
+    const result: TokenUsageData[] = [...formattedTimeData];
     const predictionPoints = Math.ceil(n * 0.3);
-    const result = [...formattedTimeData];
-    
     const lastDate = new Date(formattedTimeData[n - 1].date);
     const dayIncrement = timeFrame === 'daily' ? 1 : timeFrame === 'weekly' ? 7 : 30;
     
@@ -142,7 +139,6 @@ export const TokenUsageChart = ({
         isPrediction: true
       });
     }
-    
     return result;
   }, [formattedTimeData, showPrediction, timeFrame]);
 
@@ -174,8 +170,16 @@ export const TokenUsageChart = ({
   // Rendu du graphique en fonction du type
   const renderTimeSeriesChart = () => {
     const dataToUse = showPrediction && predictionData ? predictionData : formattedTimeData;
-    const predictionStartIndex = formattedTimeData.length - 1;
+    const predictionStartIndex = formattedTimeData.length > 0 ? formattedTimeData.length -1 : 0;
     
+    const lineDotRenderer = (props: DotProps & { payload?: TokenUsageData }) => {
+      const { cx, cy, stroke, payload } = props;
+      if (payload?.isPrediction) {
+        return <g />; // Return an empty SVG group instead of null
+      }
+      return <circle cx={cx as number} cy={cy as number} r={4} stroke={stroke} fill="#fff" strokeWidth={2} />;
+    };
+
     if (type === 'line') {
       return (
         <ResponsiveContainer width="100%" height="100%">
@@ -200,26 +204,36 @@ export const TokenUsageChart = ({
             <YAxis 
               yAxisId="right"
               orientation="right"
-              tickFormatter={formatCurrency}
+              tickFormatter={formatAmountInActiveCurrency} // Ensure this is the intended formatter
               axisLine={false}
               tickLine={false}
               tick={{ fontSize: 12 }}
             />
             <Tooltip 
-              formatter={(value, name, props) => {
-                const entry = props.payload;
-                const isPrediction = entry && entry.isPrediction;
+              formatter={(value: number, name: string, item: { payload?: TokenUsageData }) => { // item.payload is now optional
+                const entryPayload = item.payload;
+                if (!entryPayload) { // Handle cases where payload might be undefined
+                  return [value.toString(), name];
+                }
+                
+                const isPrediction = entryPayload.isPrediction;
                 
                 switch(name) {
-                  case 'used': return [formatNumber(value as number), `Tokens utilisés${isPrediction ? ' (prévu)' : ''}`];
-                  case 'cost': return [formatCurrency(value as number), `Coût${isPrediction ? ' (prévu)' : ''}`];
-                  case 'revenue': return [formatCurrency(value as number), `Revenu${isPrediction ? ' (prévu)' : ''}`];
-                  default: return [value, name];
+                  case 'Tokens utilisés': 
+                  case 'used': 
+                    return [formatNumber(value as number), `Tokens utilisés${isPrediction ? ' (prévu)' : ''}`];
+                  case 'Coût': 
+                  case 'cost': 
+                    return [formatAmountInActiveCurrency(value as number), `Coût${isPrediction ? ' (prévu)' : ''}`];
+                  case 'Revenu': 
+                  case 'revenue': 
+                    return [formatAmountInActiveCurrency(value as number), `Revenu${isPrediction ? ' (prévu)' : ''}`];
+                  default: return [value.toString(), name];
                 }
               }}
             />
             <Legend />
-            {showPrediction && predictionData && (
+            {showPrediction && predictionData && predictionData.length > predictionStartIndex && predictionStartIndex >= 0 && dataToUse[predictionStartIndex] && (
               <ReferenceLine 
                 x={dataToUse[predictionStartIndex].formattedDate} 
                 stroke="#888" 
@@ -234,8 +248,7 @@ export const TokenUsageChart = ({
               stroke="#8884d8" 
               name="Tokens utilisés"
               strokeWidth={2}
-              dot={dot => (!dot.isPrediction)}
-              strokeDasharray={dot => (dot.isPrediction ? '5 5' : '0')}
+              dot={lineDotRenderer} 
             />
             <Line 
               yAxisId="right"
@@ -245,7 +258,6 @@ export const TokenUsageChart = ({
               name="Coût"
               strokeWidth={2}
               dot={false}
-              strokeDasharray={dot => (dot.isPrediction ? '5 5' : '0')}
             />
             <Line 
               yAxisId="right"
@@ -255,12 +267,11 @@ export const TokenUsageChart = ({
               name="Revenu"
               strokeWidth={2}
               dot={false}
-              strokeDasharray={dot => (dot.isPrediction ? '5 5' : '0')}
             />
           </LineChart>
         </ResponsiveContainer>
       );
-    } else {
+    } else { 
       return (
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
@@ -279,15 +290,25 @@ export const TokenUsageChart = ({
               tickLine={false}
             />
             <Tooltip 
-              formatter={(value, name, props) => {
-                const entry = props.payload;
-                const isPrediction = entry && entry.isPrediction;
-                return [formatNumber(value as number), `Tokens utilisés${isPrediction ? ' (prévu)' : ''}`];
+              formatter={(value: number, name: string, item: { payload?: TokenUsageData }) => { // item.payload is now optional
+                const entryPayload = item.payload;
+                if (!entryPayload) { // Handle cases where payload might be undefined
+                  return [value.toString(), name];
+                }
+                const isPrediction = entryPayload.isPrediction;
+                if (name === 'Tokens utilisés' || name === 'used') {
+                    return [formatNumber(value as number), `Tokens utilisés${isPrediction ? ' (prévu)' : ''}`];
+                }
+                return [value.toString(), name]; 
               }}
             />
             <Legend />
-            <Bar dataKey="used" fill="#8884d8" name="Tokens utilisés" fillOpacity={data => data.isPrediction ? 0.5 : 1} />
-            {showPrediction && predictionData && (
+            <Bar dataKey="used" name="Tokens utilisés" >
+              {dataToUse.map((entry, index) => (
+                <rect key={`bar-${index}`} fill={entry.isPrediction ? 'rgba(136, 132, 216, 0.5)' : '#8884d8'} />
+              ))}
+            </Bar>
+            {showPrediction && predictionData && predictionData.length > predictionStartIndex && predictionStartIndex >=0 && dataToUse[predictionStartIndex] && (
               <ReferenceLine 
                 x={dataToUse[predictionStartIndex].formattedDate} 
                 stroke="#888" 

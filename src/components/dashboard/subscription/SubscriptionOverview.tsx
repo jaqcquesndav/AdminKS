@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { CreditCard, AlertTriangle, Users, TrendingUp, TrendingDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { formatCurrency } from '../../../utils/currency';
+import { useCurrencySettings } from '../../../hooks/useCurrencySettings';
 import type { CustomerSubscription, SubscriptionPlanDefinition } from '../../../types/subscription';
 
 interface SubscriptionOverviewProps {
@@ -16,6 +16,7 @@ export function SubscriptionOverview({
   isLoading = false,
 }: SubscriptionOverviewProps) {
   const { t } = useTranslation();
+  const { format } = useCurrencySettings();
 
   const activeSubscriptions = subscriptions.filter(s => s.status === 'active').length;
   const pendingSubscriptions = subscriptions.filter(s => s.status === 'pending').length;
@@ -93,7 +94,7 @@ export function SubscriptionOverview({
             <p className="text-sm font-medium">{t('dashboard.subscription.mrr', 'Estimated MRR')}</p>
           </div>
           <p className="text-2xl font-semibold text-gray-900 dark:text-white mt-1">
-            {formatCurrency(totalMRR, 'USD')}
+            {format(totalMRR)}
           </p>
         </div>
         

@@ -255,6 +255,36 @@ export const subscriptionService = {
     throw new Error('changeSubscriptionPlan is not supported by the current subscriptionsApiService.');
   },
 
+  // CRUD operations for SubscriptionPlanDefinition
+  async createPlan(planData: SubscriptionPlanDefinition): Promise<SubscriptionPlanDefinition> {
+    try {
+      const response = await subscriptionApi.createPlan(planData);
+      return response;
+    } catch (error) {
+      console.error('Error creating plan:', error);
+      throw error;
+    }
+  },
+
+  async updatePlan(planId: string, planData: Partial<SubscriptionPlanDefinition>): Promise<SubscriptionPlanDefinition> {
+    try {
+      const response = await subscriptionApi.updatePlan(planId, planData);
+      return response;
+    } catch (error) {
+      console.error(`Error updating plan ${planId}:`, error);
+      throw error;
+    }
+  },
+
+  async deletePlan(planId: string): Promise<void> {
+    try {
+      await subscriptionApi.deletePlan(planId);
+    } catch (error) {
+      console.error(`Error deleting plan ${planId}:`, error);
+      throw error;
+    }
+  },
+
   // Calculer le prix pour un client spécifique en fonction de son type et du plan choisi
   calculatePriceForCustomer(
     plan: SubscriptionPlanDefinition,

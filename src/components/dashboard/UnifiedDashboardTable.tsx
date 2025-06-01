@@ -13,7 +13,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { useUnifiedDashboardTable } from '../../hooks/useUnifiedDashboardTable';
-import { formatCurrency } from '../../utils/currency';
+import { useCurrencySettings } from '../../hooks/useCurrencySettings';
 
 interface UnifiedDashboardTableProps {
   title?: string;
@@ -34,6 +34,7 @@ export function UnifiedDashboardTable({
     filters, 
     setFilters 
   } = useUnifiedDashboardTable();
+  const { format: formatAmount } = useCurrencySettings();
 
   // Configuration des types d'éléments
   const itemTypeConfig = {
@@ -374,7 +375,7 @@ export function UnifiedDashboardTable({
                       item.type === 'token' ? (
                         `${new Intl.NumberFormat('fr-FR').format(item.amount)} tokens`
                       ) : (
-                        formatCurrency(item.amount, 'USD')
+                        formatAmount(item.amount)
                       )
                     ) : (
                       <span className="text-gray-500 dark:text-gray-400">-</span>

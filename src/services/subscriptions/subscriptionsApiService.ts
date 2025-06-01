@@ -13,14 +13,15 @@ import type {
 } from '../../types/subscription';
 import { 
   ALL_SUBSCRIPTION_PLANS,
-  PME_PLANS,
-  FINANCIAL_INSTITUTION_PLANS,
 } from '../../types/subscription'; // Changed from import type
 import type { CustomerType } from '../../types/customer'; // Import CustomerType
 
 // A simple flag for now to enable mock behavior for plans
 // In a real app, this would likely come from a global config or env variable
 const USE_MOCK_PLANS = true; 
+
+// In-memory store for mock plans if USE_MOCK_PLANS is true
+let mockPlansStore: SubscriptionPlanDefinition[] = [...ALL_SUBSCRIPTION_PLANS];
 
 interface SubscriptionPlansResponse {
   plans: SubscriptionPlanDefinition[];
@@ -51,11 +52,13 @@ export const subscriptionApi = {
   getPlans: async (customerType?: CustomerType): Promise<SubscriptionPlansResponse> => {
     if (USE_MOCK_PLANS) {
       console.log('[Mock API] Getting plans for customer type:', customerType);
-      let plansToReturn: SubscriptionPlanDefinition[] = ALL_SUBSCRIPTION_PLANS;
+      let plansToReturn: SubscriptionPlanDefinition[];
       if (customerType === 'pme') {
-        plansToReturn = PME_PLANS;
+        plansToReturn = mockPlansStore.filter(p => p.targetCustomerTypes.includes('pme'));
       } else if (customerType === 'financial') {
-        plansToReturn = FINANCIAL_INSTITUTION_PLANS;
+        plansToReturn = mockPlansStore.filter(p => p.targetCustomerTypes.includes('financial'));
+      } else {
+        plansToReturn = mockPlansStore;
       }
       return Promise.resolve({ plans: plansToReturn });
     }
@@ -93,6 +96,48 @@ export const subscriptionApi = {
     return response.data;
   },
 
+  // CRUD for SubscriptionPlanDefinition (Mock implementations)
+  createPlan: async (planData: SubscriptionPlanDefinition): Promise<SubscriptionPlanDefinition> => {
+    if (USE_MOCK_PLANS) {
+      console.log('[Mock API] Creating plan:', planData);
+      const newPlan = { ...planData, id: `mock-plan-${Date.now()}-${Math.random().toString(16).slice(2)}`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+      mockPlansStore.push(newPlan);
+      return Promise.resolve(newPlan);
+    }
+    const response = await apiClient.post(API_ENDPOINTS.subscriptions.plans, planData); // Assuming an endpoint for creating plans
+    return response.data;
+  },
+
+  updatePlan: async (planId: string, planData: Partial<SubscriptionPlanDefinition>): Promise<SubscriptionPlanDefinition> => {
+    if (USE_MOCK_PLANS) {
+      console.log(`[Mock API] Updating plan ${planId}:`, planData);
+      const planIndex = mockPlansStore.findIndex(p => p.id === planId);
+      if (planIndex === -1) {
+        return Promise.reject(new Error(`Mock Plan with ID ${planId} not found`));
+      }
+      mockPlansStore[planIndex] = { ...mockPlansStore[planIndex], ...planData, updatedAt: new Date().toISOString() };
+      return Promise.resolve(mockPlansStore[planIndex]);
+    }
+    const url = `${API_ENDPOINTS.subscriptions.plans}/${planId}`; // Assuming an endpoint for updating a specific plan
+    const response = await apiClient.put(url, planData);
+    return response.data;
+  },
+
+  deletePlan: async (planId: string): Promise<void> => {
+    if (USE_MOCK_PLANS) {
+      console.log('[Mock API] Deleting plan:', planId);
+      const initialLength = mockPlansStore.length;
+      mockPlansStore = mockPlansStore.filter(p => p.id !== planId);
+      if (mockPlansStore.length === initialLength) {
+        return Promise.reject(new Error(`Mock Plan with ID ${planId} not found for deletion`));
+      }
+      return Promise.resolve();
+    }
+    const url = `${API_ENDPOINTS.subscriptions.plans}/${planId}`; // Assuming an endpoint for deleting a specific plan
+    await apiClient.delete(url);
+    return Promise.resolve();
+  },
+  
   // Annuler un abonnement
   cancelSubscription: async (id: string, reason?: string): Promise<CustomerSubscription> => {
     const url = replaceUrlParams(API_ENDPOINTS.subscriptions.cancel, { id });

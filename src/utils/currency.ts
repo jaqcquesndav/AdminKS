@@ -5,13 +5,22 @@ import {
   CurrencyInfo,
   ExchangeRateConfig
 } from '../types/currency';
+import { SUPPORTED_CURRENCIES } from '../constants/currencyConstants'; // Added import
 
 // Re-export types that other files might import from here
 export type { SupportedCurrency, CurrencyInfo, ExchangeRateConfig };
 export { DEFAULT_CURRENCY_INFO, DEFAULT_EXCHANGE_RATES };
 
 // Variable qui pourra être mise à jour avec des taux dynamiques
-let CURRENT_EXCHANGE_RATES: ExchangeRateConfig = DEFAULT_EXCHANGE_RATES;
+let CURRENT_EXCHANGE_RATES: ExchangeRateConfig = {
+  baseCurrency: 'USD', // Keep USD as the base for calculations
+  rates: {
+    USD: 1,
+    CDF: 1, // Default to 1, user can update
+    FCFA: 1, // Default to 1, user can update
+  },
+  lastUpdated: new Date(0).toISOString(), // Initialize with a very old date
+};
 
 // Événement personnalisé pour notifier les changements de taux
 export const EXCHANGE_RATES_UPDATED_EVENT = 'exchangeRatesUpdated';
@@ -21,36 +30,30 @@ export const EXCHANGE_RATES_UPDATED_EVENT = 'exchangeRatesUpdated';
  * @param rates Nouvelles valeurs des taux de change
  * @param timestamp Date de mise à jour (ISO string)
  */
-export function updateExchangeRates(rates: Record<SupportedCurrency, number>, timestamp: string): void {
+export function updateExchangeRates(newRates: Partial<Record<SupportedCurrency, number>>, timestamp: string): void {
   // Valider les données avant de mettre à jour
-  if (!rates || typeof rates !== 'object') {
-    console.error('updateExchangeRates: Invalid rates object', rates);
+  if (!newRates || typeof newRates !== 'object') {
+    console.error('updateExchangeRates: Invalid rates object', newRates);
     return;
   }
 
-  // Vérifier que toutes les devises sont présentes
-  const allCurrenciesPresent = Object.keys(DEFAULT_CURRENCY_INFO).every(
-    currency => rates[currency as SupportedCurrency] !== undefined
-  );
+  // Ensure base currency (USD) is always 1 and not changed by user input for other rates
+  const validatedRates = { 
+    ...CURRENT_EXCHANGE_RATES.rates, // Keep existing rates not being updated
+    ...newRates, 
+    [CURRENT_EXCHANGE_RATES.baseCurrency]: 1 
+  };
 
-  if (!allCurrenciesPresent) {
-    console.warn('updateExchangeRates: Some currencies are missing in the provided rates', {
-      provided: Object.keys(rates),
-      expected: Object.keys(DEFAULT_CURRENCY_INFO)
-    });
-  }
-
-  // Créer une copie pour éviter les modifications externes
   CURRENT_EXCHANGE_RATES = {
-    baseCurrency: 'USD',
-    rates: { ...rates },
+    ...CURRENT_EXCHANGE_RATES, // Keep baseCurrency and potentially other properties
+    rates: validatedRates,
     lastUpdated: timestamp
   };
 
   // Émettre un événement pour informer les composants intéressés
   try {
     const event = new CustomEvent(EXCHANGE_RATES_UPDATED_EVENT, {
-      detail: { rates: { ...rates }, timestamp }
+      detail: { rates: { ...validatedRates }, timestamp }
     });
     window.dispatchEvent(event);
   } catch (error) {
@@ -71,24 +74,39 @@ export function updateExchangeRates(rates: Record<SupportedCurrency, number>, ti
  */
 export function getCurrentExchangeRates(): ExchangeRateConfig {
   // Tentative de récupération depuis le localStorage au premier appel
-  if (CURRENT_EXCHANGE_RATES === DEFAULT_EXCHANGE_RATES) {
+  // Check if it's the initial default state or if localStorage might be more up-to-date
+  if (CURRENT_EXCHANGE_RATES.lastUpdated === new Date(0).toISOString()) { 
     try {
-      const savedRates = localStorage.getItem('exchange_rates');
-      if (savedRates) {
-        const parsed = JSON.parse(savedRates) as ExchangeRateConfig;
+      const savedRatesString = localStorage.getItem('exchange_rates');
+      if (savedRatesString) {
+        const parsed = JSON.parse(savedRatesString) as ExchangeRateConfig;
         // Vérifier que les données sont valides
         if (
           parsed &&
           parsed.rates &&
-          parsed.baseCurrency === 'USD' &&
+          parsed.baseCurrency && 
+          SUPPORTED_CURRENCIES.includes(parsed.baseCurrency as SupportedCurrency) && // Cast to SupportedCurrency
           parsed.lastUpdated &&
-          typeof parsed.lastUpdated === 'string'
+          typeof parsed.lastUpdated === 'string' &&
+          Object.keys(parsed.rates).length > 0 && 
+          SUPPORTED_CURRENCIES.every((sc: SupportedCurrency) => typeof parsed.rates[sc] === 'number') // Added type for sc
         ) {
+          // Ensure the base currency rate is 1 after loading from storage
+          parsed.rates[parsed.baseCurrency as SupportedCurrency] = 1; // Cast to SupportedCurrency
           CURRENT_EXCHANGE_RATES = parsed;
+        } else {
+          // If data in localStorage is invalid or incomplete, save the current (default or initialized) state back
+          console.warn('Invalid or incomplete exchange rates in localStorage, re-initializing.');
+          localStorage.setItem('exchange_rates', JSON.stringify(CURRENT_EXCHANGE_RATES));
         }
+      } else {
+        // If no rates in localStorage, save the current (default or initialized) state
+        localStorage.setItem('exchange_rates', JSON.stringify(CURRENT_EXCHANGE_RATES));
       }
     } catch (error) {
-      console.error('Error loading exchange rates from localStorage', error);
+      console.error('Error loading/initializing exchange rates from localStorage', error);
+      // In case of error, ensure localStorage is set with current defaults
+      localStorage.setItem('exchange_rates', JSON.stringify(CURRENT_EXCHANGE_RATES));
     }
   }
   
@@ -104,7 +122,7 @@ export function getCurrentExchangeRates(): ExchangeRateConfig {
  */
 export function formatCurrency(
   amount: number, 
-  currency: SupportedCurrency = 'USD',
+  currency: SupportedCurrency = 'CDF', // Default to CDF for display
   options?: Intl.NumberFormatOptions
 ): string {
   // Validation de l'entrée
@@ -149,34 +167,29 @@ export function convertCurrency(amount: number, from: SupportedCurrency, to: Sup
     console.warn('convertCurrency: Invalid amount provided', { amount });
     return 0;
   }
+  if (!from || !to || !SUPPORTED_CURRENCIES.includes(from) || !SUPPORTED_CURRENCIES.includes(to)){
+    console.warn('convertCurrency: Invalid or unsupported currency provided', { from, to });
+    return amount; // Return original amount if currencies are invalid
+  }
 
-  if (from === to) return amount;
-  
-  const rates = CURRENT_EXCHANGE_RATES.rates;
-  
-  // Vérifier que les devises sont supportées
-  if (!rates[from] || !rates[to]) {
-    console.error(`convertCurrency: Unsupported currency conversion from ${from} to ${to}`);
-    return amount;
+  const currentRatesConfig = getCurrentExchangeRates(); // Get the whole config
+  const rates = currentRatesConfig.rates;
+  const base = currentRatesConfig.baseCurrency;
+
+  // Ensure rates are available
+  if (!rates[from] || !rates[to] || !rates[base]) {
+    console.error('Exchange rates not available for conversion', { from, to, base, rates });
+    // Attempt to return a sensible value or throw error, here returning original amount
+    return amount; 
   }
+
+  // Convert 'from' currency to base currency
+  const amountInBase = from === base ? amount : amount / rates[from];
   
-  try {
-    // Convertir d'abord en USD si nécessaire
-    let amountInUSD = amount;
-    if (from !== 'USD') {
-      amountInUSD = amount / rates[from];
-    }
-    
-    // Puis convertir en devise cible
-    if (to === 'USD') {
-      return amountInUSD;
-    }
-    
-    return amountInUSD * rates[to];
-  } catch (error) {
-    console.error('Error converting currency:', error);
-    return amount;
-  }
+  // Convert from base currency to 'to' currency
+  const convertedAmount = to === base ? amountInBase : amountInBase * rates[to];
+  
+  return convertedAmount;
 }
 
 /**

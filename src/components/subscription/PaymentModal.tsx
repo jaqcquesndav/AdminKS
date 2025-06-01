@@ -4,8 +4,8 @@ import { Modal } from '../common/Modal';
 import { PaymentConfirmationModal } from './PaymentConfirmationModal';
 import type { SubscriptionPlanDefinition, PlanBillingCycle } from '../../types/subscription';
 import type { PaymentMethod } from '../../types/payment';
-import { formatCurrency } from '../../utils/currency';
 import { SupportedCurrency } from '../../types/currency';
+import { useCurrencySettings } from '../../hooks/useCurrencySettings';
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -15,13 +15,13 @@ interface PaymentModalProps {
   onSubmit: (paymentData: {
     methodId: string;
     type: PaymentMethod['type'];
-    amountUSD: number;
-    currency: SupportedCurrency;
+    amountUSD: number; // This is the actual value in USD
+    currency: SupportedCurrency; // This is the currency context of the transaction (e.g., activeCurrency)
     planId: string;
     billingCycle: PlanBillingCycle;
   }) => Promise<void>;
   paymentMethods?: PaymentMethod[];
-  customerCurrency?: SupportedCurrency;
+  customerCurrency?: SupportedCurrency; // Prop remains, can be used for other logic if needed
 }
 
 export function PaymentModal({
@@ -31,34 +31,26 @@ export function PaymentModal({
   billingCycle,
   onSubmit,
   paymentMethods = [],
-  customerCurrency = 'USD'
 }: PaymentModalProps) {
   const { t } = useTranslation();
+  const { activeCurrency, format, convert } = useCurrencySettings();
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [confirmationStatus, setConfirmationStatus] = useState<'success' | 'error' | null>(null);
   const [confirmationMessage, setConfirmationMessage] = useState<string>();
-  const [displayAmount, setDisplayAmount] = useState<number>(0);
-  const [displayCurrency, setDisplayCurrency] = useState<SupportedCurrency>(customerCurrency);
+  const [amountInUSD, setAmountInUSD] = useState<number>(0); // Stores the calculated amount in USD
 
   useEffect(() => {
     if (plan && billingCycle) {
-      let price = plan.basePriceUSD;
+      let priceUSD = plan.basePriceUSD;
       if (billingCycle === 'quarterly') {
-        price = plan.basePriceUSD * 3 * (1 - (plan.discountPercentage.quarterly || 0) / 100);
+        priceUSD = plan.basePriceUSD * 3 * (1 - (plan.discountPercentage.quarterly || 0) / 100);
       } else if (billingCycle === 'yearly') {
-        price = plan.basePriceUSD * 12 * (1 - (plan.discountPercentage.yearly || 0) / 100);
+        priceUSD = plan.basePriceUSD * 12 * (1 - (plan.discountPercentage.yearly || 0) / 100);
       }
-      setDisplayAmount(price);
-      // Ensure that the currency is a valid SupportedCurrency
-      const finalCurrency = plan.localCurrency || customerCurrency || 'USD';
-      if (['USD', 'CDF', 'FCFA'].includes(finalCurrency)) {
-        setDisplayCurrency(finalCurrency as SupportedCurrency);
-      } else {
-        setDisplayCurrency('USD'); // Fallback to USD if localCurrency is not supported
-      }
+      setAmountInUSD(priceUSD);
     }
-  }, [plan, billingCycle, customerCurrency]);
+  }, [plan, billingCycle]);
   
   useEffect(() => {
     // Pre-select default payment method
@@ -79,8 +71,8 @@ export function PaymentModal({
       await onSubmit({ 
         methodId: selectedMethod.id,
         type: selectedMethod.type,
-        amountUSD: displayAmount, // Use calculated displayAmount which is in USD
-        currency: displayCurrency, // The currency in which amount is displayed/charged
+        amountUSD: amountInUSD, // Submit the amount in USD
+        currency: activeCurrency, // Submit with the active currency context
         planId: plan.id,
         billingCycle: billingCycle,
       });
@@ -145,7 +137,7 @@ export function PaymentModal({
           <div className="mb-6">
             <h3 className="text-lg font-medium text-gray-900 dark:text-white">{plan.name}</h3>
             <p className="text-gray-500 dark:text-gray-400">
-              {t('payment.amountToPay', 'Amount to pay')}: {formatCurrency(displayAmount, displayCurrency)}
+              {t('payment.amountToPay', 'Amount to pay')}: {format(convert(amountInUSD, 'USD', activeCurrency))}
               <br />
               {t('payment.billingCycle', 'Cycle')}: {t(`billingCycles.${billingCycle}`, billingCycle)}
             </p>
@@ -183,7 +175,7 @@ export function PaymentModal({
 
             <button
               onClick={handlePayment}
-              disabled={!selectedMethod || isProcessing || !plan} // Added !plan condition
+              disabled={!selectedMethod || isProcessing || !plan}
               className="w-full py-2 px-4 bg-primary text-white rounded-md hover:bg-primary-dark disabled:opacity-50"
             >
               {isProcessing ? t('payment.processing', 'Processing...') : t('payment.confirmPayment', 'Confirm Payment')}

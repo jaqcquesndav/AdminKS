@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { MainLayout } from '../components/layout/MainLayout';
 import { PageLoader } from '../components/common/PageLoader';
 import { ProtectedRoute } from './ProtectedRoute';
+import SettingsPage from '../pages/settings/SettingsPage'; // Import directly as default
 
 // Lazy-loaded pages
 const LoginPage = lazy(() => import('../pages/auth/LoginPage').then(module => ({ default: module.LoginPage })));
@@ -31,7 +32,7 @@ const ManualPaymentsPage = lazy(() => import('../pages/finance/ManualPaymentsPag
 // Other pages
 const UsersPage = lazy(() => import('../pages/users/UsersPage').then(module => ({ default: module.UsersPage })));
 const ReportsPage = lazy(() => import('../pages/reports/ReportsPage').then(module => ({ default: module.ReportsPage })));
-const SettingsPage = lazy(() => import('../pages/settings/SettingsPage').then(module => ({ default: module.SettingsPage })));
+// const SettingsPage = lazy(() => import('../pages/settings/SettingsPage').then(module => ({ default: module.SettingsPage }))); // Comment out lazy load
 const NotFoundPage = lazy(() => import('../pages/NotFoundPage').then(module => ({ default: module.NotFoundPage })));
 
 // Fallback components for non-existent pages
@@ -55,6 +56,9 @@ export function AppRoutes() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/two-factor-verification" element={<TwoFactorVerificationPage />} />
+        
+        {/* Settings route moved outside ProtectedRoute and MainLayout for testing */}
+        {/* <Route path="/settings" element={<SettingsPage />} /> */}
         
         {/* Protected routes */}
         <Route element={<ProtectedRoute />}>
@@ -125,7 +129,7 @@ export function AppRoutes() {
             {/* Reports routes */}
             <Route path="/reports" element={<ReportsPage />} />
             
-            {/* Settings route */}
+            {/* Settings route (original position, now commented out or removed if the above test works) */}
             <Route path="/settings" element={<SettingsPage />} />
           </Route>
         </Route>

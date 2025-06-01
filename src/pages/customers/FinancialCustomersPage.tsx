@@ -6,6 +6,7 @@ import { CustomerFormModal } from '../../components/customers/CustomerFormModal'
 import { useToastContext } from '../../contexts/ToastContext';
 import { customersApi } from '../../services/customers/customersApiService';
 import type { Customer, CustomerType, CustomerStatus, CustomerFilterParams } from '../../types/customer';
+// import { useCurrencySettings } from '../../hooks/useCurrencySettings'; // Import commented out as it's not used yet
 
 // Define a type for the form data that allows 'pme' and 'financial' types
 interface ExtendedCustomerFormData extends Omit<Customer, 'type'> {
@@ -16,6 +17,8 @@ export function FinancialCustomersPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { showToast } = useToastContext();
+  // const { format, convert, activeCurrency, baseCurrency } = useCurrencySettings(); // Kept for future use if monetary values are displayed
+
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -48,7 +51,6 @@ export function FinancialCustomersPage() {
       console.error('Erreur lors du chargement des institutions financières:', error);
       showToast('error', 'Erreur lors du chargement des institutions financières');
       
-      // Fallback vers des données mockées en cas d'échec de l'API (pour le développement)
       const mockCustomers: Customer[] = [
         {
           id: 'fin-1',
@@ -72,7 +74,7 @@ export function FinancialCustomersPage() {
     } finally {
       setLoading(false);
     }
-  }, [showToast, page, filterStatus, searchQuery]);
+  }, [showToast, page, filterStatus, searchQuery, setLoading, setCustomers, setTotalPages]); // Added missing dependencies
   
   useEffect(() => {
     fetchCustomers();
@@ -89,7 +91,6 @@ export function FinancialCustomersPage() {
 
   const handleCreateCustomer = async (customer: ExtendedCustomerFormData) => {
     try {
-      // Map extended form data to proper Customer type
       const customerData: Customer = {
         ...customer,
         type: customer.type === 'pme' ? 'financial' : customer.type as CustomerType
@@ -222,7 +223,7 @@ export function FinancialCustomersPage() {
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {customers.map((customer) => (
+                {customers.map((customer: Customer) => (
                   <tr key={customer.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                       <div className="flex items-center">
@@ -254,7 +255,6 @@ export function FinancialCustomersPage() {
                         </button>
                         <button
                           onClick={() => {
-                            // Navigation vers la page d'édition
                             navigate(`/customers/${customer.id}/edit`);
                           }}
                           className="text-yellow-600 hover:text-yellow-800"
@@ -278,7 +278,6 @@ export function FinancialCustomersPage() {
           </div>
         )}
         
-        {/* Pagination */}
         {totalPages > 1 && (
           <div className="px-6 py-4 flex items-center justify-between border-t border-gray-200 dark:border-gray-700">
             <div>
@@ -307,7 +306,6 @@ export function FinancialCustomersPage() {
         )}
       </div>
 
-      {/* Create Customer Modal */}
       <CustomerFormModal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
@@ -315,7 +313,7 @@ export function FinancialCustomersPage() {
         title={t('customers.create.financial', 'Créer une institution financière')}
         customer={{
           name: '',
-          type: 'financial', // Prédéfinir le type comme 'financial'
+          type: 'financial', 
           email: '',
           phone: '',
           address: '',
@@ -324,8 +322,8 @@ export function FinancialCustomersPage() {
           status: 'pending',
           billingContactName: '',
           billingContactEmail: '',
-          tokenAllocation: 10000000, // Default for financial institutions
-          accountType: 'freemium' as const // Start with freemium
+          tokenAllocation: 10000000, // Default for financial institutions. If displayed, this would be: format(convert(10000000, baseCurrency, activeCurrency))
+          accountType: 'freemium' as const
         }}
       />
     </div>

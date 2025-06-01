@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react';
 import { Search, Filter, Download, Eye, PlusCircle, CheckCircle, XCircle, AlertTriangle, Clock, MoreHorizontal } from 'lucide-react';
 import { useToastContext } from '../../contexts/ToastContext';
-import { formatCurrency } from '../../utils/currency';
-import { useCurrencySettings } from '../../hooks/useCurrencySettings'; // Ajout de l'import
+import { useCurrencySettings } from '../../hooks/useCurrencySettings';
+import type { SupportedCurrency } from '../../types/currency'; // Import SupportedCurrency
 
 // Types pour les paiements
 interface Payment {
   id: string;
   customerId: string;
   customerName: string;
-  amount: number;
-  currency: string;
+  amount: number; // Assumed to be in the currency specified by the `currency` field
+  currency: string; // Original currency of the payment, should be a SupportedCurrency
   status: 'completed' | 'pending' | 'failed' | 'refunded';
   paymentMethod: 'card' | 'bank_transfer' | 'cash' | 'paypal';
   date: string;
@@ -21,7 +21,7 @@ interface Payment {
 
 export function PaymentsPage() {
   const { showToast } = useToastContext();
-  const { activeCurrency } = useCurrencySettings(); // Utilisation du hook pour obtenir la devise active
+  const { activeCurrency, format, convert, baseCurrency } = useCurrencySettings();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -46,7 +46,7 @@ export function PaymentsPage() {
             customerId: '123',
             customerName: 'Kiota Tech',
             amount: 599.99,
-            currency: 'EUR',
+            currency: 'USD', // Assuming mock data amounts are in USD (baseCurrency)
             status: 'completed',
             paymentMethod: 'card',
             date: '2023-04-15',
@@ -58,7 +58,7 @@ export function PaymentsPage() {
             customerId: '456',
             customerName: 'Exoscode',
             amount: 199.99,
-            currency: 'EUR',
+            currency: 'USD', // Assuming mock data amounts are in USD (baseCurrency)
             status: 'completed',
             paymentMethod: 'bank_transfer',
             date: '2023-04-02',
@@ -70,7 +70,7 @@ export function PaymentsPage() {
             customerId: '789',
             customerName: 'Banque Centrale',
             amount: 1299.99,
-            currency: 'EUR',
+            currency: 'USD', // Assuming mock data amounts are in USD (baseCurrency)
             status: 'pending',
             paymentMethod: 'bank_transfer',
             date: '2023-04-19',
@@ -82,7 +82,7 @@ export function PaymentsPage() {
             customerId: '101',
             customerName: 'Startup Innovation',
             amount: 49.99,
-            currency: 'EUR',
+            currency: 'USD', // Assuming mock data amounts are in USD (baseCurrency)
             status: 'failed',
             paymentMethod: 'card',
             date: '2023-04-10',
@@ -94,7 +94,7 @@ export function PaymentsPage() {
             customerId: '112',
             customerName: 'Crédit Mutuel',
             amount: 1299.99,
-            currency: 'EUR',
+            currency: 'USD', // Assuming mock data amounts are in USD (baseCurrency)
             status: 'refunded',
             paymentMethod: 'card',
             date: '2023-04-05',
@@ -106,7 +106,7 @@ export function PaymentsPage() {
             customerId: '145',
             customerName: 'Digisave',
             amount: 199.99,
-            currency: 'EUR',
+            currency: 'USD', // Assuming mock data amounts are in USD (baseCurrency)
             status: 'completed',
             paymentMethod: 'paypal',
             date: '2023-04-12',
@@ -118,7 +118,7 @@ export function PaymentsPage() {
             customerId: '178',
             customerName: 'Fintech Solutions',
             amount: 599.99,
-            currency: 'EUR',
+            currency: 'USD', // Assuming mock data amounts are in USD (baseCurrency)
             status: 'completed',
             paymentMethod: 'bank_transfer',
             date: '2023-04-08',
@@ -258,18 +258,24 @@ export function PaymentsPage() {
     }
   };
 
+  // Helper function to format payment amounts
+  const formatPaymentAmount = (amount: number, currency: string) => {
+    const convertedAmount = convert(amount, currency as SupportedCurrency, activeCurrency);
+    return format(convertedAmount); // format from useCurrencySettings implicitly uses activeCurrency
+  };
+
   // Statistiques des paiements
   const totalRevenue = filteredPayments
     .filter(p => p.status === 'completed')
-    .reduce((sum, p) => sum + p.amount, 0);
+    .reduce((sum, p) => sum + convert(p.amount, p.currency as SupportedCurrency, baseCurrency), 0);
   
   const pendingRevenue = filteredPayments
     .filter(p => p.status === 'pending')
-    .reduce((sum, p) => sum + p.amount, 0);
+    .reduce((sum, p) => sum + convert(p.amount, p.currency as SupportedCurrency, baseCurrency), 0);
   
   const refundedAmount = filteredPayments
     .filter(p => p.status === 'refunded')
-    .reduce((sum, p) => sum + p.amount, 0);
+    .reduce((sum, p) => sum + convert(p.amount, p.currency as SupportedCurrency, baseCurrency), 0);
 
   return (
     <div className="space-y-6">
@@ -353,7 +359,7 @@ export function PaymentsPage() {
           <div className="ml-4">
             <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Revenus confirmés</h3>
             <p className="mt-1 text-lg font-semibold text-gray-900 dark:text-white">
-              {formatCurrency(totalRevenue, activeCurrency)} {/* Utilisation de la devise active */}
+              {format(convert(totalRevenue, baseCurrency, activeCurrency))} {/* Convert stats to active and format */}
             </p>
           </div>
         </div>
@@ -364,7 +370,7 @@ export function PaymentsPage() {
           <div className="ml-4">
             <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Paiements en attente</h3>
             <p className="mt-1 text-lg font-semibold text-gray-900 dark:text-white">
-              {formatCurrency(pendingRevenue, activeCurrency)} {/* Utilisation de la devise active */}
+              {format(convert(pendingRevenue, baseCurrency, activeCurrency))} {/* Convert stats to active and format */}
             </p>
           </div>
         </div>
@@ -375,7 +381,7 @@ export function PaymentsPage() {
           <div className="ml-4">
             <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Montants remboursés</h3>
             <p className="mt-1 text-lg font-semibold text-gray-900 dark:text-white">
-              {formatCurrency(refundedAmount, activeCurrency)} {/* Utilisation de la devise active */}
+              {format(convert(refundedAmount, baseCurrency, activeCurrency))} {/* Convert stats to active and format */}
             </p>
           </div>
         </div>
@@ -434,7 +440,7 @@ export function PaymentsPage() {
                       {payment.description}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
-                      {formatCurrency(payment.amount, activeCurrency)} {/* Utilisation de la devise active */}
+                      {formatPaymentAmount(payment.amount, payment.currency)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                       {payment.date}

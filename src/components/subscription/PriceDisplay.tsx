@@ -1,4 +1,3 @@
-import React from 'react';
 import { useCurrencySettings } from '../../hooks/useCurrencySettings';
 import { MultiCurrencyPrice } from '../../types/currency';
 
@@ -17,23 +16,21 @@ export function PriceDisplay({
   cycle, 
   showAllCurrencies = false 
 }: PriceDisplayProps) {
-  const { currency, formatInCurrency, formatMultiCurrencyPrice } = useCurrencySettings();
+  const { currency: activeCurrency, format, formatInCurrency } = useCurrencySettings();
   
-  // Créer un objet de prix multi-devises
   const price: MultiCurrencyPrice = { usd, cdf, fcfa };
   
-  // Si on veut afficher toutes les devises
   if (showAllCurrencies) {
     return (
       <div className="space-y-1">
         <div className="text-2xl font-bold">
-          {formatInCurrency(usd, 'USD')}
+          {formatInCurrency(price.usd, 'USD')}
         </div>
         <div className="text-sm text-gray-600">
-          {formatInCurrency(cdf, 'CDF')}
+          {formatInCurrency(price.cdf, 'CDF')}
         </div>
         <div className="text-sm text-gray-600">
-          {formatInCurrency(fcfa, 'FCFA')}
+          {formatInCurrency(price.fcfa, 'FCFA')}
         </div>
         <div className="text-xs text-gray-500">
           {cycle === 'monthly' ? 'par mois' : 'par an'}
@@ -42,15 +39,16 @@ export function PriceDisplay({
     );
   }
   
-  // Sinon, afficher la devise principale avec une devise secondaire
+  const activeCurrencyAmount = price[activeCurrency.toLowerCase() as keyof MultiCurrencyPrice] as number;
+  
   return (
     <div className="space-y-1">
       <div className="text-2xl font-bold">
-        {formatInCurrency(price[currency.toLowerCase() as keyof MultiCurrencyPrice] as number, currency)}
+        {format(activeCurrencyAmount)}
       </div>
       <div className="text-sm text-gray-600">
-        {currency !== 'USD' && formatInCurrency(usd, 'USD')}
-        {currency === 'USD' && formatInCurrency(cdf, 'CDF')}
+        {activeCurrency !== 'USD' && formatInCurrency(price.usd, 'USD')}
+        {activeCurrency === 'USD' && formatInCurrency(price.cdf, 'CDF')}
       </div>
       <div className="text-xs text-gray-500">
         {cycle === 'monthly' ? 'par mois' : 'par an'}

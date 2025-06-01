@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { User, Shield, Bell, Globe, HelpCircle, Layout, Coins } from 'lucide-react';
+import { User } from 'lucide-react'; // Removed unused icons
 import { useCurrencySettings } from '../../hooks/useCurrencySettings';
-import { useExchangeRates } from '../../hooks/useExchangeRates';
 import { CurrencySelector } from '../../components/common/CurrencySelector';
+import { SupportedCurrency } from '../../types/currency';
 
 // Composants temporaires pour éviter les erreurs
 const AdminProfileSettings = () => {
@@ -471,7 +471,7 @@ const LanguageSettings = () => {
               id="format1" 
               name="dateFormat" 
               className="form-radio text-primary" 
-              checked 
+              defaultChecked
             />
             <label htmlFor="format1" className="ml-2 flex-grow">DD/MM/YYYY<span className="text-sm text-gray-500 ml-2">Ex: 22/04/2025</span></label>
           </div>
@@ -534,139 +534,125 @@ const SupportSettings = () => {
 // Nouveau composant pour les paramètres de devise
 const CurrencySettings = () => {
   const { t } = useTranslation();
-  const { formatInCurrency } = useCurrencySettings();
-  const { getRate, loading, refreshRates } = useExchangeRates();
+  const { 
+    setCurrency, 
+    exchangeRates, 
+    updateUserRate, 
+    baseCurrency 
+  } = useCurrencySettings();
+
+  const [cdfRate, setCdfRate] = useState<string>(exchangeRates.CDF?.toString() || '1');
+  const [fcfaRate, setFcfaRate] = useState<string>(exchangeRates.FCFA?.toString() || '1');
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    setCdfRate(exchangeRates.CDF?.toString() || '1');
+    setFcfaRate(exchangeRates.FCFA?.toString() || '1');
+  }, [exchangeRates]);
+
+  const handleSaveRates = async () => {
+    setIsSaving(true);
+    try {
+      const cdf = parseFloat(cdfRate);
+      const fcfa = parseFloat(fcfaRate);
+
+      if (!isNaN(cdf) && cdf > 0) {
+        await updateUserRate('CDF', cdf);
+      } else {
+        alert(t('settings.currency.invalidCdfRate', 'Invalid CDF rate. Please enter a positive number.'));
+      }
+      if (!isNaN(fcfa) && fcfa > 0) {
+        await updateUserRate('FCFA', fcfa);
+      } else {
+        alert(t('settings.currency.invalidFcfaRate', 'Invalid FCFA rate. Please enter a positive number.'));
+      }
+      alert(t('settings.currency.ratesUpdated', 'Exchange rates updated successfully.'));
+    } catch (error) {
+      console.error("Failed to update rates:", error);
+      alert(t('settings.currency.ratesUpdateFailed', 'Failed to update exchange rates.'));
+    } finally {
+      setIsSaving(false);
+    }
+  };
   
+  const handleCurrencyChange = (currency: SupportedCurrency) => {
+    setCurrency(currency); // This will be called by the CurrencySelector's onChange
+  };
+
   return (
     <div className="space-y-6">
-      {/* Section sélection de devise */}
+      <h3 className="text-lg font-medium">{t('settings.currency.title', 'Currency Settings')}</h3>
+      
       <div className="p-4 border rounded-lg">
-        <h3 className="text-lg font-medium mb-4">
-          {t('settings.currency.title', 'Devise préférée')}
-        </h3>
+        <h4 className="font-medium mb-2">{t('settings.currency.activeCurrency', 'Active Display Currency')}</h4>
+        <CurrencySelector
+          onChange={handleCurrencyChange} // Pass the handler to onChange
+          // selectedCurrency prop is removed as the component manages its own state via useCurrencySettings
+          // availableCurrencies prop is managed by CurrencySelector itself via useCurrencySettings
+        />
+        <p className="text-sm text-gray-500 mt-1">
+          {t('settings.currency.activeCurrencyDesc', 'This currency will be used for displaying prices throughout the application.')}
+        </p>
+      </div>
+
+      <div className="p-4 border rounded-lg">
+        <h4 className="font-medium mb-2">
+          {t('settings.currency.exchangeRatesTitle', 'Exchange Rates (relative to ')}{baseCurrency})
+        </h4>
         <p className="text-sm text-gray-500 mb-4">
-          {t('settings.currency.description', 'Choisissez la devise principale pour l\'affichage des montants dans l\'application')}
+          {t('settings.currency.exchangeRatesDesc', 'Define the exchange rates for CDF and FCFA against the base currency (USD). 1 USD = X CDF/FCFA.')}
         </p>
-        
-        {/* Utiliser le composant CurrencySelector avec des boutons plus grands */}
-        <div className="mb-6">
-          <CurrencySelector variant="buttons" className="mb-4" />
-        </div>
-        
-        <p className="text-sm text-gray-500 mt-2">
-          {t('settings.currency.selectedInfo', 'La devise sélectionnée sera utilisée dans toute l\'application pour afficher les prix et montants.')}
-        </p>
-      </div>
-      
-      {/* Taux de change */}
-      <div className="p-4 border rounded-lg">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium">
-            {t('settings.currency.exchangeRates', 'Taux de change')}
-          </h3>
-          <button 
-            onClick={() => refreshRates()}
-            className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-md flex items-center gap-2"
-            disabled={loading}
-          >
-            {loading ? (
-              <span className="inline-block w-4 h-4 border-2 border-t-transparent border-primary rounded-full animate-spin"></span>
-            ) : null}
-            {t('settings.currency.refresh', 'Actualiser')}
-          </button>
-        </div>
-        
-        {loading ? (
-          <div className="flex justify-center py-4">
-            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
-              <span>1 USD =</span>
-              <span className="font-medium">{getRate('USD', 'CDF').toFixed(2)} CDF</span>
-            </div>
-            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
-              <span>1 USD =</span>
-              <span className="font-medium">{getRate('USD', 'FCFA').toFixed(2)} FCFA</span>
-            </div>
-            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
-              <span>1 CDF =</span>
-              <span className="font-medium">{getRate('CDF', 'FCFA').toFixed(4)} FCFA</span>
-            </div>
-          </div>
-        )}
-        
-        <div className="mt-4">
-          <p className="text-xs text-gray-500">
-            {t('settings.currency.updatedAt', 'Taux mis à jour le')} {new Date().toLocaleDateString('fr-FR')}
-          </p>
-        </div>
-      </div>
-      
-      {/* Exemple de conversion */}
-      <div className="p-4 border rounded-lg">
-        <h3 className="text-lg font-medium mb-4">
-          {t('settings.currency.preview', 'Aperçu des conversions')}
-        </h3>
-        
-        <div className="p-4 bg-blue-50 rounded-lg">
-          <h4 className="font-medium mb-2">{t('settings.currency.example', 'Exemple')}</h4>
-          <p className="mb-2">
-            {t('settings.currency.exampleDescription', 'Un abonnement mensuel à notre Suite ERP coûte:')}
-          </p>
-          <div className="space-y-1 font-medium">
-            <p>{formatInCurrency(15, 'USD')}</p>
-            <p>{formatInCurrency(15 * getRate('USD', 'CDF'), 'CDF')}</p>
-            <p>{formatInCurrency(15 * getRate('USD', 'FCFA'), 'FCFA')}</p>
-          </div>
-        </div>
-      </div>
-      
-      {/* Options de formatage */}
-      <div className="p-4 border rounded-lg">
-        <h3 className="text-lg font-medium mb-4">
-          {t('settings.currency.formatting', 'Options de formatage')}
-        </h3>
-        
         <div className="space-y-4">
-          <div className="flex items-center p-3 border rounded-lg bg-primary/5">
-            <input 
-              type="radio" 
-              id="format_symbol_first" 
-              name="currencyFormat" 
-              className="form-radio text-primary" 
-              checked 
-            />
-            <label htmlFor="format_symbol_first" className="ml-2 flex-grow">
-              {t('settings.currency.symbolFirst', 'Symbole d\'abord')}
-              <span className="text-sm text-gray-500 ml-2">Ex: $15.00</span>
+          <div>
+            <label htmlFor="cdfRate" className="block text-sm font-medium text-gray-700">
+              1 {baseCurrency} = 
             </label>
+            <div className="mt-1 flex rounded-md shadow-sm">
+              <input
+                type="number"
+                name="cdfRate"
+                id="cdfRate"
+                className="focus:ring-primary focus:border-primary flex-1 block w-full rounded-none rounded-l-md sm:text-sm border-gray-300 p-2"
+                value={cdfRate}
+                onChange={(e) => setCdfRate(e.target.value)}
+                placeholder="Rate for CDF"
+                step="any"
+              />
+              <span className="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">
+                CDF
+              </span>
+            </div>
           </div>
-          <div className="flex items-center p-3 border rounded-lg">
-            <input 
-              type="radio" 
-              id="format_symbol_last" 
-              name="currencyFormat" 
-              className="form-radio text-primary"
-            />
-            <label htmlFor="format_symbol_last" className="ml-2 flex-grow">
-              {t('settings.currency.symbolLast', 'Symbole après')}
-              <span className="text-sm text-gray-500 ml-2">Ex: 15.00$</span>
+          
+          <div>
+            <label htmlFor="fcfaRate" className="block text-sm font-medium text-gray-700">
+              1 {baseCurrency} = 
             </label>
+            <div className="mt-1 flex rounded-md shadow-sm">
+              <input
+                type="number"
+                name="fcfaRate"
+                id="fcfaRate"
+                className="focus:ring-primary focus:border-primary flex-1 block w-full rounded-none rounded-l-md sm:text-sm border-gray-300 p-2"
+                value={fcfaRate}
+                onChange={(e) => setFcfaRate(e.target.value)}
+                placeholder="Rate for FCFA"
+                step="any"
+              />
+              <span className="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">
+                FCFA
+              </span>
+            </div>
           </div>
-          <div className="flex items-center p-3 border rounded-lg">
-            <input 
-              type="radio" 
-              id="format_code" 
-              name="currencyFormat" 
-              className="form-radio text-primary"
-            />
-            <label htmlFor="format_code" className="ml-2 flex-grow">
-              {t('settings.currency.code', 'Code de devise')}
-              <span className="text-sm text-gray-500 ml-2">Ex: 15.00 USD</span>
-            </label>
-          </div>
+        </div>
+        <div className="mt-6">
+          <button
+            onClick={handleSaveRates}
+            disabled={isSaving}
+            className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50"
+          >
+            {isSaving ? t('common.saving', 'Saving...') : t('common.saveChanges', 'Save Changes')}
+          </button>
         </div>
       </div>
     </div>
@@ -674,76 +660,83 @@ const CurrencySettings = () => {
 };
 
 // Composant principal SettingsPage
-export function SettingsPage() {
+const SettingsPage: React.FC = () => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('profile');
   
-  // Configuration des onglets de paramètres
-  const tabs = [
-    { id: 'profile', label: t('settings.tabs.profile'), icon: <User className="h-5 w-5" /> },
-    { id: 'security', label: t('settings.tabs.security'), icon: <Shield className="h-5 w-5" /> },
-    { id: 'notifications', label: t('settings.tabs.notifications'), icon: <Bell className="h-5 w-5" /> },
-    { id: 'display', label: t('settings.tabs.display'), icon: <Layout className="h-5 w-5" /> },
-    { id: 'language', label: t('settings.tabs.language'), icon: <Globe className="h-5 w-5" /> },
-    { id: 'currency', label: t('settings.tabs.currency', 'Devise'), icon: <Coins className="h-5 w-5" /> },
-    { id: 'support', label: t('settings.tabs.support'), icon: <HelpCircle className="h-5 w-5" /> },
-  ];
-  
-  // Fonction pour afficher le contenu en fonction de l'onglet actif
-  const renderContent = () => {
-    switch(activeTab) {
-      case 'profile':
-        return <AdminProfileSettings />;
-      case 'security':
-        return <SecuritySettings />;
-      case 'notifications':
-        return <NotificationSettings />;
-      case 'display':
-        return <DisplaySettings />;
-      case 'language':
-        return <LanguageSettings />;
-      case 'currency':
-        return <CurrencySettings />;
-      case 'support':
-        return <SupportSettings />;
-      default:
-        return <AdminProfileSettings />;
-    }
-  };
-  
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-6">{t('settings.title')}</h1>
+    <div className="p-6 space-y-6">
+      {/* En-tête des paramètres */}
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900">{t('settings.title', 'Paramètres')}</h2>
+        <p className="text-sm text-gray-500">{t('settings.subtitle', 'Gérez vos préférences et informations de compte')}</p>
+      </div>
       
-      <div className="flex flex-col md:flex-row gap-8">
-        {/* Sidebar de navigation */}
-        <div className="w-full md:w-64 shrink-0">
-          <div className="bg-white rounded-lg shadow-sm p-4">
-            <ul className="space-y-2">
-              {tabs.map(tab => (
-                <li key={tab.id}>
-                  <button
-                    className={`w-full flex items-center p-3 rounded-lg transition-colors ${
-                      activeTab === tab.id 
-                        ? 'bg-primary text-white' 
-                        : 'hover:bg-gray-100'
-                    }`}
-                    onClick={() => setActiveTab(tab.id)}
-                  >
-                    <span className="mr-3">{tab.icon}</span>
-                    {tab.label}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-        
-        {/* Contenu principal */}
-        <div className="flex-1 bg-white rounded-lg shadow-sm p-6">
-          {renderContent()}
-        </div>
+      {/* Tabs pour navigation entre les sections de paramètres */}
+      <div className="flex space-x-4">
+        <button 
+          onClick={() => setActiveTab('profile')}
+          className={`py-2 px-4 rounded-md font-medium transition-all flex-1 text-center 
+          ${activeTab === 'profile' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+        >
+          {t('settings.tabs.profile', 'Profil')}
+        </button>
+        <button 
+          onClick={() => setActiveTab('security')}
+          className={`py-2 px-4 rounded-md font-medium transition-all flex-1 text-center 
+          ${activeTab === 'security' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+        >
+          {t('settings.tabs.security', 'Sécurité')}
+        </button>
+        <button 
+          onClick={() => setActiveTab('notifications')}
+          className={`py-2 px-4 rounded-md font-medium transition-all flex-1 text-center 
+          ${activeTab === 'notifications' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+        >
+          {t('settings.tabs.notifications', 'Notifications')}
+        </button>
+        <button 
+          onClick={() => setActiveTab('display')}
+          className={`py-2 px-4 rounded-md font-medium transition-all flex-1 text-center 
+          ${activeTab === 'display' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+        >
+          {t('settings.tabs.display', 'Affichage')}
+        </button>
+        <button 
+          onClick={() => setActiveTab('language')}
+          className={`py-2 px-4 rounded-md font-medium transition-all flex-1 text-center 
+          ${activeTab === 'language' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+        >
+          {t('settings.tabs.language', 'Langue')}
+        </button>
+        <button 
+          onClick={() => setActiveTab('support')}
+          className={`py-2 px-4 rounded-md font-medium transition-all flex-1 text-center 
+          ${activeTab === 'support' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+        >
+          {t('settings.tabs.support', 'Support')}
+        </button>
+        <button 
+          onClick={() => setActiveTab('currency')}
+          className={`py-2 px-4 rounded-md font-medium transition-all flex-1 text-center 
+          ${activeTab === 'currency' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+        >
+          {t('settings.tabs.currency', 'Devise')}
+        </button>
+      </div>
+      
+      {/* Contenu des paramètres selon l'onglet actif */}
+      <div className="bg-white shadow rounded-lg p-6">
+        {activeTab === 'profile' && <AdminProfileSettings />}
+        {activeTab === 'security' && <SecuritySettings />}
+        {activeTab === 'notifications' && <NotificationSettings />}
+        {activeTab === 'display' && <DisplaySettings />}
+        {activeTab === 'language' && <LanguageSettings />}
+        {activeTab === 'support' && <SupportSettings />}
+        {activeTab === 'currency' && <CurrencySettings />}
       </div>
     </div>
   );
-}
+};
+
+export default SettingsPage;

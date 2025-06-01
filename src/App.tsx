@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
+import { useEffect } from 'react'; // Added useEffect import
 import { AppRoutes } from './routes';
 import { ToastProvider } from './contexts/ToastContext';
 import { CurrencyProvider } from './contexts/CurrencyContext';

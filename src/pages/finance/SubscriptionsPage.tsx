@@ -1,17 +1,18 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Search, Filter, Calendar, AlertCircle, RefreshCcw, CheckCircle, XCircle, MoreHorizontal, Building, CreditCard, PlusCircle } from 'lucide-react';
-import { formatCurrency } from '../../utils/currency';
 import { useSubscription } from '../../hooks/useSubscription';
 import { SubscriptionPlanDefinition, CustomerSubscription, PlanStatus, PlanBillingCycle } from '../../types/subscription';
 import { CustomerType } from '../../types/customer';
-import { SupportedCurrency } from '../../types/currency'; // Added import
-import { useToast as useAppToast } from '../../hooks/useToast'; // Renamed to avoid conflict if hook also returns one
+import { useToast as useAppToast } from '../../hooks/useToast';
+import { useCurrencySettings } from '../../hooks/useCurrencySettings';
+import { SupportedCurrency } from '../../types/currency';
+import { SUPPORTED_CURRENCIES } from '../../constants/currencyConstants';
 
 const planStatuses: PlanStatus[] = ['active', 'expired', 'cancelled', 'pending', 'payment_failed'];
 
 export function SubscriptionsPage() {
   const { 
-    showToast: showHookToast, // Use the toast from the hook for hook-related actions
+    showToast: showHookToast,
   } = useAppToast(); 
 
   const {
@@ -23,11 +24,11 @@ export function SubscriptionsPage() {
     cancelSubscription,
     reactivateSubscription,
     setPage,
-    // setPageSize, // Uncomment for pagination UI
-    // totalCount,  // Uncomment for pagination UI
     page,
     pageSize,
   } = useSubscription({ initialCustomerType: 'pme' });
+
+  const { activeCurrency, convert, formatInCurrency } = useCurrencySettings(); // Removed format, kept formatInCurrency
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<PlanStatus | 'all'>('all');
@@ -47,10 +48,8 @@ export function SubscriptionsPage() {
   const handleCancelSubscription = async (subscriptionId: string) => {
     try {
       await cancelSubscription(subscriptionId);
-      // Toast is shown by the hook
     } catch (error) {
       console.error("Error cancelling subscription from page:", error);
-      // Error toast is also shown by the hook
     }
   };
 
@@ -62,7 +61,6 @@ export function SubscriptionsPage() {
       case 'expired': return 'Expiré';
       case 'payment_failed': return 'Paiement échoué';
       default: {
-        // const _exhaustiveCheck: never = status; // Removed as it's not strictly necessary for runtime and causes lint error
         return status as string;
       }
     }
@@ -72,8 +70,6 @@ export function SubscriptionsPage() {
     switch (status) {
       case 'active':
         return 'bg-green-100 text-green-800';
-      // case 'trialing': // PlanStatus doesn't have 'trialing', it might be an 'active' sub with a trial flag elsewhere
-        // return 'bg-blue-100 text-blue-800'; 
       case 'pending':
         return 'bg-yellow-100 text-yellow-800';
       case 'cancelled':
@@ -113,7 +109,7 @@ export function SubscriptionsPage() {
 
   const getDisplayBillingCycleForPlanCard = (plan?: SubscriptionPlanDefinition) => {
     if (!plan || !plan.billingCycles || plan.billingCycles.length === 0) return 'N/A';
-    return getPlanBillingCycleLabel(plan.billingCycles[0]); // Display first cycle for simplicity
+    return getPlanBillingCycleLabel(plan.billingCycles[0]);
   };
   
   const getPlanById = (planId: string): SubscriptionPlanDefinition | undefined => {
@@ -124,7 +120,6 @@ export function SubscriptionsPage() {
     if (subscription.status === 'cancelled' || subscription.status === 'expired' || subscription.status === 'payment_failed') {
       return 'Non renouvelable';
     }
-    // CustomerSubscription type does not have cancelAtPeriodEnd, using autoRenew
     return subscription.autoRenew ? 'Renouvellement auto.' : 'Renouvellement manuel'; 
   };
 
@@ -143,18 +138,13 @@ export function SubscriptionsPage() {
       const subToRenew = customerSubscriptions.find(s => s.id === subscriptionId);
       if (subToRenew && subToRenew.status === 'cancelled') { 
         await reactivateSubscription(subscriptionId);
-        // Toast is shown by the hook
       } else if (subToRenew) { 
-        // If subscription is found but not in 'cancelled' state
         showHookToast('info', `Seuls les abonnements annulés peuvent être réactivés directement. Statut actuel: ${getStatusLabel(subToRenew.status)}.`);
       } else {
-        // This case should ideally not be reached if subscriptionId comes from a valid list item
         showHookToast('error', 'Abonnement non trouvé pour la réactivation.');
       }
     } catch (error) {
       console.error("Error reactivating subscription from page:", error);
-      // Error toast for reactivateSubscription itself is shown by the hook.
-      // This catch block handles errors originating from the page logic itself or unexpected errors from the hook.
     }
   };
   
@@ -170,6 +160,14 @@ export function SubscriptionsPage() {
       return matchesSearch;
     });
   }, [customerSubscriptions, searchTerm, availablePlans]);
+
+  // Helper to determine currency, ensuring it's a SupportedCurrency
+  const getSafeCurrency = (localCurrency: string | undefined | null): SupportedCurrency => {
+    if (localCurrency && (SUPPORTED_CURRENCIES as ReadonlyArray<string>).includes(localCurrency)) {
+      return localCurrency as SupportedCurrency;
+    }
+    return activeCurrency;
+  };
 
   return (
     <div className="space-y-6">
@@ -232,40 +230,41 @@ export function SubscriptionsPage() {
 
       {/* Plans overview cards - using availablePlans from hook */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {availablePlans.filter(p => !p.isHidden).map(plan => (
-          <div key={plan.id} className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 hover:shadow-md transition-shadow">
-            <div className="mb-2">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white">{plan.name}</h3>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                {formatCurrency(plan.basePriceUSD, (plan.localCurrency as SupportedCurrency) || 'USD')} 
-                <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
-                  /{getDisplayBillingCycleForPlanCard(plan)}
-                </span>
+        {availablePlans.filter(p => !p.isHidden).map(plan => {
+          const planDisplayCurrency = getSafeCurrency(plan.localCurrency);
+          return (
+            <div key={plan.id} className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 hover:shadow-md transition-shadow">
+              <div className="mb-2">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white">{plan.name}</h3>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+                  {formatInCurrency(convert(plan.basePriceUSD, 'USD', planDisplayCurrency), planDisplayCurrency)}
+                  <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
+                    /{getDisplayBillingCycleForPlanCard(plan)}
+                  </span>
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Max {plan.maxUsers} Utilisateurs, {plan.tokenAllocation?.toLocaleString()} Tokens
+                </div>
               </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Max {plan.maxUsers} Utilisateurs, {plan.tokenAllocation?.toLocaleString()} Tokens
+              <hr className="my-2 border-gray-200 dark:border-gray-700" />
+              <ul className="space-y-1 mb-3 h-20 overflow-y-auto">
+                {plan.features.map((featureName, index) => {
+                  return (
+                    <li key={index} className="text-sm flex items-start">
+                      <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
+                      <span className="text-gray-700 dark:text-gray-300">{featureName}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+              <div className="text-xs text-gray-500">
+                <span className="font-medium">
+                  {customerSubscriptions.filter(sub => sub.planId === plan.id && sub.status === 'active').length}
+                </span> clients actifs
               </div>
             </div>
-            <hr className="my-2 border-gray-200 dark:border-gray-700" />
-            <ul className="space-y-1 mb-3 h-20 overflow-y-auto">
-              {plan.features.map((featureName, index) => { // Assuming plan.features is string[] of feature names/keys
-                // If plan.features are objects like { description: string }, adjust accordingly.
-                // For now, assuming they are simple strings as per PlanFeature type definition.
-                return (
-                  <li key={index} className="text-sm flex items-start">
-                    <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-gray-700 dark:text-gray-300">{featureName}</span>
-                  </li>
-                );
-              })}
-            </ul>
-            <div className="text-xs text-gray-500">
-              <span className="font-medium">
-                {customerSubscriptions.filter(sub => sub.planId === plan.id && sub.status === 'active').length}
-              </span> clients actifs
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Subscriptions table */}
@@ -298,6 +297,7 @@ export function SubscriptionsPage() {
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {filteredSubscriptions.map((subscription) => {
                   const planDetails = getPlanById(subscription.planId);
+                  const subscriptionDisplayCurrency = getSafeCurrency(subscription.localCurrency);
                   return (
                   <tr key={subscription.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td className="px-6 py-4">
@@ -310,10 +310,9 @@ export function SubscriptionsPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                        {formatCurrency(subscription.priceUSD, (subscription.localCurrency as SupportedCurrency) || 'USD')}
+                        {formatInCurrency(convert(subscription.priceUSD, 'USD', subscriptionDisplayCurrency), subscriptionDisplayCurrency)}
                       </div>
                       <div className="text-xs text-gray-500 mt-1">
-                        {/* CustomerSubscription.paymentMethod is PaymentMethod type, not ID */}
                         Méthode: {subscription.paymentMethod ? subscription.paymentMethod.replace('_',' ') : 'N/A'}
                       </div>
                     </td>
@@ -360,7 +359,7 @@ export function SubscriptionsPage() {
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Essayez de modifier vos filtres ou ajoutez un nouvel abonnement.</p>
           </div>
         )}
-        {/* TODO: Add Pagination controls here using setPage, pageSize, totalCount, page from useSubscription */}
+        {/* TODO: Add Pagination controls here */}
       </div>
     </div>
   );
