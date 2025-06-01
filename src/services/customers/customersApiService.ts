@@ -1,6 +1,6 @@
-import apiClient from './client';
-import { apiAdapter } from './adapter';
-import { API_ENDPOINTS, replaceUrlParams } from './config';
+import apiClient from '../api/client';
+import { apiAdapter } from '../api/adapter';
+import { API_ENDPOINTS, replaceUrlParams } from '../api/config';
 import type { Customer, CustomerFormData, CustomerFilterParams, CustomerListResponse, CustomerDetailsResponse, CustomerStatistics, CustomerType, CustomerDocument } from '../../types/customer';
 
 // Données simulées pour les utilisateurs de démonstration
@@ -23,7 +23,18 @@ const mockCustomers: Customer[] = [
     accountType: 'standard',
     ownerId: 'user-123',
     ownerEmail: 'owner@pmetest.com',
-    documents: []
+    documents: [],
+    validatedAt: undefined,
+    validatedBy: undefined,
+    suspendedAt: undefined,
+    suspendedBy: undefined,
+    suspensionReason: undefined,
+    reactivatedAt: undefined,
+    reactivatedBy: undefined,
+    validationHistory: [
+      { date: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(), action: 'info_submitted', by: 'user-123', notes: 'Initial application submitted.' },
+      { date: new Date(Date.now() - 55 * 24 * 60 * 60 * 1000).toISOString(), action: 'info_requested', by: 'admin-system', notes: 'Requesting additional documentation for PME.' }
+    ]
   },
   {
     id: '2',
@@ -45,7 +56,16 @@ const mockCustomers: Customer[] = [
     ownerEmail: 'director@banquexyz.com',
     validatedAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString(),
     validatedBy: 'admin-abc',
-    documents: []
+    documents: [],
+    suspendedAt: undefined,
+    suspendedBy: undefined,
+    suspensionReason: undefined,
+    reactivatedAt: undefined,
+    reactivatedBy: undefined,
+    validationHistory: [
+      { date: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString(), action: 'info_submitted', by: 'user-456', notes: 'Financial institution application.' },
+      { date: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString(), action: 'validated', by: 'admin-abc', notes: 'Customer validated after review.' }
+    ]
   }
 ];
 
@@ -203,12 +223,22 @@ export const customersApi = {
     
     const mockFunction = () => {
       const newCustomer: Customer = {
-        ...customerData,
+        ...customerData, // Spread customerData first
         id: `mock-${Math.random().toString(36).substring(2, 9)}`,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        status: 'pending',
-        documents: []
+        status: 'pending', // Default status for new customer
+        documents: customerData.documents || [],
+        validationHistory: customerData.validationHistory || [],
+        // Ensure optional fields not in CustomerFormData are initialized if needed by UI
+        validatedAt: customerData.validatedAt || undefined,
+        validatedBy: customerData.validatedBy || undefined,
+        suspendedAt: customerData.suspendedAt || undefined,
+        suspendedBy: customerData.suspendedBy || undefined,
+        suspensionReason: customerData.suspensionReason || undefined,
+        reactivatedAt: customerData.reactivatedAt || undefined,
+        reactivatedBy: customerData.reactivatedBy || undefined,
+        // ownerId and ownerEmail would typically come from customerData if set by form
       };
       
       mockCustomers.push(newCustomer);

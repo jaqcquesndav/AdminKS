@@ -1,13 +1,13 @@
 import { useNavigate } from 'react-router-dom';
 import { TwoFactorVerification } from '../../components/auth/TwoFactorVerification';
-import { authService } from '../../services/authService';
+import { authService } from '../../services/auth/authService';
 
 export function TwoFactorVerificationPage() {
   const navigate = useNavigate();
   
   const handleVerify = async (code: string) => {
     try {
-      await authService.verifyTwoFactor({ code, method: 'email' });
+      await authService.verifyTwoFactor(code, 'email'); // Pass code and method as separate arguments
       navigate('/dashboard');
     } catch (error) {
       console.error('Verification failed:', error);

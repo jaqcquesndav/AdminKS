@@ -1,48 +1,53 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../hooks/useAuth';
-import { authService } from '../../../services/authService';
+import { authService } from '../../../services/auth/authService';
 import { useToastStore } from '../../../components/common/ToastContainer';
-import type { AuthMode, SignUpData } from '../types';
+import type { AuthMode, SignUpData, AuthCredentials } from '../types';
 
 export function useAuthForm() {
-  const navigate = useNavigate();
   const { login } = useAuth();
   const addToast = useToastStore(state => state.addToast);
   const [mode, setMode] = useState<AuthMode>('login');
   const [error, setError] = useState<string>();
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = async (email: string, password: string) => {
+  const handleLogin = async (data: AuthCredentials) => {
+    setLoading(true);
     try {
-      const user = await authService.login({ email, password });
-      if (user) {
-        login(user);
+      const authResponse = await authService.login(data.email, data.password);
+      if (authResponse.requiresTwoFactor) {
+        // Handle 2FA if required (e.g., navigate to 2FA verification page)
+      } else {
+        const user = authResponse.user;
+        login(user, authResponse.token);
         addToast('success', 'Connexion réussie');
         window.location.href = '/';
-      } else {
-        setError('Email ou mot de passe incorrect');
-        addToast('error', 'Échec de la connexion');
       }
-    } catch (err) {
+    } catch {
       setError('Email ou mot de passe incorrect');
       addToast('error', 'Échec de la connexion');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleSignUp = async (data: SignUpData) => {
+    setLoading(true);
     try {
-      const user = await authService.register(data);
-      if (user) {
-        login(user);
+      const authResponse = await authService.register(data);
+      if (authResponse.requiresTwoFactor) {
+        // Handle 2FA if required
+      } else {
+        const user = authResponse.user;
+        login(user, authResponse.token);
         addToast('success', 'Compte créé avec succès');
         window.location.href = '/';
-      } else {
-        setError('Échec de la création du compte');
-        addToast('error', 'Échec de la création du compte');
       }
-    } catch (err) {
+    } catch {
       setError('Une erreur est survenue');
       addToast('error', 'Échec de la création du compte');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -61,6 +66,7 @@ export function useAuthForm() {
   return {
     mode,
     error,
+    loading,
     handleLogin,
     handleSignUp,
     handleSocialAuth,

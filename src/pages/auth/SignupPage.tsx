@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SignUpForm } from '../../components/auth/SignUpForm';
-import { authService } from '../../services/authService';
+import { authService } from '../../services/auth/authService';
 
 export function SignupPage() {
   const [error, setError] = useState<string | undefined>();
@@ -10,17 +10,13 @@ export function SignupPage() {
   const handleSubmit = async (data: { name: string; email: string; password: string }) => {
     try {
       // Utiliser le service d'authentification pour l'inscription
-      await authService.login({ 
-        username: data.email, // Utilisation de username au lieu de email pour correspondre à LoginCredentials
-        password: data.password,
-        // Note: Pour une véritable inscription, vous utiliseriez une méthode signup
-      });
+      await authService.register(data); // Correctly call register with the data object
       
       // Rediriger vers la page de tableau de bord après succès
-      navigate('/dashboard');
+      navigate('/dashboard'); // Or to a verification page if needed
     } catch (err) {
       setError("Une erreur est survenue lors de l'inscription. Veuillez réessayer.");
-      console.error(err);
+      console.error('Signup failed:', err);
     }
   };
 

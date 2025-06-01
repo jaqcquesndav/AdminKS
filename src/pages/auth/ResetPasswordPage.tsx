@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ResetPasswordForm } from '../../components/auth/ResetPasswordForm';
-import { authService } from '../../services/authService';
+import { authService } from '../../services/auth/authService';
 import { useToastStore } from '../../components/common/ToastContainer';
 
 export function ResetPasswordPage() {
@@ -12,10 +12,11 @@ export function ResetPasswordPage() {
 
   const handleSubmit = async (data: { password: string; token: string }) => {
     try {
-      await authService.resetPassword(data);
+      await authService.resetPassword(data.token, data.password);
       addToast('success', 'Mot de passe réinitialisé avec succès');
       navigate('/login');
     } catch (err) {
+      console.error("Password reset failed:", err);
       setError('Une erreur est survenue lors de la réinitialisation du mot de passe');
     }
   };

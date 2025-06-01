@@ -1,6 +1,6 @@
 export type TransactionType = 'payment' | 'invoice' | 'refund' | 'credit' | 'debit';
-export type TransactionStatus = 'completed' | 'pending' | 'failed' | 'canceled';
-export type PaymentMethod = 'bank_transfer' | 'card' | 'mobile_money' | 'crypto' | 'cash';
+export type TransactionStatus = 'completed' | 'pending' | 'failed' | 'canceled' | 'verified' | 'rejected';
+export type PaymentMethod = 'bank_transfer' | 'card' | 'mobile_money' | 'crypto' | 'cash' | 'check' | 'other'; // Added 'check' and 'other'
 export type InvoiceStatus = 'paid' | 'pending' | 'overdue' | 'canceled';
 
 export interface Transaction {
@@ -16,7 +16,7 @@ export interface Transaction {
   customerId?: string;
   customerName?: string;
   paymentMethod?: PaymentMethod;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>; // Changed from any to unknown
 }
 
 export interface Invoice {
@@ -52,14 +52,22 @@ export interface Payment {
   id: string;
   invoiceId?: string;
   customerId: string;
+  customerName: string; // Added
   amount: number;
   currency: string;
-  method: PaymentMethod;
-  status: TransactionStatus;
-  transactionReference: string;
-  paidAt: string;
-  description: string;
-  metadata?: Record<string, any>;
+  method: PaymentMethod; // Original field, represents the actual payment method recorded
+  proofType?: 'bank_transfer' | 'check' | 'other'; // Added: specific type of proof provided for manual verification
+  proofUrl?: string; // Added: URL to the proof document/image
+  status: 'pending' | 'verified' | 'rejected' | 'completed' | 'failed' | 'canceled'; // Expanded to include UI states directly for manual payments
+  transactionReference: string; // UI might call this 'reference'
+  paidAt: string; // UI might call this 'date'
+  description?: string; // General notes about the payment, UI might use for 'notes'
+  verifiedBy?: string; // Added: ID/name of admin who verified/rejected
+  verifiedAt?: string; // Added: Timestamp of verification/rejection
+  metadata?: { // For additional dynamic data
+    approvalNotes?: string; // Specific notes from admin during verification
+    [key: string]: unknown; // Changed from any to unknown
+  };
 }
 
 export interface FinancialSummary {
@@ -112,5 +120,5 @@ export interface CreateTransactionData {
   type: TransactionType;
   description: string;
   paymentMethod?: PaymentMethod;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>; // Changed from any to unknown
 }

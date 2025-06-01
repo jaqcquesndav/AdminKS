@@ -1,5 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { authService } from '../authService';
+import { authService } from '../auth/authService'; // Corrected import path
 import { API_BASE_URL, API_HEADERS } from './config';
 import { USE_MOCK_AUTH, isDemoEmail } from '../../utils/mockAuth';
 
@@ -41,6 +41,12 @@ apiClient.interceptors.request.use(
   }
 );
 
+// Interface for the expected structure of validation error response data
+interface ValidationErrorData {
+  errors: Record<string, string[]>;
+  message?: string; // Optional: some APIs might include a general message
+}
+
 // Intercepteur pour gérer les réponses et les erreurs
 apiClient.interceptors.response.use(
   (response) => response,
@@ -80,10 +86,11 @@ apiClient.interceptors.response.use(
     
     // Gérer les erreurs de validation
     if (error.response && error.response.status === 422) {
+      const validationData = error.response.data as ValidationErrorData;
       return Promise.reject({
         ...error,
         isValidationError: true,
-        validationErrors: error.response.data.errors
+        validationErrors: validationData.errors
       });
     }
     
@@ -112,8 +119,21 @@ export function isUsingDemoUser(): boolean {
   return isUsingDemoAccount;
 }
 
+// Type for the error object handled by handleApiError
+interface HandledApiError {
+  isValidationError?: boolean;
+  validationErrors?: Record<string, string[]>;
+  message?: string;
+  // Include other properties from AxiosError if needed, or use a union type
+  response?: {
+    status?: number;
+    data?: unknown; // Changed from any to unknown for better type safety
+  };
+  config?: InternalAxiosRequestConfig;
+}
+
 // Fonction utilitaire pour gérer les erreurs
-export function handleApiError(error: any): { message: string; errors?: Record<string, string[]> } {
+export function handleApiError(error: HandledApiError): { message: string; errors?: Record<string, string[]> } {
   if (error.isValidationError && error.validationErrors) {
     return {
       message: 'Validation error',

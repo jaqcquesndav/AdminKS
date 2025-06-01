@@ -1,102 +1,113 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { chatApi } from '../services/api/chat';
+import { chatApi } from '../services/chat/chatApiService';
 import { useToastStore } from '../components/common/ToastContainer';
-import type { ChatMessage, ChatAttachment } from '../types/chat';
+import type { ChatMessage, ChatTypingEvent } from '../types/chat';
 
-export function useChat() {
+export function useChat(sessionId: string | null) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const addToast = useToastStore(state => state.addToast);
-  const wsRef = useRef<ReturnType<typeof chatApi.connectToWebSocket> | null>(null);
+  const wsRef = useRef<ReturnType<typeof chatApi.subscribeToChat> | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(sessionId);
 
-  const loadMessages = useCallback(async (before?: Date) => {
-    if (isLoading) return;
+  useEffect(() => {
+    setCurrentSessionId(sessionId);
+  }, [sessionId]);
+
+  const loadMessages = useCallback(async (beforeMessageId?: string) => {
+    if (isLoading || !currentSessionId) return;
     setIsLoading(true);
     try {
-      const data = await chatApi.getMessages({ before });
-      setMessages(prev => [...prev, ...data]);
-      setHasMore(data.length === 20); // Assuming page size of 20
-    } catch (error) {
-      console.error('Failed to load messages:', error);
-      setError(error instanceof Error ? error : new Error('Failed to load messages'));
-      addToast('error', 'Erreur lors du chargement des messages');
+      const response = await chatApi.getMessages(currentSessionId, { before: beforeMessageId, limit: 20 });
+      setMessages(prev => (beforeMessageId ? [...response.messages, ...prev] : [...prev, ...response.messages]));
+      setHasMore(response.hasMore);
+    } catch (err) {
+      console.error('Failed to load messages:', err);
+      const loadError = err instanceof Error ? err : new Error('Failed to load messages');
+      setError(loadError);
+      addToast('error', loadError.message || 'Erreur lors du chargement des messages');
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, addToast]);
+  }, [isLoading, addToast, currentSessionId]);
 
-  const sendMessage = useCallback(async (content: string) => {
-    try {
-      const message = await chatApi.sendMessage(content);
-      setMessages(prev => [...prev, message]);
-    } catch (error) {
-      console.error('Failed to send message:', error);
-      addToast('error', 'Erreur lors de l\'envoi du message');
-      throw error;
+  const sendMessageInternal = useCallback(async (content: string, attachments?: File[]) => {
+    if (!currentSessionId) {
+      addToast('error', 'Aucune session de chat active.');
+      throw new Error('Aucune session de chat active.');
     }
-  }, [addToast]);
-
-  const sendAttachment = useCallback(async (file: File): Promise<void> => {
     try {
-      const attachment = await chatApi.uploadAttachment(file);
-      const message: ChatMessage = {
-        id: Date.now().toString(),
-        content: '',
-        sender: 'user',
-        timestamp: new Date(),
-        read: false,
-        attachments: [attachment]
-      };
+      const message = await chatApi.sendMessage(currentSessionId, { content, attachments });
       setMessages(prev => [...prev, message]);
-    } catch (error) {
-      console.error('Failed to upload attachment:', error);
-      addToast('error', 'Erreur lors de l\'envoi du fichier');
-      throw error;
+      return message;
+    } catch (err) {
+      console.error('Failed to send message:', err);
+      const sendError = err instanceof Error ? err : new Error('Failed to send message');
+      addToast('error', sendError.message || 'Erreur lors de l\'envoi du message');
+      throw sendError;
     }
-  }, [addToast]);
+  }, [addToast, currentSessionId]);
 
-  const handleTyping = useCallback(() => {
+  const sendAttachment = useCallback(async (file: File, content: string = '') => {
+    return sendMessageInternal(content, [file]);
+  }, [sendMessageInternal]);
+
+
+  const handleTypingEvent = useCallback((isCurrentlyTyping: boolean) => {
+    if (!currentSessionId) return;
+
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
     }
 
-    chatApi.startTyping();
-    typingTimeoutRef.current = setTimeout(() => {
-      chatApi.stopTyping();
-    }, 3000);
-  }, []);
+    chatApi.sendTypingEvent(currentSessionId, isCurrentlyTyping);
+
+    if (isCurrentlyTyping) {
+      typingTimeoutRef.current = setTimeout(() => {
+        if (currentSessionId) {
+          chatApi.sendTypingEvent(currentSessionId, false);
+        }
+      }, 3000);
+    }
+  }, [currentSessionId]);
 
   useEffect(() => {
-    // Connect to WebSocket
-    wsRef.current = chatApi.connectToWebSocket({
-      onMessage: (message) => {
+    if (!currentSessionId) {
+      if (wsRef.current) {
+        wsRef.current.unsubscribe();
+        wsRef.current = null;
+      }
+      setMessages([]); // Clear messages if no session ID
+      setIsTyping(false);
+      setHasMore(true); // Reset pagination
+      setError(null);
+      return;
+    }
+
+    wsRef.current = chatApi.subscribeToChat(currentSessionId, {
+      onMessage: (message: ChatMessage) => {
         setMessages(prev => [...prev, message]);
       },
-      onTyping: (isTyping) => {
-        setIsTyping(isTyping);
+      onTyping: (event: ChatTypingEvent) => {
+        setIsTyping(event.isTyping);
       },
-      onError: (error) => {
-        console.error('WebSocket error:', error);
-        addToast('error', 'Erreur de connexion au chat');
-      }
     });
 
-    // Load initial messages
-    loadMessages();
+    loadMessages(); // Load initial messages for the new session
 
     return () => {
       if (wsRef.current) {
-        wsRef.current.disconnect();
+        wsRef.current.unsubscribe();
       }
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
     };
-  }, [loadMessages, addToast]);
+  }, [currentSessionId, loadMessages, addToast]);
 
   return {
     messages,
@@ -104,9 +115,13 @@ export function useChat() {
     isLoading,
     hasMore,
     error,
-    sendMessage,
+    sendMessage: sendMessageInternal, // Expose the internal sendMessage
     sendAttachment,
-    loadMore: loadMessages,
-    handleTyping
+    loadMoreMessages: () => {
+      if (messages.length > 0 && hasMore && !isLoading) {
+        loadMessages(messages[0].id); // Pass ID of the oldest message to fetch earlier ones
+      }
+    },
+    sendTypingEvent: handleTypingEvent // Renamed for clarity
   };
 }

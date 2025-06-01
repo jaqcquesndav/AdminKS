@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ForgotPasswordForm } from '../../components/auth/ForgotPasswordForm';
-import { authService } from '../../services/authService';
+import { authService } from '../../services/auth/authService';
 import { useToastStore } from '../../components/common/ToastContainer';
 
 export function ForgotPasswordPage() {
@@ -13,7 +13,7 @@ export function ForgotPasswordPage() {
     try {
       await authService.requestPasswordReset(email);
       addToast('success', 'Email de réinitialisation envoyé');
-    } catch (err) {
+    } catch {
       setError('Une erreur est survenue lors de l\'envoi de l\'email');
     }
   };

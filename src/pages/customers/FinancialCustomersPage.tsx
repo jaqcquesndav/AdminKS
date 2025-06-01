@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Search, Plus, Filter, Edit, Trash2, Eye, Landmark } from 'lucide-react';
 import { CustomerFormModal } from '../../components/customers/CustomerFormModal';
 import { useToastContext } from '../../contexts/ToastContext';
-import { customersApi } from '../../services/api';
+import { customersApi } from '../../services/customers/customersApiService';
 import type { Customer, CustomerType, CustomerStatus, CustomerFilterParams } from '../../types/customer';
 
 // Define a type for the form data that allows 'pme' and 'financial' types

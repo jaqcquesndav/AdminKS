@@ -37,7 +37,9 @@ export const API_ENDPOINTS = {
     balance: '/tokens/balance',
     purchase: '/tokens/purchase',
     usage: '/tokens/usage',
-    history: '/tokens/history'
+    history: '/tokens/history',
+    addCustomerTokens: '/admin/customers/:customerId/tokens/add', // Added endpoint
+    detailedUsage: '/tokens/usage/detailed' // Added endpoint
   },
   customers: {
     list: '/customers',
@@ -48,18 +50,29 @@ export const API_ENDPOINTS = {
     update: '/customers/:id',
     delete: '/customers/:id',
     getById: '/customers/:id',
-    statistics: '/customers/statistics'
+    statistics: '/customers/statistics',
+    getDocuments: '/customers/:id/documents', // Added
+    uploadDocument: '/customers/:id/documents', // Added
+    validate: '/customers/:id/validate', // Added
+    // Customer Validation Endpoints
+    GET_CUSTOMER_VALIDATION_PROCESS: '/customers/:customerId/validation',
+    GET_CUSTOMER_EXTENDED_INFO: '/customers/:customerId/extended',
+    INITIATE_CUSTOMER_VALIDATION_PROCESS: '/customers/:customerId/validation/initiate',
+    UPDATE_CUSTOMER_VALIDATION_STEP: '/customers/:customerId/validation/steps/:stepId',
+    VALIDATE_CUSTOMER_DOCUMENT: '/customers/:customerId/documents/:documentId/validate',
   },
   finance: {
     transactions: '/finance/transactions',
     invoices: '/finance/invoices',
     payments: '/finance/payments',
+    getManualPayments: '/finance/payments/manual', // Added endpoint for manual payments
     revenue: '/finance/revenue',
     expenses: '/finance/expenses',
     createTransaction: '/finance/transactions/create',
     createInvoice: '/finance/invoices/create',
     getInvoice: '/finance/invoices/:id',
-    payInvoice: '/finance/invoices/:id/pay'
+    payInvoice: '/finance/invoices/:id/pay',
+    validateManualPayment: '/payments/:transactionId/validate' // Added endpoint
   },
   dashboard: {
     summary: '/dashboard/summary',

@@ -1,8 +1,8 @@
 import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useToastStore } from '../components/common/ToastContainer';
-import * as userService from '../services/userService';
-import type { User } from '../types/user';
+import { useToastStore } from '../components/common/ToastContainer'; // Corrected path
+import * as userService from '../services/users/userService'; // Corrected path
+import type { User } from '../types/user'; // Corrected path
 
 export function useUsers() {
   const { t } = useTranslation();
@@ -15,7 +15,8 @@ export function useUsers() {
     try {
       const data = await userService.getUsers();
       setUsers(data);
-    } catch (error) {
+    } catch (error) { // Changed variable name to error, and will log it.
+      console.error('Failed to load users:', error);
       addToast('error', t('users.errors.loadFailed'));
     } finally {
       setIsLoading(false);

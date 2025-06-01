@@ -6,7 +6,7 @@ import { ChatWindow } from '../chat/ChatWindow';
 import { PageLoader } from '../common/PageLoader';
 import { useTheme } from '../../contexts/ThemeContext';
 import { ChatProvider } from '../../contexts/ChatContext';
-import { authService } from '../../services/authService';
+import { authService } from '../../services/auth/authService'; // Corrected import path
 
 export function MainLayout() {
   const { isDark, toggleTheme } = useTheme();

@@ -1,5 +1,5 @@
-import apiClient from './client';
-import { API_ENDPOINTS, replaceUrlParams } from './config';
+import apiClient from '../api/client';
+import { API_ENDPOINTS, replaceUrlParams } from '../api/config';
 import type { 
   SubscriptionPlanDefinition, 
   CustomerSubscription, 
@@ -159,7 +159,36 @@ export const subscriptionApi = {
     validatedBy: string;
     notes?: string;
   }): Promise<PaymentTransaction> => {
-    const response = await apiClient.post(`/payments/${transactionId}/validate`, adminData);
+    const url = replaceUrlParams(API_ENDPOINTS.finance.validateManualPayment, { transactionId });
+    const response = await apiClient.post(url, adminData);
+    return response.data;
+  },
+
+  // Add tokens to a customer's account (manual adjustment or bonus)
+  addTokensToCustomer: async (customerId: string, data: {
+    amount: number;
+    reason: string; // e.g., 'manual_adjustment', 'bonus_tokens', 'compensation'
+    adminUserId: string;
+    notes?: string;
+  }): Promise<TokenTransaction> => {
+    const url = replaceUrlParams(API_ENDPOINTS.tokens.addCustomerTokens, { customerId });
+    const response = await apiClient.post(url, data);
+    return response.data;
+  },
+
+  // Get detailed token usage, potentially more granular than getTokenUsage
+  getDetailedTokenUsage: async (params?: {
+    customerId?: string;
+    userId?: string;
+    serviceId?: string; // e.g., specific API or application feature
+    transactionId?: string; // Link to a specific token transaction (purchase, bonus)
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    limit?: number;
+    includePromptDetails?: boolean; // Example of a more detailed flag
+  }): Promise<TokenUsageResponse> => {
+    const response = await apiClient.get(API_ENDPOINTS.tokens.detailedUsage, { params });
     return response.data;
   }
 };

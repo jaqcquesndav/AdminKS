@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { QrCode, Copy, Shield } from 'lucide-react';
-import { authService } from '../../services/authService';
+import { useState } from 'react';
+import { Copy, Shield } from 'lucide-react';
+import { authService } from '../../services/auth/authService';
 import { useToastStore } from '../common/ToastContainer';
 
 interface TwoFactorSetupProps {
@@ -25,7 +25,7 @@ export function TwoFactorSetup({ onComplete, onCancel }: TwoFactorSetupProps) {
       const data = await authService.setupTwoFactor();
       setSetupData(data);
       setStep('qrcode');
-    } catch (error) {
+    } catch {
       addToast('error', 'Erreur lors de la configuration');
     } finally {
       setIsLoading(false);
@@ -39,7 +39,7 @@ export function TwoFactorSetup({ onComplete, onCancel }: TwoFactorSetupProps) {
       const backupCodes = await authService.generateBackupCodes();
       setSetupData(prev => ({ ...prev, backupCodes }));
       setStep('backupCodes');
-    } catch (error) {
+    } catch {
       addToast('error', 'Code invalide');
     } finally {
       setIsLoading(false);

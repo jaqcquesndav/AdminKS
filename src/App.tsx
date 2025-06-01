@@ -4,8 +4,8 @@ import { AppRoutes } from './routes';
 import { ToastProvider } from './contexts/ToastContext';
 import { CurrencyProvider } from './contexts/CurrencyContext';
 import { useAuth } from './hooks/useAuth';
-import { authService } from './services/authService';
-import { USE_MOCK_AUTH, AUTO_LOGIN, mockLogin } from './utils/mockAuth';
+import { authService } from './services/auth/authService'; // Corrected import path
+import { USE_MOCK_AUTH, AUTO_LOGIN, mockLogin, getCurrentDemoUser } from './utils/mockAuth'; // Added getCurrentDemoUser
 
 function App() {
   const { login } = useAuth();
@@ -26,11 +26,25 @@ function App() {
       } else if (USE_MOCK_AUTH && AUTO_LOGIN) {
         console.log('Auto-login activé avec authentification simulée');
         try {
-          // Utiliser mockLogin pour obtenir un utilisateur de démo
-          const authResponse = await mockLogin();
-          if (authResponse?.user && authResponse?.token) {
-            console.log('Auto-login réussi avec utilisateur de démo:', authResponse.user.name);
-            login(authResponse.user, authResponse.token);
+          // Call mockLogin with the expected credentials object
+          const authResponse = await mockLogin({ 
+            username: getCurrentDemoUser().email, // Use current demo user's email
+            password: 'password' // Mock password, as it's not used by mockLogin logic but is expected
+          });
+
+          if (authResponse.token && authResponse.user) {
+            // Ensure the user object conforms to AuthUser by adding email and role
+            const demoUser = getCurrentDemoUser(); // Get the full demo user object
+            login(
+              { 
+                id: authResponse.user.id, 
+                name: authResponse.user.name, 
+                email: demoUser.email, // Add email from demoUser
+                role: demoUser.role, // Add role from demoUser
+                picture: demoUser.picture // Add picture from demoUser
+              }, 
+              authResponse.token
+            );
           }
         } catch (error) {
           console.error('Échec de l\'auto-login:', error);

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { LoginForm } from '../../components/auth/LoginForm';
 import { TwoFactorVerification } from '../../components/auth/TwoFactorVerification';
 import { useAuth } from '../../hooks/useAuth';
-import { authService } from '../../services/authService';
+import { authService } from '../../services/auth/authService';
 import { useToastStore } from '../../components/common/ToastContainer';
 
 export function LoginPage() {

@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react';
-import { customerValidationService } from '../services/customerValidationService';
+import { customerValidationService } from '../services/customers/customerValidationService'; // Corrected path
 import type { 
-  Customer, 
-  CustomerDocument, 
   DocumentType,
   ValidationProcess, 
-  ValidationStep,
-  ExtendedCustomer
-} from '../types/customer';
+  ExtendedCustomer,
+  DocumentStatus // Added DocumentStatus for validateDocument
+} from '../types/customer'; // Corrected path
 
 /**
  * Hook personnalisé pour gérer le processus de validation des clients
@@ -30,8 +28,8 @@ export function useCustomerValidation(customerId?: string) {
       // Charger également les informations étendues du client
       const customerInfo = await customerValidationService.getExtendedCustomerInfo(id);
       setExtendedCustomer(customerInfo);
-    } catch (err: any) {
-      setError(err.message || 'Erreur lors du chargement du processus de validation');
+    } catch (err) { // Replaced any with Error type or left as unknown
+      setError((err instanceof Error ? err.message : String(err)) || 'Erreur lors du chargement du processus de validation');
       console.error('Erreur lors du chargement du processus de validation:', err);
     } finally {
       setLoading(false);
@@ -47,8 +45,8 @@ export function useCustomerValidation(customerId?: string) {
       const process = await customerValidationService.initiateValidationProcess(id);
       setValidationProcess(process);
       return process;
-    } catch (err: any) {
-      setError(err.message || 'Erreur lors de l\'initialisation du processus de validation');
+    } catch (err) { // Replaced any with Error type or left as unknown
+      setError((err instanceof Error ? err.message : String(err)) || 'Erreur lors de l\'initialisation du processus de validation');
       console.error('Erreur lors de l\'initialisation du processus de validation:', err);
       throw err;
     } finally {
@@ -74,8 +72,8 @@ export function useCustomerValidation(customerId?: string) {
       );
       setValidationProcess(updatedProcess);
       return updatedProcess;
-    } catch (err: any) {
-      setError(err.message || 'Erreur lors de la mise à jour de l\'étape de validation');
+    } catch (err) { // Replaced any with Error type or left as unknown
+      setError((err instanceof Error ? err.message : String(err)) || 'Erreur lors de la mise à jour de l\'étape de validation');
       console.error('Erreur lors de la mise à jour de l\'étape de validation:', err);
       throw err;
     } finally {
@@ -93,19 +91,19 @@ export function useCustomerValidation(customerId?: string) {
     setLoading(true);
     
     try {
+      const documentStatus: DocumentStatus = isApproved ? 'approved' : 'rejected';
       const updatedDocument = await customerValidationService.validateDocument(
         customerId,
         documentId,
-        isApproved,
-        note
+        { status: documentStatus, comments: note }
       );
       
       // Recharger le processus de validation pour refléter les changements
       await loadValidationProcess(customerId);
       
       return updatedDocument;
-    } catch (err: any) {
-      setError(err.message || 'Erreur lors de la validation du document');
+    } catch (err) { // Replaced any with Error type or left as unknown
+      setError((err instanceof Error ? err.message : String(err)) || 'Erreur lors de la validation du document');
       console.error('Erreur lors de la validation du document:', err);
       throw err;
     } finally {

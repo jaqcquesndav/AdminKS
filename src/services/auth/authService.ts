@@ -1,8 +1,7 @@
-import { mockLogin, mockLogout, USE_MOCK_AUTH, AUTO_LOGIN, getInitialAuthState, isDemoEmail, getCurrentDemoUser, getCurrentDemoToken } from '../utils/mockAuth';
-import type { User, UserRole } from '../types/user';
-import type { AuthUser } from '../types/auth';
-import apiClient from './api/client';
-import type { AuthResponseBase, AuthResponseExtended, AuthState } from '../types/auth';
+import { mockLogin, mockLogout, USE_MOCK_AUTH, AUTO_LOGIN, getInitialAuthState, isDemoEmail, getCurrentDemoUser, getCurrentDemoToken } from '../../utils/mockAuth';
+import apiClient from '../api/client';
+import type { User, UserRole } from '../../types/user';
+import type { AuthUser, AuthResponseBase, AuthResponseExtended, AuthState } from '../../types/auth';
 
 // Fonction de conversion des rôles d'utilisateur
 function convertUserRoleToAuthRole(role: UserRole | string): AuthUser['role'] {

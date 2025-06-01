@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { LoginForm } from '../../components/auth/LoginForm';
 import { SignUpForm } from '../../components/auth/SignUpForm';
 import { ForgotPasswordForm } from '../../components/auth/ForgotPasswordForm';
-import { authService } from '../../services/authService';
+import { authService } from '../../services/auth/authService';
 
 type AuthMode = 'login' | 'register' | 'forgotPassword';
 

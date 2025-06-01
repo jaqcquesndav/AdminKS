@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { authService } from '../services/authService';
-import type { AuthUser } from '../types/auth';
+import { authService } from '../services/auth/authService'; // Corrected path
+import type { AuthUser } from '../types/auth'; // Corrected path
 
 interface AuthState {
   user: AuthUser | null;

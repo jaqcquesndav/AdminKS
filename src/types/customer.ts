@@ -45,6 +45,13 @@ export interface Customer {
   suspensionReason?: string;
   reactivatedAt?: string;
   reactivatedBy?: string;
+  validationHistory?: Array<{ // Added this field
+    date: string;
+    action: 'validated' | 'revoked' | 'info_requested' | 'info_submitted';
+    by: string;
+    notes?: string;
+  }>;
+
 }
 
 export type CustomerFormData = Customer;
@@ -108,7 +115,7 @@ export interface CustomerActivity {
   performedBy?: string;
   performedByName?: string;
   timestamp: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>; // Changed from any to unknown
 }
 
 // Types spécifiques pour les PME
@@ -145,6 +152,7 @@ export interface ExtendedCustomer extends Customer {
 
 // Type pour le processus de validation
 export interface ValidationProcess {
+  id: string; // Added id field
   customerId: string;
   status: CustomerStatus;
   steps: ValidationStep[];
@@ -161,6 +169,7 @@ export interface ValidationStep {
   name: string;
   description: string;
   status: 'pending' | 'in_progress' | 'completed' | 'rejected';
+  order?: number; // Added order field
   requiredDocuments?: DocumentType[];
   completedAt?: string;
   completedBy?: string;
