@@ -4,6 +4,7 @@ import { User } from 'lucide-react'; // Removed unused icons
 import { useCurrencySettings } from '../../hooks/useCurrencySettings';
 import { CurrencySelector } from '../../components/common/CurrencySelector';
 import { SupportedCurrency } from '../../types/currency';
+import { SUPPORTED_CURRENCIES } from '../../constants/currencyConstants';
 
 // Composants temporaires pour éviter les erreurs
 const AdminProfileSettings = () => {
@@ -507,22 +508,22 @@ const SupportSettings = () => {
     <div className="space-y-6">
       <div className="card">
         <h3 className="text-lg font-medium mb-4">
-          {t('settings.support.help')}
+          {t('settings.support.help', 'Help & Support')}
         </h3>
         <div className="space-y-4">
           <div className="bg-gray-50 p-6 rounded-lg">
-            <h4 className="font-medium mb-2">{t('settings.support.documentation')}</h4>
-            <p className="text-sm text-gray-600 mb-4">{t('settings.support.documentationDesc')}</p>
+            <h4 className="font-medium mb-2">{t('settings.support.documentation', 'Documentation')}</h4>
+            <p className="text-sm text-gray-600 mb-4">{t('settings.support.documentationDesc', 'Find detailed information and guides in our documentation.')}</p>
             <button className="btn btn-primary">
-              {t('settings.support.viewDocs')}
-            </button>
+              {t('settings.support.viewDocs', 'View Documentation')}
+            </button>          
           </div>
           
           <div className="bg-gray-50 p-6 rounded-lg">
-            <h4 className="font-medium mb-2">{t('settings.support.contactUs')}</h4>
-            <p className="text-sm text-gray-600 mb-4">{t('settings.support.contactDesc')}</p>
+            <h4 className="font-medium mb-2">{t('settings.support.contactUs', 'Contact Us')}</h4>
+            <p className="text-sm text-gray-600 mb-4">{t('settings.support.contactDesc', 'Need further assistance? Get in touch with our support team.')}</p>
             <button className="btn btn-outline">
-              {t('settings.support.contactSupport')}
+              {t('settings.support.contactSupport', 'Contact Support')}
             </button>
           </div>
         </div>
@@ -535,19 +536,20 @@ const SupportSettings = () => {
 const CurrencySettings = () => {
   const { t } = useTranslation();
   const { 
-    setCurrency, 
     exchangeRates, 
     updateUserRate, 
     baseCurrency 
   } = useCurrencySettings();
 
-  const [cdfRate, setCdfRate] = useState<string>(exchangeRates.CDF?.toString() || '1');
-  const [fcfaRate, setFcfaRate] = useState<string>(exchangeRates.FCFA?.toString() || '1');
+  // Safely initialize with optional chaining and nullish coalescing
+  const [cdfRate, setCdfRate] = useState<string>(exchangeRates?.CDF?.toString() ?? '1');
+  const [fcfaRate, setFcfaRate] = useState<string>(exchangeRates?.FCFA?.toString() ?? '1');
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    setCdfRate(exchangeRates.CDF?.toString() || '1');
-    setFcfaRate(exchangeRates.FCFA?.toString() || '1');
+    // Safely update with optional chaining and nullish coalescing
+    setCdfRate(exchangeRates?.CDF?.toString() ?? '1');
+    setFcfaRate(exchangeRates?.FCFA?.toString() ?? '1');
   }, [exchangeRates]);
 
   const handleSaveRates = async () => {
@@ -556,16 +558,22 @@ const CurrencySettings = () => {
       const cdf = parseFloat(cdfRate);
       const fcfa = parseFloat(fcfaRate);
 
-      if (!isNaN(cdf) && cdf > 0) {
+      if (baseCurrency !== 'CDF' && !isNaN(cdf) && cdf > 0) {
         await updateUserRate('CDF', cdf);
+      } else if (baseCurrency === 'CDF') {
+        // Optionally inform user they can't change base currency rate here
       } else {
         alert(t('settings.currency.invalidCdfRate', 'Invalid CDF rate. Please enter a positive number.'));
       }
-      if (!isNaN(fcfa) && fcfa > 0) {
+
+      if (baseCurrency !== 'FCFA' && !isNaN(fcfa) && fcfa > 0) {
         await updateUserRate('FCFA', fcfa);
+      } else if (baseCurrency === 'FCFA') {
+        // Optionally inform user they can't change base currency rate here
       } else {
         alert(t('settings.currency.invalidFcfaRate', 'Invalid FCFA rate. Please enter a positive number.'));
       }
+      // Consider giving more specific feedback or a single success message
       alert(t('settings.currency.ratesUpdated', 'Exchange rates updated successfully.'));
     } catch (error) {
       console.error("Failed to update rates:", error);
@@ -575,10 +583,6 @@ const CurrencySettings = () => {
     }
   };
   
-  const handleCurrencyChange = (currency: SupportedCurrency) => {
-    setCurrency(currency); // This will be called by the CurrencySelector's onChange
-  };
-
   return (
     <div className="space-y-6">
       <h3 className="text-lg font-medium">{t('settings.currency.title', 'Currency Settings')}</h3>
@@ -586,69 +590,74 @@ const CurrencySettings = () => {
       <div className="p-4 border rounded-lg">
         <h4 className="font-medium mb-2">{t('settings.currency.activeCurrency', 'Active Display Currency')}</h4>
         <CurrencySelector
-          onChange={handleCurrencyChange} // Pass the handler to onChange
-          // selectedCurrency prop is removed as the component manages its own state via useCurrencySettings
-          // availableCurrencies prop is managed by CurrencySelector itself via useCurrencySettings
+          onChange={() => {}}
         />
         <p className="text-sm text-gray-500 mt-1">
-          {t('settings.currency.activeCurrencyDesc', 'This currency will be used for displaying prices throughout the application.')}
+          {t('settings.currency.activeCurrencyDesc', 'This is the currency used for displaying amounts throughout the application.')}
         </p>
       </div>
 
       <div className="p-4 border rounded-lg">
         <h4 className="font-medium mb-2">
-          {t('settings.currency.exchangeRatesTitle', 'Exchange Rates (relative to ')}{baseCurrency})
+          {t('settings.currency.manualExchangeRates', 'Manual Exchange Rates')} ({t('settings.currency.baseCurrency', 'Base:')} {baseCurrency})
         </h4>
         <p className="text-sm text-gray-500 mb-4">
-          {t('settings.currency.exchangeRatesDesc', 'Define the exchange rates for CDF and FCFA against the base currency (USD). 1 USD = X CDF/FCFA.')}
+          {t('settings.currency.manualExchangeRatesDesc', 'Set custom exchange rates relative to the base currency. These rates will be used for conversions if specific API rates are unavailable or overridden.')}
         </p>
         <div className="space-y-4">
-          <div>
-            <label htmlFor="cdfRate" className="block text-sm font-medium text-gray-700">
-              1 {baseCurrency} = 
-            </label>
-            <div className="mt-1 flex rounded-md shadow-sm">
-              <input
-                type="number"
-                name="cdfRate"
-                id="cdfRate"
-                className="focus:ring-primary focus:border-primary flex-1 block w-full rounded-none rounded-l-md sm:text-sm border-gray-300 p-2"
-                value={cdfRate}
-                onChange={(e) => setCdfRate(e.target.value)}
-                placeholder="Rate for CDF"
-                step="any"
-              />
-              <span className="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">
-                CDF
-              </span>
+          {baseCurrency !== 'CDF' && (
+            <div>
+              <label htmlFor="cdfRate" className="block text-sm font-medium text-gray-700">
+                1 {baseCurrency} = 
+              </label>
+              <div className="mt-1 flex rounded-md shadow-sm">
+                <input
+                  type="number"
+                  name="cdfRate"
+                  id="cdfRate"
+                  className="focus:ring-primary focus:border-primary flex-1 block w-full rounded-none rounded-l-md sm:text-sm border-gray-300 p-2"
+                  value={cdfRate}
+                  onChange={(e) => setCdfRate(e.target.value)}
+                  min="0.000001"
+                  step="any"
+                />
+                <span className="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">
+                  CDF
+                </span>
+              </div>
             </div>
-          </div>
-          
-          <div>
-            <label htmlFor="fcfaRate" className="block text-sm font-medium text-gray-700">
-              1 {baseCurrency} = 
-            </label>
-            <div className="mt-1 flex rounded-md shadow-sm">
-              <input
-                type="number"
-                name="fcfaRate"
-                id="fcfaRate"
-                className="focus:ring-primary focus:border-primary flex-1 block w-full rounded-none rounded-l-md sm:text-sm border-gray-300 p-2"
-                value={fcfaRate}
-                onChange={(e) => setFcfaRate(e.target.value)}
-                placeholder="Rate for FCFA"
-                step="any"
-              />
-              <span className="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">
-                FCFA
-              </span>
+          )}
+          {baseCurrency !== 'FCFA' && (
+            <div>
+              <label htmlFor="fcfaRate" className="block text-sm font-medium text-gray-700">
+                1 {baseCurrency} = 
+              </label>
+              <div className="mt-1 flex rounded-md shadow-sm">
+                <input
+                  type="number"
+                  name="fcfaRate"
+                  id="fcfaRate"
+                  className="focus:ring-primary focus:border-primary flex-1 block w-full rounded-none rounded-l-md sm:text-sm border-gray-300 p-2"
+                  value={fcfaRate}
+                  onChange={(e) => setFcfaRate(e.target.value)}
+                  min="0.000001"
+                  step="any"
+                />
+                <span className="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">
+                  FCFA
+                </span>
+              </div>
             </div>
-          </div>
+          )}
+          {(baseCurrency === 'CDF' || baseCurrency === 'FCFA') && SUPPORTED_CURRENCIES.filter((c: SupportedCurrency) => c !== baseCurrency).length === 0 && (
+             <p className="text-sm text-gray-600">{t('settings.currency.noOtherCurrenciesToSet', 'All other supported currencies are currently set as the base currency.')}</p>
+          )}
         </div>
         <div className="mt-6">
           <button
+            type="button"
             onClick={handleSaveRates}
-            disabled={isSaving}
+            disabled={isSaving || SUPPORTED_CURRENCIES.filter((c: SupportedCurrency) => c !== baseCurrency && (c === 'CDF' || c === 'FCFA')).length === 0}
             className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
             {isSaving ? t('common.saving', 'Saving...') : t('common.saveChanges', 'Save Changes')}
@@ -662,78 +671,52 @@ const CurrencySettings = () => {
 // Composant principal SettingsPage
 const SettingsPage: React.FC = () => {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState('profile');
+  const [activeTab, setActiveTab] = useState('profile'); // Default tab
+
+  const tabs = [
+    { id: 'profile', labelKey: 'settings.tabs.profile', component: <AdminProfileSettings /> },
+    { id: 'security', labelKey: 'settings.tabs.security', component: <SecuritySettings /> },
+    { id: 'notifications', labelKey: 'settings.tabs.notifications', component: <NotificationSettings /> },
+    { id: 'display', labelKey: 'settings.tabs.display', component: <DisplaySettings /> },
+    { id: 'language', labelKey: 'settings.tabs.language', component: <LanguageSettings /> },
+    { id: 'currency', labelKey: 'settings.tabs.currency', component: <CurrencySettings /> },
+    { id: 'support', labelKey: 'settings.tabs.support', component: <SupportSettings /> },
+  ];
+
+  const renderTabContent = () => {
+    const currentTab = tabs.find(tab => tab.id === activeTab);
+    return currentTab ? currentTab.component : <p>Select a tab</p>;
+  };
   
   return (
-    <div className="p-6 space-y-6">
-      {/* En-tête des paramètres */}
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900">{t('settings.title', 'Paramètres')}</h2>
-        <p className="text-sm text-gray-500">{t('settings.subtitle', 'Gérez vos préférences et informations de compte')}</p>
-      </div>
+    <div className="container mx-auto p-4 md:p-6 lg:p-8">
+      <h1 className="text-2xl font-semibold text-gray-800 mb-6">{t('settings.title', 'Settings')}</h1>
       
-      {/* Tabs pour navigation entre les sections de paramètres */}
-      <div className="flex space-x-4">
-        <button 
-          onClick={() => setActiveTab('profile')}
-          className={`py-2 px-4 rounded-md font-medium transition-all flex-1 text-center 
-          ${activeTab === 'profile' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-        >
-          {t('settings.tabs.profile', 'Profil')}
-        </button>
-        <button 
-          onClick={() => setActiveTab('security')}
-          className={`py-2 px-4 rounded-md font-medium transition-all flex-1 text-center 
-          ${activeTab === 'security' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-        >
-          {t('settings.tabs.security', 'Sécurité')}
-        </button>
-        <button 
-          onClick={() => setActiveTab('notifications')}
-          className={`py-2 px-4 rounded-md font-medium transition-all flex-1 text-center 
-          ${activeTab === 'notifications' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-        >
-          {t('settings.tabs.notifications', 'Notifications')}
-        </button>
-        <button 
-          onClick={() => setActiveTab('display')}
-          className={`py-2 px-4 rounded-md font-medium transition-all flex-1 text-center 
-          ${activeTab === 'display' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-        >
-          {t('settings.tabs.display', 'Affichage')}
-        </button>
-        <button 
-          onClick={() => setActiveTab('language')}
-          className={`py-2 px-4 rounded-md font-medium transition-all flex-1 text-center 
-          ${activeTab === 'language' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-        >
-          {t('settings.tabs.language', 'Langue')}
-        </button>
-        <button 
-          onClick={() => setActiveTab('support')}
-          className={`py-2 px-4 rounded-md font-medium transition-all flex-1 text-center 
-          ${activeTab === 'support' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-        >
-          {t('settings.tabs.support', 'Support')}
-        </button>
-        <button 
-          onClick={() => setActiveTab('currency')}
-          className={`py-2 px-4 rounded-md font-medium transition-all flex-1 text-center 
-          ${activeTab === 'currency' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-        >
-          {t('settings.tabs.currency', 'Devise')}
-        </button>
-      </div>
-      
-      {/* Contenu des paramètres selon l'onglet actif */}
-      <div className="bg-white shadow rounded-lg p-6">
-        {activeTab === 'profile' && <AdminProfileSettings />}
-        {activeTab === 'security' && <SecuritySettings />}
-        {activeTab === 'notifications' && <NotificationSettings />}
-        {activeTab === 'display' && <DisplaySettings />}
-        {activeTab === 'language' && <LanguageSettings />}
-        {activeTab === 'support' && <SupportSettings />}
-        {activeTab === 'currency' && <CurrencySettings />}
+      <div className="flex flex-col md:flex-row gap-6">
+        {/* Tab Navigation */}
+        <div className="md:w-1/4">
+          <nav className="space-y-1">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors
+                  ${activeTab === tab.id 
+                    ? 'bg-primary text-white' 
+                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+              >
+                {t(tab.labelKey, tab.id.charAt(0).toUpperCase() + tab.id.slice(1))}
+              </button>
+            ))}
+          </nav>
+        </div>
+        
+        {/* Tab Content */}
+        <div className="md:w-3/4">
+          <div className="bg-white shadow-md rounded-lg p-6">
+            {renderTabContent()}
+          </div>
+        </div>
       </div>
     </div>
   );
