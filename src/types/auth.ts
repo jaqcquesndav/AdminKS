@@ -1,9 +1,13 @@
+import type { UserRole, UserType } from './user';
+
 export interface AuthUser {
   id: string;
   email: string;
   name: string;
   picture?: string;
-  role: 'super_admin' | 'cto' | 'growth_finance' | 'customer_support' | 'content_manager' | 'admin' | 'user';
+  role: UserRole; // Updated to use UserRole
+  userType: UserType; // Added userType
+  customerAccountId?: string; // Added customerAccountId
 }
 
 export interface AuthState {

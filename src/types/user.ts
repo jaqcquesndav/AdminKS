@@ -1,8 +1,9 @@
 // Types d'utilisateurs pour le système d'administration Kiota Suit
 
-export type UserRole = 'super_admin' | 'cto' | 'growth_finance' | 'customer_support' | 'content_manager';
+export type UserRole = 'super_admin' | 'cto' | 'growth_finance' | 'customer_support' | 'content_manager' | 'company_admin' | 'company_user';
 export type UserStatus = 'active' | 'inactive' | 'pending' | 'suspended';
 export type OrganizationType = 'pme' | 'financial_institution';
+export type UserType = 'internal' | 'external'; // Added UserType
 
 // Type représentant un utilisateur du système d'administration
 export interface User {
@@ -10,9 +11,12 @@ export interface User {
   email: string;
   name: string;
   role: UserRole;
+  userType: UserType; // Added userType field
+  customerAccountId?: string; // Added customerAccountId field
   avatar?: string;
   status: UserStatus;
   createdAt: string;
+  updatedAt?: string; // Added updatedAt field
   lastLogin?: string;
   permissions: string[];
   departement?: string;
@@ -79,5 +83,20 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   cto: ['view_system_metrics', 'manage_system_settings', 'view_user_metrics', 'view_financial_metrics', 'manage_technical_settings'],
   growth_finance: ['view_financial_metrics', 'manage_subscriptions', 'view_customer_accounts', 'manage_billing', 'view_revenue_reports'],
   customer_support: ['view_customer_accounts', 'manage_customer_issues', 'view_basic_metrics'],
-  content_manager: ['manage_content', 'view_basic_metrics']
+  content_manager: ['manage_content', 'view_basic_metrics'],
+  company_admin: [
+    'manage_company_users',
+    'view_company_data',
+    'manage_company_settings',
+    'manage_company_subscription',
+    'assign_company_user_roles',
+    'view_company_billing_history',
+    'use_subscribed_apps'
+  ],
+  company_user: [
+    'view_own_profile',
+    'edit_own_profile',
+    'use_subscribed_apps',
+    'view_limited_company_data'
+  ]
 };

@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useToastStore } from '../components/common/ToastContainer'; // Corrected path
 import * as userService from '../services/users/userService'; // Corrected path
-import type { User } from '../types/user'; // Corrected path
+import type { User, UserRole } from '../types/user'; // Corrected path, Added UserRole
 
 export function useUsers() {
   const { t } = useTranslation();
@@ -10,10 +10,11 @@ export function useUsers() {
   const [isLoading, setIsLoading] = useState(false);
   const addToast = useToastStore(state => state.addToast);
 
-  const loadUsers = useCallback(async () => {
+  const loadUsers = useCallback(async (requestingUserRole?: UserRole, requestingUserCompanyId?: string) => {
     setIsLoading(true);
     try {
-      const data = await userService.getUsers();
+      // Pass role and companyId to the service layer
+      const data = await userService.getUsers(requestingUserRole, requestingUserCompanyId);
       setUsers(data);
     } catch (error) { // Changed variable name to error, and will log it.
       console.error('Failed to load users:', error);

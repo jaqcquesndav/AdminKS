@@ -13,11 +13,6 @@ export interface ApplicationPermission {
   permissions: Permission[];
 }
 
-export const DEFAULT_PERMISSIONS: Record<string, Permission[]> = {
-  user: ['read'],
-  admin: ['read', 'write', 'admin']
-};
-
 export const AVAILABLE_APPLICATIONS = [
   ...ERP_GROUP.applications,
   ...FINANCE_GROUP.applications

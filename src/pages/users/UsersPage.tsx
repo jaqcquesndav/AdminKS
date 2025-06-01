@@ -1,15 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, Search } from 'lucide-react';
 import { UserForm } from '../../components/users/forms/UserForm';
 import { UsersTable } from '../../components/users/table/UsersTable';
 import { DeleteUserModal } from '../../components/users/modals/DeleteUserModal';
-import { UserDetailsModal } from '../../components/users/UserDetailsModal';
+// import { UserDetailsModal } from '../../components/users/UserDetailsModal'; // Disabled UserDetailsModal import
 import { useUsers } from '../../hooks/useUsers';
-import type { User } from '../../types/user';
-import type { ActivityLog, UserSession } from '../../types/activity';
+import type { User, UserType } from '../../types/user';
+// import type { ActivityLog, UserSession } from '../../types/activity'; // Commented out as UserDetailsModal is disabled
+import { useAuth } from '../../hooks/useAuth';
 
-// Mock data for demonstration
+// Mock data for demonstration - Commented out as UserDetailsModal is disabled
+/*
 const mockActivities: ActivityLog[] = [
   {
     id: '1',
@@ -49,19 +51,23 @@ const mockSessions: UserSession[] = [
     status: 'active'
   }
 ];
+*/
 
 export function UsersPage() {
   const { t } = useTranslation();
   const { users, isLoading, loadUsers, createUser, updateUser, deleteUser } = useUsers();
+  const { user: currentUser } = useAuth();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedUserForDetails, setSelectedUserForDetails] = useState<User | null>(null);
+  // const [selectedUserForDetails, setSelectedUserForDetails] = useState<User | null>(null); // Commented out
 
   useEffect(() => {
-    loadUsers();
-  }, [loadUsers]);
+    if (currentUser) {
+      loadUsers(currentUser.role, currentUser.userType === 'external' ? currentUser.customerAccountId : undefined);
+    }
+  }, [loadUsers, currentUser]);
 
   const handleCreateUser = () => {
     setSelectedUser(null);
@@ -73,16 +79,22 @@ export function UsersPage() {
     setIsFormOpen(true);
   };
 
-  const handleSubmit = async (data: Partial<User> & { password?: string }) => {
+  const handleSubmit = async (data: Partial<User> & { password?: string; userType?: UserType; customerAccountId?: string }) => {
     if (selectedUser) {
       await updateUser(selectedUser.id, data);
     } else {
+      if (!data.name || !data.email || !data.password || !data.role || !data.userType) {
+        console.error("Missing required fields for user creation");
+        // TODO: Show toast message
+        return;
+      }
       await createUser({
-        name: data.name!,
-        email: data.email!,
-        password: data.password!,
-        role: data.role!,
-        permissions: data.permissions || []
+        name: data.name,
+        email: data.email,
+        password: data.password,
+        role: data.role,
+        userType: data.userType,
+        customerAccountId: data.userType === 'external' ? data.customerAccountId : undefined,
       });
     }
     setIsFormOpen(false);
@@ -92,16 +104,15 @@ export function UsersPage() {
     if (userToDelete) {
       await deleteUser(userToDelete.id);
       setUserToDelete(null);
-      if (selectedUserForDetails?.id === userToDelete.id) {
-        setSelectedUserForDetails(null);
-      }
+      // if (selectedUserForDetails?.id === userToDelete.id) { // Commented out
+      //   setSelectedUserForDetails(null);
+      // }
     }
   };
 
-  const handleTerminateSession = async (sessionId: string) => {
-    // Implement session termination logic
-    console.log('Terminate session:', sessionId);
-  };
+  // const handleTerminateSession = async (sessionId: string) => { // Commented out
+  //   console.log('Terminate session:', sessionId);
+  // };
 
   const filteredUsers = users.filter(user =>
     user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -120,13 +131,15 @@ export function UsersPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">{t('users.title')}</h1>
-        <button
-          onClick={handleCreateUser}
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          {t('users.actions.create')}
-        </button>
+        {(currentUser?.role === 'super_admin' || currentUser?.role === 'company_admin') && (
+          <button
+            onClick={handleCreateUser}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            {t('users.actions.create')}
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-lg shadow">
@@ -147,11 +160,13 @@ export function UsersPage() {
           users={filteredUsers}
           onEdit={handleEditUser}
           onDelete={setUserToDelete}
-          onSelect={setSelectedUserForDetails}
+          // onSelect={setSelectedUserForDetails} // Commented out
+          onSelect={() => {}} // Temporarily pass an empty function for onSelect
+          currentUser={currentUser}
         />
       </div>
 
-      {selectedUserForDetails && (
+      {/* {selectedUserForDetails && ( // Commented out UserDetailsModal section
         <UserDetailsModal
           user={selectedUserForDetails}
           isOpen={true}
@@ -160,14 +175,15 @@ export function UsersPage() {
           sessions={mockSessions}
           onTerminateSession={handleTerminateSession}
         />
-      )}
+      )} */}
 
       {isFormOpen && (
         <UserForm
-          user={selectedUser}
+          user={selectedUser ? selectedUser : undefined}
           isOpen={isFormOpen}
           onClose={() => setIsFormOpen(false)}
           onSubmit={handleSubmit}
+          currentUser={currentUser}
         />
       )}
 

@@ -1,17 +1,44 @@
-import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Edit2, Trash2, ChevronRight } from 'lucide-react';
+import { Edit2, Trash2 } from 'lucide-react';
 import type { User } from '../../../types/user';
+import type { AuthUser } from '../../../types/auth'; // Import AuthUser
 
-interface UsersTableProps {
+export interface UsersTableProps { // Export UsersTableProps
   users: User[];
   onEdit: (user: User) => void;
   onDelete: (user: User) => void;
   onSelect: (user: User) => void;
+  currentUser: AuthUser | null; // Add currentUser to props
 }
 
-export function UsersTable({ users, onEdit, onDelete, onSelect }: UsersTableProps) {
+export function UsersTable({ users, onEdit, onDelete, onSelect, currentUser }: UsersTableProps) {
   const { t } = useTranslation();
+
+  const canEditUser = (userToEdit: User): boolean => {
+    if (!currentUser) return false;
+    if (currentUser.role === 'super_admin') return true;
+    if (currentUser.role === 'company_admin' && 
+        userToEdit.userType === 'external' && 
+        userToEdit.customerAccountId === currentUser.customerAccountId) {
+      return true;
+    }
+    // Add other role-specific edit permissions if necessary
+    return false;
+  };
+
+  const canDeleteUser = (userToDelete: User): boolean => {
+    if (!currentUser) return false;
+    // Prevent users from deleting themselves
+    if (currentUser.id === userToDelete.id) return false;
+    if (currentUser.role === 'super_admin') return true;
+    if (currentUser.role === 'company_admin' &&
+        userToDelete.userType === 'external' &&
+        userToDelete.customerAccountId === currentUser.customerAccountId) {
+      return true;
+    }
+    // Add other role-specific delete permissions if necessary
+    return false;
+  };
 
   return (
     <div className="overflow-x-auto">
@@ -75,31 +102,34 @@ export function UsersTable({ users, onEdit, onDelete, onSelect }: UsersTableProp
                 </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {user.lastLogin.toLocaleDateString()}
+                {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : t('common.never')}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <div className="flex justify-end space-x-2">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEdit(user);
-                    }}
-                    className="text-indigo-600 hover:text-indigo-900 p-1"
-                    title={t('users.actions.edit')}
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDelete(user);
-                    }}
-                    className="text-red-600 hover:text-red-900 p-1"
-                    title={t('users.actions.delete')}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                  <ChevronRight className="w-4 h-4 text-gray-400" />
+                  {canEditUser(user) && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEdit(user);
+                      }}
+                      className="text-indigo-600 hover:text-indigo-900 p-1"
+                      title={t('users.actions.edit')}
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                  )}
+                  {canDeleteUser(user) && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete(user);
+                      }}
+                      className="text-red-600 hover:text-red-900 p-1"
+                      title={t('users.actions.delete')}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </td>
             </tr>
