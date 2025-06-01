@@ -4,7 +4,8 @@ import {
   CustomerSubscription, 
   SubscriptionPlanDefinition, 
   TokenPackage,
-  TokenTransaction
+  TokenTransaction,
+  SubscriptionPlanId // Added SubscriptionPlanId
 } from '../types/subscription'; 
 import { CustomerType } from '../types/customer'; 
 import { subscriptionService } from '../services/subscriptions/subscriptionService'; 
@@ -130,13 +131,37 @@ export const useSubscription = ({
   const createSubscription = useCallback(async (subscriptionData: Partial<CustomerSubscription>) => {
     try {
       setLoading(true);
-      const data = await subscriptionService.createSubscription(subscriptionData);
+      // Validate required fields before calling the service
+      if (!subscriptionData.customerId || !subscriptionData.planId || !subscriptionData.paymentMethod || typeof subscriptionData.autoRenew === 'undefined') {
+        const missingFields = [
+          !subscriptionData.customerId && "customerId", 
+          !subscriptionData.planId && "planId", 
+          !subscriptionData.paymentMethod && "paymentMethod", 
+          typeof subscriptionData.autoRenew === 'undefined' && "autoRenew"
+        ].filter(Boolean).join(', ');
+        
+        const errorMessage = `Échec de la création de l'abonnement: champs requis manquants ou invalides: ${missingFields}`;
+        console.error(errorMessage, subscriptionData);
+        showToast('error', errorMessage);
+        throw new Error(errorMessage);
+      }
+
+      const servicePayload = {
+        customerId: subscriptionData.customerId,
+        planId: subscriptionData.planId as SubscriptionPlanId, // Cast to SubscriptionPlanId
+        paymentMethod: subscriptionData.paymentMethod,
+        autoRenew: subscriptionData.autoRenew,
+      };
+
+      const data = await subscriptionService.createSubscription(servicePayload);
       fetchSubscriptions();
       showToast('success', 'Abonnement créé avec succès');
       return data;
     } catch (error) {
-      console.error('Error creating subscription:', error);
-      showToast('error', "Échec de la création de l'abonnement");
+      if (!(error instanceof Error && error.message.startsWith("Échec de la création de l'abonnement: champs requis manquants"))) {
+        console.error('Error creating subscription:', error);
+        showToast('error', "Échec de la création de l'abonnement");
+      }
       throw error;
     } finally {
       setLoading(false);
@@ -201,8 +226,8 @@ export const useSubscription = ({
   const addTokensToSubscription = useCallback(async (subscriptionId: string, tokenId: string, quantity: number) => {
     try {
       setLoading(true);
-      // @ts-expect-error - addTokensToSubscription might not exist on service yet or might have different signature
-      const response = await subscriptionService.addTokensToSubscription(subscriptionId, tokenId, quantity);
+      // Corrected argument order: quantity is tokenAmount, tokenId is packageId
+      const response = await subscriptionService.addTokensToSubscription(subscriptionId, quantity, tokenId);
       fetchTokenTransactions(subscriptionId);
       if (subscription && subscription.id === subscriptionId) {
         fetchSubscription(subscriptionId); 
@@ -221,8 +246,8 @@ export const useSubscription = ({
   const changeSubscriptionPlan = useCallback(async (subscriptionId: string, newPlanId: string) => {
     try {
       setLoading(true);
-      // @ts-expect-error - changeSubscriptionPlan might not exist on service yet
-      const data = await subscriptionService.changeSubscriptionPlan(subscriptionId, newPlanId);
+      // Ensuring the service method name matches if it was changed to changeSubscriptionPlan
+      const data = await subscriptionService.changeSubscriptionPlan(subscriptionId, newPlanId as SubscriptionPlanId);
       fetchSubscriptions();
       if (subscription && subscription.id === subscriptionId) {
         setSubscription(data); 

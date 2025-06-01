@@ -108,10 +108,46 @@ export const FINANCE_GROUP: ApplicationGroup = {
 
 // Types pour la gestion des abonnements et tokens dans Kiota Suit
 
-export type SubscriptionPlan = 'basic' | 'standard' | 'premium' | 'enterprise';
+export type SubscriptionPlanId = 
+  | 'pme_freemium' 
+  | 'pme_starter' 
+  | 'pme_premium' 
+  | 'fi_erp_monthly'       // New ID for Financial Institution ERP Monthly Plan
+  | 'fi_erp_yearly'        // New ID for Financial Institution ERP Yearly Plan
+  | 'fi_finance_monthly'   // New ID for Financial Institution Finance Monthly Plan
+  | 'fi_finance_yearly'    // New ID for Financial Institution Finance Yearly Plan
+  | 'custom'; // For any custom plans not fitting predefined structures
+
+// It's often better to use the specific plan IDs (like 'pme_freemium') directly
+// rather than a generic 'basic', 'standard' type if plans have distinct properties.
+// However, if a general categorization is still needed:
+export type LegacySubscriptionPlanTier = 'basic' | 'standard' | 'premium' | 'enterprise';
+
+
 export type PlanStatus = 'active' | 'expired' | 'cancelled' | 'pending' | 'payment_failed';
-export type PlanFeature = 'basic_support' | 'premium_support' | 'custom_domain' | 'api_access' | 'advanced_analytics' | 'white_label' | 'dedicated_account_manager' | 'custom_integration';
-export type PlanCategory = 'base' | 'standard' | 'premium' | 'enterprise' | 'custom';
+export type PlanFeature = 
+  | 'basic_support' 
+  | 'premium_support' 
+  | 'custom_domain' 
+  | 'api_access' 
+  | 'advanced_analytics' 
+  | 'white_label' 
+  | 'dedicated_account_manager' 
+  | 'custom_integration'
+  | 'max_users_1'
+  | 'max_users_5'
+  | 'max_users_10'
+  | 'max_users_enterprise' // For enterprise/FI plans
+  | 'tokens_500k'
+  | 'tokens_1m'
+  | 'tokens_4m'
+  | 'app_accounting'       // Feature for Accounting App
+  | 'app_sales'            // Feature for Sales App
+  | 'app_inventory'        // Feature for Inventory App
+  | 'app_portfolio'        // Feature for Portfolio Management App
+  | 'app_leasing';         // Feature for Leasing Management App
+
+export type PlanCategory = 'freemium' | 'starter' | 'premium' | 'enterprise' | 'custom' | 'base'; // Updated PlanCategory
 export type CustomerCategory = 'starter' | 'growth' | 'scale' | 'enterprise';
 export type PlanBillingCycle = 'monthly' | 'quarterly' | 'yearly';
 export type AppType = 'accounting_mobile' | 'accounting_web' | 'portfolio_management';
@@ -155,7 +191,164 @@ export interface SubscriptionPlanDefinition {
   updatedAt?: string;
 }
 
-// Interface pour un abonnement client
+// New PME Plan Definitions
+export const PME_FREEMIUM_PLAN: SubscriptionPlanDefinition = {
+  id: 'pme_freemium',
+  name: 'PME Freemium',
+  description: 'Ideal for small PMEs starting out. Get essential tools and 100K Adha AI tokens per month.', // Corrected token amount
+  category: 'freemium',
+  targetCustomerTypes: ['pme'],
+  basePriceUSD: 0,
+  tokenAllocation: 100000, // Corrected token amount
+  maxUsers: 1,
+  billingCycles: ['monthly'],
+  discountPercentage: { quarterly: 0, yearly: 0 },
+  customerTypeSpecific: [],
+  isCustomizablePlan: false,
+  isHidden: false,
+  isPromoted: false,
+  features: ['basic_support', 'api_access', 'max_users_1', 'tokens_500k'],
+  trialDays: 0,
+};
+
+export const PME_STARTER_PLAN: SubscriptionPlanDefinition = {
+  id: 'pme_starter',
+  name: 'PME Starter',
+  description: 'Perfect for growing PMEs. Includes 5 users and 1 Million Adha AI tokens per month.',
+  category: 'starter',
+  targetCustomerTypes: ['pme'],
+  basePriceUSD: 10,
+  tokenAllocation: 1000000,
+  maxUsers: 5,
+  billingCycles: ['monthly'],
+  discountPercentage: { quarterly: 0, yearly: 0 },
+  customerTypeSpecific: [],
+  isCustomizablePlan: false,
+  isHidden: false,
+  isPromoted: true, // Example: promote this plan
+  features: ['basic_support', 'api_access', 'max_users_5', 'tokens_1m'],
+  trialDays: 0,
+};
+
+export const PME_PREMIUM_PLAN: SubscriptionPlanDefinition = {
+  id: 'pme_premium',
+  name: 'PME Premium',
+  description: 'Comprehensive solution for established PMEs. Offers 10 users and 4 Million Adha AI tokens per month.',
+  category: 'premium',
+  targetCustomerTypes: ['pme'],
+  basePriceUSD: 30,
+  tokenAllocation: 4000000,
+  maxUsers: 10,
+  billingCycles: ['monthly'],
+  discountPercentage: { quarterly: 0, yearly: 0 },
+  customerTypeSpecific: [],
+  isCustomizablePlan: false,
+  isHidden: false,
+  isPromoted: false,
+  features: ['premium_support', 'api_access', 'advanced_analytics', 'max_users_10', 'tokens_4m'],
+  trialDays: 0,
+};
+
+// Array of all PME plan definitions for easier access
+export const PME_PLANS: SubscriptionPlanDefinition[] = [
+  PME_FREEMIUM_PLAN,
+  PME_STARTER_PLAN,
+  PME_PREMIUM_PLAN,
+];
+
+// --- Financial Institution Plan Definitions ---
+
+export const FINANCIAL_INSTITUTION_ERP_PLAN_MONTHLY: SubscriptionPlanDefinition = {
+  id: 'fi_erp_monthly',
+  name: 'FI - ERP Suite (Monthly)',
+  description: 'Comprehensive ERP suite for financial institutions, billed monthly.',
+  category: 'enterprise',
+  targetCustomerTypes: ['financial'],
+  basePriceUSD: 15, // Hardcoded from ERP_GROUP.monthlyPrice.usd
+  tokenAllocation: 1000, // Hardcoded from ERP_GROUP.tokenBonus.monthly
+  maxUsers: 50, 
+  billingCycles: ['monthly'],
+  discountPercentage: { quarterly: 0, yearly: 0 }, 
+  customerTypeSpecific: [],
+  isCustomizablePlan: true, 
+  isHidden: false,
+  isPromoted: false,
+  features: ['premium_support', 'api_access', 'advanced_analytics', 'dedicated_account_manager', 'max_users_enterprise', 'app_accounting', 'app_sales', 'app_inventory'],
+  trialDays: 0,
+};
+
+export const FINANCIAL_INSTITUTION_ERP_PLAN_YEARLY: SubscriptionPlanDefinition = {
+  id: 'fi_erp_yearly',
+  name: 'FI - ERP Suite (Yearly)',
+  description: 'Comprehensive ERP suite for financial institutions, billed yearly with savings.',
+  category: 'enterprise',
+  targetCustomerTypes: ['financial'],
+  basePriceUSD: 150, // Hardcoded from ERP_GROUP.yearlyPrice.usd
+  tokenAllocation: 15000, // Hardcoded from ERP_GROUP.tokenBonus.yearly
+  maxUsers: 50,
+  billingCycles: ['yearly'],
+  discountPercentage: { quarterly: 0, yearly: 0 }, 
+  customerTypeSpecific: [],
+  isCustomizablePlan: true,
+  isHidden: false,
+  isPromoted: false,
+  features: ['premium_support', 'api_access', 'advanced_analytics', 'dedicated_account_manager', 'max_users_enterprise', 'app_accounting', 'app_sales', 'app_inventory'],
+  trialDays: 0,
+};
+
+export const FINANCIAL_INSTITUTION_FINANCE_PLAN_MONTHLY: SubscriptionPlanDefinition = {
+  id: 'fi_finance_monthly',
+  name: 'FI - Financial Solutions (Monthly)',
+  description: 'Specialized financial solutions for institutions, billed monthly.',
+  category: 'enterprise',
+  targetCustomerTypes: ['financial'],
+  basePriceUSD: 20, // Hardcoded from FINANCE_GROUP.monthlyPrice.usd
+  tokenAllocation: 1500, // Hardcoded from FINANCE_GROUP.tokenBonus.monthly
+  maxUsers: 50,
+  billingCycles: ['monthly'],
+  discountPercentage: { quarterly: 0, yearly: 0 },
+  customerTypeSpecific: [],
+  isCustomizablePlan: true,
+  isHidden: false,
+  isPromoted: false,
+  features: ['premium_support', 'api_access', 'advanced_analytics', 'dedicated_account_manager', 'max_users_enterprise', 'app_portfolio', 'app_leasing'],
+  trialDays: 0,
+};
+
+export const FINANCIAL_INSTITUTION_FINANCE_PLAN_YEARLY: SubscriptionPlanDefinition = {
+  id: 'fi_finance_yearly',
+  name: 'FI - Financial Solutions (Yearly)',
+  description: 'Specialized financial solutions for institutions, billed yearly with savings.',
+  category: 'enterprise',
+  targetCustomerTypes: ['financial'],
+  basePriceUSD: 200, // Hardcoded from FINANCE_GROUP.yearlyPrice.usd
+  tokenAllocation: 20000, // Hardcoded from FINANCE_GROUP.tokenBonus.yearly
+  maxUsers: 50,
+  billingCycles: ['yearly'],
+  discountPercentage: { quarterly: 0, yearly: 0 },
+  customerTypeSpecific: [],
+  isCustomizablePlan: true,
+  isHidden: false,
+  isPromoted: false,
+  features: ['premium_support', 'api_access', 'advanced_analytics', 'dedicated_account_manager', 'max_users_enterprise', 'app_portfolio', 'app_leasing'],
+  trialDays: 0,
+};
+
+// Array of all Financial Institution plan definitions
+export const FINANCIAL_INSTITUTION_PLANS: SubscriptionPlanDefinition[] = [
+  FINANCIAL_INSTITUTION_ERP_PLAN_MONTHLY,
+  FINANCIAL_INSTITUTION_ERP_PLAN_YEARLY,
+  FINANCIAL_INSTITUTION_FINANCE_PLAN_MONTHLY,
+  FINANCIAL_INSTITUTION_FINANCE_PLAN_YEARLY,
+];
+
+// Combine all plans for easier global access if needed
+export const ALL_SUBSCRIPTION_PLANS: SubscriptionPlanDefinition[] = [
+  ...PME_PLANS,
+  ...FINANCIAL_INSTITUTION_PLANS,
+];
+
+// Interface for an abonnement client
 export interface CustomerSubscription {
   id: string;
   customerId: string;

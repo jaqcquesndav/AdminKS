@@ -9,14 +9,24 @@ import type {
   PaymentTransaction,
   RevenueStatistics,
   TokenStatistics,
-  PlanStatus
+  PlanStatus, // Assuming this might be used by other functions in the file
 } from '../../types/subscription';
+import { 
+  ALL_SUBSCRIPTION_PLANS,
+  PME_PLANS,
+  FINANCIAL_INSTITUTION_PLANS,
+} from '../../types/subscription'; // Changed from import type
+import type { CustomerType } from '../../types/customer'; // Import CustomerType
+
+// A simple flag for now to enable mock behavior for plans
+// In a real app, this would likely come from a global config or env variable
+const USE_MOCK_PLANS = true; 
 
 interface SubscriptionPlansResponse {
   plans: SubscriptionPlanDefinition[];
 }
 
-interface CustomerSubscriptionsResponse {
+interface CustomerSubscriptionsResponse { // Assuming this might be used by other functions
   subscriptions: CustomerSubscription[];
   totalCount: number;
 }
@@ -38,8 +48,19 @@ interface TokenUsageResponse {
 
 export const subscriptionApi = {
   // Récupérer les plans d'abonnement disponibles
-  getPlans: async (): Promise<SubscriptionPlansResponse> => {
-    const response = await apiClient.get(API_ENDPOINTS.subscriptions.plans);
+  getPlans: async (customerType?: CustomerType): Promise<SubscriptionPlansResponse> => {
+    if (USE_MOCK_PLANS) {
+      console.log('[Mock API] Getting plans for customer type:', customerType);
+      let plansToReturn: SubscriptionPlanDefinition[] = ALL_SUBSCRIPTION_PLANS;
+      if (customerType === 'pme') {
+        plansToReturn = PME_PLANS;
+      } else if (customerType === 'financial') {
+        plansToReturn = FINANCIAL_INSTITUTION_PLANS;
+      }
+      return Promise.resolve({ plans: plansToReturn });
+    }
+    // Original API call
+    const response = await apiClient.get(API_ENDPOINTS.subscriptions.plans, { params: { customerType } });
     return response.data;
   },
 

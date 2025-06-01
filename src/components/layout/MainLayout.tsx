@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
@@ -79,11 +79,10 @@ export function MainLayout() {
             onClose={() => setIsSidebarOpen(false)}
           />
           <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-            <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 p-4 md:p-6">
-              <div className="max-w-7xl mx-auto">
-                {/* Ajouter une clé basée sur le chemin pour forcer le rechargement du composant lors du changement de route */}
-                <Outlet key={location.pathname} />
-              </div>
+            <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 dark:bg-gray-900 p-4 md:p-6">
+              <Suspense fallback={<PageLoader />}>
+                <Outlet />
+              </Suspense>
             </main>
           </div>
         </div>

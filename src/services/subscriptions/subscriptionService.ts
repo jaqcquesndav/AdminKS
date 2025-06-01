@@ -1,15 +1,15 @@
-import { 
-  CustomerSubscription, 
-  SubscriptionPlanDefinition, 
+import {
+  CustomerSubscription,
+  SubscriptionPlanDefinition,
   TokenPackage,
   TokenTransaction,
   PaymentTransaction,
+  CustomerTypeSpecificMetadata,
+  SubscriptionPlanId,
   PlanStatus,
-  CustomerTypeSpecificMetadata
-} from '../types/subscription';
-import { CustomerType } from '../types/customer';
-import { api } from './api';
-import { ERP_GROUP, FINANCE_GROUP } from '../types/subscription';
+} from '../../types/subscription';
+import { CustomerType } from '../../types/customer';
+import { subscriptionApi } from './subscriptionsApiService';
 
 // Interface pour les réponses d'API paginées
 interface PaginatedResponse<T> {
@@ -20,22 +20,36 @@ interface PaginatedResponse<T> {
   totalPages: number;
 }
 
+interface GetSubscriptionsFilters {
+  status?: PlanStatus;
+  startDate?: string;
+  endDate?: string;
+}
+
 export const subscriptionService = {
   // Récupérer les abonnements d'un client avec pagination et filtres
   async getSubscriptions(
-    page: number = 1, 
-    pageSize: number = 10, 
-    filters: Record<string, any> = {}
+    page: number = 1,
+    pageSize: number = 10,
+    filters: GetSubscriptionsFilters = {}
   ): Promise<PaginatedResponse<CustomerSubscription>> {
     try {
-      const queryParams = new URLSearchParams({
-        page: page.toString(),
-        limit: pageSize.toString(),
-        ...filters
-      });
-      
-      const response = await api.get(`/subscriptions?${queryParams}`);
-      return response.data;
+      const apiParams: { page: number; limit: number; status?: PlanStatus; startDate?: string; endDate?: string } = {
+        page,
+        limit: pageSize,
+      };
+      if (filters.status) apiParams.status = filters.status;
+      if (filters.startDate) apiParams.startDate = filters.startDate;
+      if (filters.endDate) apiParams.endDate = filters.endDate;
+
+      const response = await subscriptionApi.getAllSubscriptions(apiParams);
+      return {
+        data: response.subscriptions,
+        totalCount: response.totalCount,
+        page,
+        pageSize,
+        totalPages: Math.ceil(response.totalCount / pageSize),
+      };
     } catch (error) {
       console.error('Error fetching subscriptions:', error);
       throw error;
@@ -45,8 +59,15 @@ export const subscriptionService = {
   // Récupérer un abonnement spécifique
   async getSubscription(subscriptionId: string): Promise<CustomerSubscription> {
     try {
-      const response = await api.get(`/subscriptions/${subscriptionId}`);
-      return response.data;
+      // FIXME: This is inefficient. It fetches all subscriptions and then filters.
+      // Consider adding a specific getSubscriptionById method to subscriptionsApiService.ts.
+      // For now, fetching a large limit to simulate getting all, then filtering.
+      const response = await subscriptionApi.getAllSubscriptions({ limit: 10000 }); 
+      const subscription = response.subscriptions.find(sub => sub.id === subscriptionId);
+      if (!subscription) {
+        throw new Error(`Subscription with ID ${subscriptionId} not found.`);
+      }
+      return subscription;
     } catch (error) {
       console.error(`Error fetching subscription ${subscriptionId}:`, error);
       throw error;
@@ -55,17 +76,26 @@ export const subscriptionService = {
 
   // Récupérer les plans disponibles, éventuellement filtrés par type de client
   async getAvailablePlans(
-    customerType?: CustomerType
+    customerType?: CustomerType,
+    page: number = 1,
+    pageSize: number = 10
   ): Promise<PaginatedResponse<SubscriptionPlanDefinition>> {
     try {
-      const queryParams = new URLSearchParams();
-      
-      if (customerType) {
-        queryParams.append('customerType', customerType);
-      }
-      
-      const response = await api.get(`/subscription-plans?${queryParams}`);
-      return response.data;
+      const response = await subscriptionApi.getPlans(customerType);
+      const plans = response.plans;
+      // The mock API (getPlans) returns all plans; totalCount is derived here.
+      const totalCount = plans.length;
+
+      // Manual pagination for the mock/simple API response
+      const paginatedData = plans.slice((page - 1) * pageSize, page * pageSize);
+
+      return {
+        data: paginatedData,
+        totalCount: totalCount,
+        page,
+        pageSize,
+        totalPages: Math.ceil(totalCount / pageSize),
+      };
     } catch (error) {
       console.error('Error fetching subscription plans:', error);
       throw error;
@@ -74,17 +104,28 @@ export const subscriptionService = {
 
   // Récupérer les packages de tokens disponibles
   async getTokenPackages(
-    customerType?: CustomerType
+    customerType?: CustomerType, 
+    page: number = 1,
+    pageSize: number = 10
   ): Promise<PaginatedResponse<TokenPackage>> {
     try {
-      const queryParams = new URLSearchParams();
-      
       if (customerType) {
-        queryParams.append('customerType', customerType);
+        console.warn('[subscriptionService.getTokenPackages] customerType parameter is not currently used by the underlying subscriptionApi.getTokenPackages method.');
       }
-      
-      const response = await api.get(`/token-packages?${queryParams}`);
-      return response.data;
+      const response = await subscriptionApi.getTokenPackages();
+      const packages = response.packages;
+      // The mock API (getTokenPackages) returns all packages; totalCount is derived here.
+      const totalCount = packages.length;
+
+      const paginatedData = packages.slice((page - 1) * pageSize, page * pageSize);
+
+      return {
+        data: paginatedData,
+        totalCount,
+        page,
+        pageSize,
+        totalPages: Math.ceil(totalCount / pageSize),
+      };
     } catch (error) {
       console.error('Error fetching token packages:', error);
       throw error;
@@ -94,26 +135,30 @@ export const subscriptionService = {
   // Récupérer l'historique des transactions de tokens
   async getTokenTransactions(
     customerId?: string,
-    subscriptionId?: string,
+    subscriptionId?: string, 
     page: number = 1,
     pageSize: number = 10
   ): Promise<PaginatedResponse<TokenTransaction>> {
     try {
-      const queryParams = new URLSearchParams({
-        page: page.toString(),
-        limit: pageSize.toString()
-      });
-      
-      if (customerId) {
-        queryParams.append('customerId', customerId);
-      }
-      
+      const apiParams: { customerId?: string; page: number; limit: number; startDate?: string; endDate?: string } = {
+        page,
+        limit: pageSize,
+      };
+      if (customerId) apiParams.customerId = customerId;
+      // subscriptionId is not directly supported by subscriptionApi.getTokenTransactions.
+      // It might be used for client-side filtering if needed, or logged.
       if (subscriptionId) {
-        queryParams.append('subscriptionId', subscriptionId);
+        console.warn('[subscriptionService.getTokenTransactions] subscriptionId parameter is not directly used by the API. Transactions are fetched for the customerId if provided.');
       }
       
-      const response = await api.get(`/token-transactions?${queryParams}`);
-      return response.data;
+      const response = await subscriptionApi.getTokenTransactions(apiParams);
+      return {
+        data: response.transactions,
+        totalCount: response.totalCount,
+        page,
+        pageSize,
+        totalPages: Math.ceil(response.totalCount / pageSize),
+      };
     } catch (error) {
       console.error('Error fetching token transactions:', error);
       throw error;
@@ -122,11 +167,25 @@ export const subscriptionService = {
 
   // Créer un nouvel abonnement
   async createSubscription(
-    subscriptionData: Partial<CustomerSubscription>
+    // Ensure all required fields for the API call are present in subscriptionData
+    subscriptionData: { 
+      customerId: string; 
+      planId: SubscriptionPlanId; 
+      paymentMethod: string; 
+      autoRenew: boolean; 
+      // Allow other CustomerSubscription fields, but they won't be sent to this specific API endpoint
+      [key: string]: unknown; 
+    }
   ): Promise<CustomerSubscription> {
     try {
-      const response = await api.post('/subscriptions', subscriptionData);
-      return response.data;
+      const { customerId, planId, paymentMethod, autoRenew } = subscriptionData;
+      if (!customerId || !planId || !paymentMethod || autoRenew === undefined) {
+        throw new Error('Missing required fields for creating subscription: customerId, planId, paymentMethod, autoRenew');
+      }
+      // Ensure planId is passed as string, as expected by subscriptionApi
+      const apiSubscriptionData = { customerId, planId: planId as string, paymentMethod, autoRenew };
+      const response = await subscriptionApi.createSubscription(apiSubscriptionData);
+      return response; 
     } catch (error) {
       console.error('Error creating subscription:', error);
       throw error;
@@ -138,27 +197,22 @@ export const subscriptionService = {
     subscriptionId: string,
     updateData: Partial<CustomerSubscription>
   ): Promise<CustomerSubscription> {
-    try {
-      const response = await api.patch(`/subscriptions/${subscriptionId}`, updateData);
-      return response.data;
-    } catch (error) {
-      console.error(`Error updating subscription ${subscriptionId}:`, error);
-      throw error;
-    }
+    console.error(`[subscriptionService.updateSubscription] Method not implemented in subscriptionsApiService.ts. Subscription ID: ${subscriptionId}`, updateData);
+    throw new Error('updateSubscription is not supported by the current subscriptionsApiService.');
   },
 
   // Annuler un abonnement
   async cancelSubscription(
     subscriptionId: string,
     reason?: string,
-    endImmediately: boolean = false
+    _endImmediately: boolean = false // Prefixed as unused in current API mapping
   ): Promise<CustomerSubscription> {
     try {
-      const response = await api.post(`/subscriptions/${subscriptionId}/cancel`, {
-        reason,
-        endImmediately
-      });
-      return response.data;
+      if (_endImmediately) {
+        console.warn(`[subscriptionService.cancelSubscription] _endImmediately parameter (value: ${_endImmediately}) is not directly supported by the underlying subscriptionApi.cancelSubscription method.`);
+      }
+      const response = await subscriptionApi.cancelSubscription(subscriptionId, reason);
+      return response;
     } catch (error) {
       console.error(`Error cancelling subscription ${subscriptionId}:`, error);
       throw error;
@@ -169,27 +223,16 @@ export const subscriptionService = {
   async addTokensToSubscription(
     subscriptionId: string,
     tokenAmount: number,
-    packageId?: string,
-    price?: number,
-    currency?: string,
-    validUntil?: string
+    packageId?: string, // Renamed from _packageId
+    price?: number, // Renamed from _price
+    currency?: string, // Renamed from _currency
+    validUntil?: string // Renamed from _validUntil
   ): Promise<{
     subscription: CustomerSubscription;
     transaction: TokenTransaction;
   }> {
-    try {
-      const response = await api.post(`/subscriptions/${subscriptionId}/add-tokens`, {
-        tokenAmount,
-        packageId,
-        price,
-        currency,
-        validUntil
-      });
-      return response.data;
-    } catch (error) {
-      console.error(`Error adding tokens to subscription ${subscriptionId}:`, error);
-      throw error;
-    }
+    console.error(`[subscriptionService.addTokensToSubscription] Method needs complete rework. Subscription ID: ${subscriptionId}, Amount: ${tokenAmount}, Package ID: ${packageId}, Price: ${price}, Currency: ${currency}, Valid Until: ${validUntil}.`);
+    throw new Error('addTokensToSubscription requires further implementation to map to appropriate API calls like purchaseTokens or addTokensToCustomer, and to resolve customerId from subscriptionId.');
   },
 
   // Traiter un paiement pour un abonnement
@@ -197,76 +240,61 @@ export const subscriptionService = {
     subscriptionId: string,
     paymentData: Partial<PaymentTransaction>
   ): Promise<PaymentTransaction> {
-    try {
-      const response = await api.post(`/subscriptions/${subscriptionId}/payments`, paymentData);
-      return response.data;
-    } catch (error) {
-      console.error(`Error processing payment for subscription ${subscriptionId}:`, error);
-      throw error;
-    }
+    console.error(`[subscriptionService.processPayment] Method not implemented in subscriptionsApiService.ts. Subscription ID: ${subscriptionId}`, paymentData);
+    throw new Error('processPayment is not supported by current subscriptionsApiService. Consider using specific API methods like validateManualPayment or implementing payment gateway integrations elsewhere.');
   },
 
   // Changer le plan d'abonnement
-  async changePlan(
+  async changeSubscriptionPlan( // Name was previously updated from changePlan
     subscriptionId: string,
-    newPlanId: string,
-    effectiveDate?: string,
-    prorateFees: boolean = true
+    newPlanId: SubscriptionPlanId,
+    _effectiveDate?: string, 
+    prorateFees: boolean = true // Renamed from _prorateFees
   ): Promise<CustomerSubscription> {
-    try {
-      const response = await api.post(`/subscriptions/${subscriptionId}/change-plan`, {
-        newPlanId,
-        effectiveDate,
-        prorateFees
-      });
-      return response.data;
-    } catch (error) {
-      console.error(`Error changing plan for subscription ${subscriptionId}:`, error);
-      throw error;
-    }
+    console.error(`[subscriptionService.changeSubscriptionPlan] Method not implemented in subscriptionsApiService.ts. Subscription ID: ${subscriptionId}, New Plan: ${newPlanId}, Effective Date: ${_effectiveDate}, Prorate Fees: ${prorateFees}.`);
+    throw new Error('changeSubscriptionPlan is not supported by the current subscriptionsApiService.');
   },
 
-  // Calculer le prix pour un client spécifique en fonction de son type
+  // Calculer le prix pour un client spécifique en fonction de son type et du plan choisi
   calculatePriceForCustomer(
-    basePrice: number,
-    customerType: CustomerType,
-    applicationGroup: typeof ERP_GROUP | typeof FINANCE_GROUP,
-    billingCycle: 'monthly' | 'yearly'
+    plan: SubscriptionPlanDefinition,
+    customerType: CustomerType
   ): {
     finalPrice: number;
     discountPercentage: number;
     originalPrice: number;
     currency: string;
   } {
-    let originalPrice = billingCycle === 'monthly' 
-      ? applicationGroup.monthlyPrice.usd 
-      : applicationGroup.yearlyPrice.usd;
-      
-    // Prix de base avant réduction
+    const currency = plan.localCurrency || 'USD';
+    const originalPrice = plan.localCurrency && typeof plan.basePriceLocal === 'number'
+                          ? plan.basePriceLocal 
+                          : plan.basePriceUSD;
     let finalPrice = originalPrice;
     let discountPercentage = 0;
-    
-    // Appliquer une réduction pour la souscription annuelle (si pas déjà incluse dans yearlyPrice)
-    if (billingCycle === 'yearly') {
-      // La réduction annuelle est généralement déjà incluse dans yearlyPrice
-      // Donc cette partie est optionnelle selon votre modèle de prix
-    }
-    
-    // Appliquer des prix spécifiques selon le type de client
+
     if (customerType === 'financial') {
-      // Les institutions financières peuvent avoir un multiplicateur de prix
-      finalPrice = finalPrice * 1.2; // Exemple: 20% plus cher pour les institutions financières
+      // Example: 15% uplift for financial institutions on non-enterprise plans
+      if (plan.category !== 'enterprise' && 
+          plan.id !== 'FINANCIAL_INSTITUTION_ENTERPRISE_PLAN_MONTHLY' && 
+          plan.id !== 'FINANCIAL_INSTITUTION_ENTERPRISE_PLAN_ANNUAL') { 
+         finalPrice = finalPrice * 1.15; 
+      }
     } else if (customerType === 'pme') {
-      // Les PME peuvent avoir une réduction
-      discountPercentage = 10; // Exemple: 10% de réduction pour les PME
-      finalPrice = finalPrice * (1 - discountPercentage / 100);
+      if (plan.id === 'PME_STARTER_PLAN') {
+        discountPercentage = 10; // 10% discount on PME Starter
+        finalPrice = finalPrice * (1 - discountPercentage / 100);
+      }
+      if (plan.id === 'PME_FREEMIUM_PLAN') {
+        finalPrice = 0;
+        discountPercentage = originalPrice > 0 ? 100 : 0; // 100% discount if original price was > 0
+      }
     }
-    
+
     return {
-      finalPrice,
+      finalPrice: parseFloat(finalPrice.toFixed(2)),
       discountPercentage,
-      originalPrice,
-      currency: 'USD'
+      originalPrice: parseFloat(originalPrice.toFixed(2)), // Also format originalPrice
+      currency,
     };
   },
   
@@ -274,6 +302,7 @@ export const subscriptionService = {
   getCustomerTypeSpecificMetadata(
     customerType: CustomerType
   ): CustomerTypeSpecificMetadata {
+    // This is local logic and seems fine.
     switch (customerType) {
       case 'financial':
         return {
@@ -290,7 +319,7 @@ export const subscriptionService = {
           pricingMultiplier: 1.0,
           minimumTokenPurchase: 1000,
           paymentTerms: "Paiement immédiat",
-          discountPercentage: 10
+          discountPercentage: 10 // Default discount for PME, can be overridden by plan specifics
         };
     }
   }

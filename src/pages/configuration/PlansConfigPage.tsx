@@ -1,129 +1,25 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, Edit2, Trash2, MoreHorizontal, AlertCircle } from 'lucide-react';
-
-interface PricingPlan {
-  id: string;
-  name: string;
-  description: string;
-  monthlyPrice: number;
-  yearlyPrice: number;
-  currency: string;
-  features: string[];
-  maxUsers: number;
-  tokensIncluded: number;
-  isPopular: boolean;
-  isPublic: boolean;
-  isEnterprise: boolean;
-  sortOrder: number;
-}
+import { useSubscription } from '../../hooks/useSubscription';
+import type { SubscriptionPlanDefinition } from '../../types/subscription';
 
 export function PlansConfigPage() {
   const { t } = useTranslation();
-  const [plans, setPlans] = useState<PricingPlan[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { availablePlans, loading: plansLoading, fetchAvailablePlans, customerType, setActiveCustomerType } = useSubscription({initialCustomerType: 'pme'});
+
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [currentPlan, setCurrentPlan] = useState<PricingPlan | null>(null);
+  const [currentPlan, setCurrentPlan] = useState<SubscriptionPlanDefinition | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [planToDelete, setPlanToDelete] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('active');
   
   useEffect(() => {
-    const loadPlans = async () => {
-      setLoading(true);
-      setTimeout(() => {
-        setPlans([
-          {
-            id: 'starter',
-            name: 'Starter',
-            description: 'Idéal pour les petites équipes',
-            monthlyPrice: 49,
-            yearlyPrice: 490,
-            currency: 'EUR',
-            features: [
-              'Jusqu\'à 5 utilisateurs',
-              '5 000 tokens par mois',
-              'Support par email',
-              'Fonctionnalités de base'
-            ],
-            maxUsers: 5,
-            tokensIncluded: 5000,
-            isPopular: false,
-            isPublic: true,
-            isEnterprise: false,
-            sortOrder: 1
-          },
-          {
-            id: 'business',
-            name: 'Business',
-            description: 'Pour les entreprises en croissance',
-            monthlyPrice: 99,
-            yearlyPrice: 990,
-            currency: 'EUR',
-            features: [
-              'Jusqu\'à 15 utilisateurs',
-              '20 000 tokens par mois',
-              'Support prioritaire',
-              'Toutes les fonctionnalités avancées'
-            ],
-            maxUsers: 15,
-            tokensIncluded: 20000,
-            isPopular: true,
-            isPublic: true,
-            isEnterprise: false,
-            sortOrder: 2
-          },
-          {
-            id: 'premium',
-            name: 'Premium',
-            description: 'Solutions avancées',
-            monthlyPrice: 299,
-            yearlyPrice: 2990,
-            currency: 'EUR',
-            features: [
-              'Jusqu\'à 50 utilisateurs',
-              '100 000 tokens par mois',
-              'Support dédié',
-              'Intégrations avancées',
-              'Analytics personnalisés'
-            ],
-            maxUsers: 50,
-            tokensIncluded: 100000,
-            isPopular: false,
-            isPublic: true,
-            isEnterprise: false,
-            sortOrder: 3
-          },
-          {
-            id: 'enterprise',
-            name: 'Enterprise',
-            description: 'Solutions sur mesure',
-            monthlyPrice: 0,
-            yearlyPrice: 0,
-            currency: 'EUR',
-            features: [
-              'Utilisateurs illimités',
-              'Tokens personnalisés',
-              'Gestionnaire de compte',
-              'Infrastructure dédiée',
-              'SLA personnalisé'
-            ],
-            maxUsers: 999,
-            tokensIncluded: 500000,
-            isPopular: false,
-            isPublic: true,
-            isEnterprise: true,
-            sortOrder: 4
-          }
-        ]);
-        setLoading(false);
-      }, 800);
-    };
-    
-    loadPlans();
-  }, []);
+    // fetchAvailablePlans(customerType); // Or rely on the hook's internal useEffect if it fetches on customerType change
+  }, [customerType, fetchAvailablePlans]);
 
-  const handleEditPlan = (plan: PricingPlan) => {
+
+  const handleEditPlan = (plan: SubscriptionPlanDefinition) => {
     setCurrentPlan(plan);
     setIsEditModalOpen(true);
   };
@@ -140,26 +36,33 @@ export function PlansConfigPage() {
 
   const handleDeletePlan = () => {
     if (planToDelete) {
-      setPlans(plans.filter(p => p.id !== planToDelete));
+      // TODO: Implement actual delete logic via service
+      console.log("Deleting plan:", planToDelete);
+      // setPlans(plans.filter(p => p.id !== planToDelete)); // Update local state after successful deletion
       setIsDeleteModalOpen(false);
       setPlanToDelete(null);
     }
   };
 
-  const handleSavePlan = (updatedPlan: PricingPlan) => {
+  const handleSavePlan = (updatedPlan: SubscriptionPlanDefinition) => {
+    // TODO: Implement actual save/create logic via service
     if (currentPlan) {
-      setPlans(plans.map(p => (p.id === updatedPlan.id ? updatedPlan : p)));
+      console.log("Updating plan:", updatedPlan);
+      // setPlans(plans.map(p => (p.id === updatedPlan.id ? updatedPlan : p)));
     } else {
-      setPlans([...plans, { ...updatedPlan, id: `plan-${Date.now()}` }]);
+      console.log("Creating plan:", { ...updatedPlan, id: `plan-${Date.now()}` });
+      // setPlans([...plans, { ...updatedPlan, id: `plan-${Date.now()}` }]);
     }
     setIsEditModalOpen(false);
+    // fetchAvailablePlans(customerType); // Refresh plans list
   };
 
-  const filteredPlans = activeTab === 'active' 
-    ? plans.filter(plan => plan.isPublic) 
-    : plans.filter(plan => !plan.isPublic);
+  const filteredPlans = availablePlans.filter(plan => {
+    const matchesTab = activeTab === 'active' ? !plan.isHidden : plan.isHidden;
+    return matchesTab;
+  });
 
-  if (loading) {
+  if (plansLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -174,13 +77,23 @@ export function PlansConfigPage() {
           <h1 className="text-2xl font-bold">{t('configuration.plans.title', 'Plans & Tarifs')}</h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1">{t('configuration.plans.subtitle', 'Gérez les offres disponibles pour vos clients')}</p>
         </div>
-        <button 
-          onClick={handleCreatePlan}
-          className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-md flex items-center"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          {t('configuration.plans.create', 'Créer un plan')}
-        </button>
+        <div className="flex items-center space-x-4">
+          <select 
+            value={customerType || 'pme'} 
+            onChange={(e) => setActiveCustomerType(e.target.value as 'pme' | 'financial')} 
+            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+          >
+            <option value="pme">PME Plans</option>
+            <option value="financial">Financial Institution Plans</option>
+          </select>
+          <button 
+            onClick={handleCreatePlan}
+            className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-md flex items-center"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            {t('configuration.plans.create', 'Créer un plan')}
+          </button>
+        </div>
       </div>
 
       <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
@@ -194,9 +107,9 @@ export function PlansConfigPage() {
                   : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
               }`}
             >
-              {t('configuration.plans.tabs.active', 'Plans actifs')}
+              {t('configuration.plans.tabs.active', 'Plans Publics')}
               <span className="ml-2 px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full text-xs">
-                {plans.filter(plan => plan.isPublic).length}
+                {availablePlans.filter(plan => !plan.isHidden).length}
               </span>
             </button>
             <button
@@ -207,9 +120,9 @@ export function PlansConfigPage() {
                   : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
               }`}
             >
-              {t('configuration.plans.tabs.draft', 'Brouillons')}
+              {t('configuration.plans.tabs.draft', 'Brouillons (Cachés)')}
               <span className="ml-2 px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full text-xs">
-                {plans.filter(plan => !plan.isPublic).length}
+                {availablePlans.filter(plan => plan.isHidden).length}
               </span>
             </button>
           </nav>
@@ -220,19 +133,25 @@ export function PlansConfigPage() {
             <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  {t('configuration.plans.table.name', 'Nom')}
+                  {t('configuration.plans.table.name', 'Nom du Plan')}
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  {t('configuration.plans.table.price', 'Prix')}
+                  {t('configuration.plans.table.price', 'Prix (USD)')}
+                </th>
+                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  {t('configuration.plans.table.category', 'Catégorie')}
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  {t('configuration.plans.table.users', 'Utilisateurs')}
+                  {t('configuration.plans.table.users', 'Utilisateurs Max')}
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  {t('configuration.plans.table.tokens', 'Tokens')}
+                  {t('configuration.plans.table.tokens', 'Tokens Alloués')}
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  {t('configuration.plans.table.status', 'Statut')}
+                  {t('configuration.plans.table.customerTypes', 'Types Client Cibles')}
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  {t('configuration.plans.table.status', 'Statut Public')}
                 </th>
                 <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   {t('configuration.plans.table.actions', 'Actions')}
@@ -247,7 +166,7 @@ export function PlansConfigPage() {
                       <div>
                         <div className="text-sm font-medium text-gray-900 dark:text-white">
                           {plan.name}
-                          {plan.isPopular && (
+                          {plan.isPromoted && (
                             <span className="ml-2 px-2 py-0.5 bg-primary bg-opacity-10 text-primary dark:text-primary-light rounded-full text-xs">
                               Populaire
                             </span>
@@ -258,33 +177,35 @@ export function PlansConfigPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {plan.isEnterprise ? (
-                      <span className="text-sm text-gray-900 dark:text-white">Sur devis</span>
-                    ) : (
-                      <div>
-                        <div className="text-sm font-medium text-gray-900 dark:text-white">
-                          {plan.monthlyPrice} {plan.currency}/mois
-                        </div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
-                          {plan.yearlyPrice} {plan.currency}/an
-                        </div>
-                      </div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">
+                      {plan.basePriceUSD} USD
+                    </div>
+                    {plan.localCurrency && plan.basePriceLocal !== undefined && (
+                       <div className="text-sm text-gray-500 dark:text-gray-400">
+                         ({plan.basePriceLocal} {plan.localCurrency})
+                       </div>
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                    {plan.maxUsers === 999 ? 'Illimité' : `${plan.maxUsers} max.`}
+                    {plan.category}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                    {plan.isEnterprise ? 'Personnalisé' : `${plan.tokensIncluded.toLocaleString()}/mois`}
+                    {plan.maxUsers === undefined || plan.maxUsers === null ? 'N/A' : plan.maxUsers === 0 ? 'Illimité' : `${plan.maxUsers} max.`}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                    {`${plan.tokenAllocation.toLocaleString()}`}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    {plan.targetCustomerTypes.join(', ')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {plan.isPublic ? (
+                    {!plan.isHidden ? (
                       <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
-                        Actif
+                        Public
                       </span>
                     ) : (
                       <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
-                        Brouillon
+                        Caché (Brouillon)
                       </span>
                     )}
                   </td>
@@ -309,7 +230,7 @@ export function PlansConfigPage() {
                         <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg z-10 hidden group-hover:block">
                           <div className="py-1">
                             <button className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 w-full text-left">
-                              {plan.isPublic ? 'Désactiver' : 'Activer'}
+                              {!plan.isHidden ? 'Désactiver' : 'Activer'}
                             </button>
                             <button className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 w-full text-left">
                               Dupliquer
@@ -323,15 +244,15 @@ export function PlansConfigPage() {
               ))}
               {filteredPlans.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-10 text-center">
+                  <td colSpan={8} className="px-6 py-10 text-center">
                     <div className="flex flex-col items-center justify-center">
                       <AlertCircle className="h-10 w-10 text-gray-400 mb-3" />
                       <h3 className="text-gray-500 dark:text-gray-400 text-lg font-medium">
-                        Aucun plan {activeTab === 'active' ? 'actif' : 'en brouillon'} trouvé
+                        Aucun plan {activeTab === 'active' ? 'public' : 'en brouillon'} trouvé pour le type de client '{customerType || "N/A"}'.
                       </h3>
                       <p className="text-gray-500 dark:text-gray-400 max-w-md mt-1">
                         {activeTab === 'active'
-                          ? 'Créez un nouveau plan ou activez un brouillon existant.'
+                          ? 'Créez un nouveau plan ou rendez public un brouillon existant.'
                           : 'Vos plans en cours de préparation apparaîtront ici.'}
                       </p>
                       {activeTab === 'draft' && (
@@ -354,8 +275,8 @@ export function PlansConfigPage() {
       
       {isEditModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
-            <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 px-6 py-4 sticky top-0 bg-white dark:bg-gray-800 z-10">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                 {currentPlan ? 'Modifier le plan' : 'Créer un nouveau plan'}
               </h2>
@@ -369,8 +290,10 @@ export function PlansConfigPage() {
               </button>
             </div>
             <div className="p-6">
+              {/* TODO: Implement a proper form for plan editing/creation */}
               <p className="text-gray-500 dark:text-gray-400 mb-6">
-                Cette interface de modification de plan sera implémentée dans une prochaine version.
+                L'interface de modification/création de plan sera implémentée ici. 
+                Pour l'instant, seules les valeurs de base sont utilisées pour la simulation.
               </p>
               <div className="flex justify-end space-x-4">
                 <button
@@ -381,27 +304,27 @@ export function PlansConfigPage() {
                 </button>
                 <button
                   onClick={() => {
-                    // Simulating saving a plan with minimal data
-                    const dummyPlan: PricingPlan = currentPlan || {
-                      id: '',
-                      name: 'Nouveau Plan',
-                      description: 'Description du plan',
-                      monthlyPrice: 0,
-                      yearlyPrice: 0,
-                      currency: 'USD',
-                      features: [],
-                      maxUsers: 0,
-                      tokensIncluded: 0,
-                      isPopular: false,
-                      isPublic: false,
-                      isEnterprise: false,
-                      sortOrder: plans.length + 1
+                    const planToSave: SubscriptionPlanDefinition = currentPlan || {
+                      id: '', // Backend should generate ID for new plans
+                      name: 'Nouveau Plan (Exemple)',
+                      description: 'Description détaillée du nouveau plan.',
+                      category: 'starter', // Default category
+                      features: ['basic_support'], // Default features
+                      targetCustomerTypes: [customerType || 'pme'],
+                      basePriceUSD: 10, // Default price
+                      tokenAllocation: 100000, // Default tokens
+                      billingCycles: ['monthly'],
+                      discountPercentage: { quarterly: 0, yearly: 0 },
+                      customerTypeSpecific: [],
+                      isCustomizablePlan: false,
+                      isHidden: true, // New plans default to hidden/draft
+                      maxUsers: 1, // Default max users
                     };
-                    handleSavePlan(dummyPlan);
+                    handleSavePlan(planToSave);
                   }}
                   className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-md"
                 >
-                  {currentPlan ? 'Sauvegarder' : 'Créer'}
+                  {currentPlan ? 'Sauvegarder les modifications' : 'Créer le Plan'}
                 </button>
               </div>
             </div>
@@ -420,7 +343,7 @@ export function PlansConfigPage() {
                 Confirmer la suppression
               </h3>
               <p className="text-gray-500 dark:text-gray-400 text-center mb-6">
-                Êtes-vous sûr de vouloir supprimer ce plan ? Cette action est irréversible et pourrait affecter les clients qui utilisent actuellement ce plan.
+                Êtes-vous sûr de vouloir supprimer le plan "{availablePlans.find(p => p.id === planToDelete)?.name || planToDelete}" ? Cette action est irréversible.
               </p>
               <div className="flex justify-center space-x-4">
                 <button
