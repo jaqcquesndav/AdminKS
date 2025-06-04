@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { MainLayout } from '../components/layout/MainLayout';
 import { PageLoader } from '../components/common/PageLoader';
 import { ProtectedRoute } from './ProtectedRoute';
+import { Auth0ProtectedRoute } from './Auth0ProtectedRoute';
 import SettingsPage from '../pages/settings/SettingsPage'; // Import directly as default
 
 // Lazy-loaded pages
@@ -12,6 +13,10 @@ const ForgotPasswordPage = lazy(() => import('../pages/auth/ForgotPasswordPage')
 const ResetPasswordPage = lazy(() => import('../pages/auth/ResetPasswordPage').then(module => ({ default: module.ResetPasswordPage })));
 const TwoFactorVerificationPage = lazy(() => import('../pages/auth/TwoFactorVerificationPage').then(module => ({ default: module.TwoFactorVerificationPage })));
 const DashboardPage = lazy(() => import('../pages/dashboard/DashboardPage').then(module => ({ default: module.DashboardPage })));
+const NonAutorisePage = lazy(() => import('../pages/auth/NonAutorisePage').then(module => ({ default: module.NonAutorisePage })));
+const APISettingsPage = lazy(() => import('../pages/settings/APISettingsPage').then(module => ({ default: module.APISettingsPage })));
+const Auth0Page = lazy(() => import('../pages/auth/Auth0Page').then(module => ({ default: module.Auth0Page })));
+const Auth0DashboardPage = lazy(() => import('../pages/dashboard/Auth0DashboardPage').then(module => ({ default: module.Auth0DashboardPage })));
 
 // Customer pages
 const CustomerListPage = lazy(() => import('../pages/customers/CustomerListPage').then(module => ({ default: module.CustomerListPage })));
@@ -49,25 +54,30 @@ const PlaceholderPage = ({ title }: { title: string }) => (
 export function AppRoutes() {
   return (
     <Suspense fallback={<PageLoader />}>
-      <Routes>
-        {/* Public routes */}
+      <Routes>        {/* Public routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/two-factor-verification" element={<TwoFactorVerificationPage />} />
+        <Route path="/non-autorise" element={<NonAutorisePage />} />
+        <Route path="/auth/callback" element={<div>Traitement de la connexion...</div>} />
+        <Route path="/auth0" element={<Auth0Page />} />
         
         {/* Settings route moved outside ProtectedRoute and MainLayout for testing */}
         {/* <Route path="/settings" element={<SettingsPage />} /> */}
-        
-        {/* Protected routes */}
+          {/* Protected routes */}
         <Route element={<ProtectedRoute />}>
           <Route element={<MainLayout />}>
             {/* Default route redirects to dashboard */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            
-            {/* Dashboard route */}
+              {/* Dashboard route */}
             <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/dashboard/auth0" element={
+              <Auth0ProtectedRoute>
+                <Auth0DashboardPage />
+              </Auth0ProtectedRoute>
+            } />
             
             {/* Customers routes */}
             <Route path="/customers" element={<CustomerListPage />} />
@@ -76,22 +86,28 @@ export function AppRoutes() {
             <Route path="/customers/financial" element={<FinancialCustomersPage />} />
             <Route path="/customers/pending" element={<PendingCustomersPage />} />
             
-            {/* Finance routes */}
+            {/* Finance routes - Protected with Auth0 and specific scopes */}
             <Route path="/finance" element={
               <Navigate to="/finance/revenue" replace />
             } />
-            <Route path="/finance/revenue" element={<RevenueAnalyticsPage />} />
+            <Route path="/finance/revenue" element={
+              <Auth0ProtectedRoute requiredScopes={['admin:full', 'settings:manage']}>
+                <RevenueAnalyticsPage />
+              </Auth0ProtectedRoute>
+            } />
             <Route path="/finance/subscriptions" element={<SubscriptionsPage />} />
             <Route path="/finance/tokens" element={<TokensPage />} />
             <Route path="/finance/payments" element={<PaymentsPage />} />
             <Route path="/finance/manual" element={<ManualPaymentsPage />} />
             
-            {/* System routes */}
+            {/* System routes - Protected with Auth0 and admin scope */}
             <Route path="/system" element={
               <Navigate to="/system/health" replace />
             } />
             <Route path="/system/health" element={
-              <PlaceholderPage title="État du Système" />
+              <Auth0ProtectedRoute requiredScopes={['admin:full']}>
+                <PlaceholderPage title="État du Système" />
+              </Auth0ProtectedRoute>
             } />
             <Route path="/system/api" element={
               <PlaceholderPage title="Performance API" />
@@ -125,12 +141,16 @@ export function AppRoutes() {
             
             {/* Users routes */}
             <Route path="/users" element={<UsersPage />} />
-            
-            {/* Reports routes */}
+              {/* Reports routes */}
             <Route path="/reports" element={<ReportsPage />} />
             
-            {/* Settings route (original position, now commented out or removed if the above test works) */}
+            {/* Settings routes */}
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/settings/api" element={
+              <Auth0ProtectedRoute requiredScopes={['admin:full', 'settings:manage']}>
+                <APISettingsPage />
+              </Auth0ProtectedRoute>
+            } />
           </Route>
         </Route>
         

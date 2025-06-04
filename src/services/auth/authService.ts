@@ -1,11 +1,10 @@
 import { mockLogin, mockLogout, USE_MOCK_AUTH, AUTO_LOGIN, getInitialAuthState, isDemoEmail, getCurrentDemoUser, getCurrentDemoToken } from '../../utils/mockAuth';
 import apiClient from '../api/client';
-import type { User, UserRole } from '../../types/user';
+import type { User, UserRole, UserType } from '../../types/user';
 import type { AuthUser, AuthResponseBase, AuthResponseExtended, AuthState } from '../../types/auth';
 
 // Fonction de conversion des rôles d'utilisateur
-function convertUserRoleToAuthRole(role: UserRole | string): AuthUser['role'] {
-  // Mapping des rôles internes vers les rôles de l'API d'authentification
+function convertUserRoleToAuthRole(role: UserRole | string): AuthUser['role'] {  // Mapping des rôles internes vers les rôles de l'API d'authentification
   switch (role) {
     case 'super_admin':
       return 'super_admin';
@@ -17,9 +16,13 @@ function convertUserRoleToAuthRole(role: UserRole | string): AuthUser['role'] {
       return 'cto';
     case 'content_manager':
       return 'content_manager';
+    case 'company_admin':
+      return 'company_admin';
+    case 'company_user':
+      return 'company_user';
     default:
-      // Si le rôle n'est pas reconnu, par défaut, retourner 'user'
-      return 'user';
+      // Si le rôle n'est pas reconnu, par défaut, retourner un rôle valide
+      return 'customer_support';
   }
 }
 
@@ -86,7 +89,7 @@ class AuthService {
       console.log('No stored auth data found');
     }
     
-    // Si le mode mock est activé mais pas de session active
+  // Si le mode mock est activé mais pas de session active
     if (USE_MOCK_AUTH) {
       // Seulement si AUTO_LOGIN est activé, initialiser avec l'utilisateur de démo
       if (AUTO_LOGIN) {
@@ -97,7 +100,69 @@ class AuthService {
       }
     }
   }
-  
+
+  // Check if the current authentication is from Auth0
+  isAuth0Authentication(): boolean {
+    const authData = localStorage.getItem(this.storageKey);
+    if (!authData) return false;
+    
+    try {
+      const { state } = JSON.parse(authData);
+      if (state && state.user && state.user.id) {
+        // Auth0 IDs typically start with 'auth0|' or other specific prefixes
+        return state.user.id.includes('|') || state.user.id.startsWith('google-oauth2|') || state.user.id.startsWith('facebook|');
+      }
+    } catch (e) {
+      console.error('Error checking Auth0 authentication:', e);
+    }
+    
+    return false;
+  }
+  // Méthode pour récupérer et stocker un token Auth0
+  async refreshTokenFromAuth0(auth0User: unknown, auth0Token: string): Promise<void> {
+    if (!auth0User || !auth0Token) {
+      console.error("Tentative de mise à jour du token Auth0 sans utilisateur ou token valide");
+      return;
+    }
+    
+    try {
+      // Convertir l'utilisateur Auth0 en AuthUser interne
+      const auth0UserObj = auth0User as Record<string, unknown>;
+      const authUser: AuthUser = {
+        id: (auth0UserObj.sub as string) || '',
+        name: (auth0UserObj.name as string) || '',
+        email: (auth0UserObj.email as string) || '',
+        picture: auth0UserObj.picture as string | undefined,
+        role: (auth0UserObj['https://api.wanzo.com/role'] as UserRole) || 'customer_support',
+        userType: (auth0UserObj['https://api.wanzo.com/userType'] as UserType) || 'internal',
+        customerAccountId: auth0UserObj['https://api.wanzo.com/customerAccountId'] as string | undefined,
+      };
+      
+      // Mettre à jour le cache avec l'utilisateur Auth0
+      this.cachedAuthState = {
+        user: authUser,
+        token: auth0Token,
+        isAuthenticated: true
+      };
+      
+      // Stockage explicite du token pour les fonctions qui le recherchent
+      localStorage.setItem('auth_token', auth0Token);
+      
+      // Mise à jour du localStorage avec l'état complet
+      localStorage.setItem(this.storageKey, JSON.stringify({
+        state: {
+          user: authUser,
+          token: auth0Token,
+          isAuthenticated: true
+        }
+      }));
+      
+      console.log('Auth0 token refreshed for user:', authUser.name);
+    } catch (error) {
+      console.error('Error refreshing Auth0 token:', error);
+    }
+  }
+
   // Nouvelle méthode pour nettoyer la session
   private clearSession(): void {
     this.cachedAuthState = null;
@@ -160,8 +225,7 @@ class AuthService {
       console.warn('Auto-login enabled but no valid demo user was found.');
     }
   }
-  
-  // Convertir un AuthUser basique en utilisateur complet
+    // Convertir un AuthUser basique en utilisateur complet
   private convertToFullUser(authUser: AuthUser): User {
     // Transformation en structure User complète
     return {
@@ -169,6 +233,8 @@ class AuthService {
       name: authUser.name,
       email: authUser.email,
       role: convertAuthRoleToUserRole(authUser.role),
+      userType: authUser.userType,
+      customerAccountId: authUser.customerAccountId,
       status: 'active',
       createdAt: new Date().toISOString(),
       permissions: [], // Les permissions devraient idéalement être basées sur le rôle
@@ -214,13 +280,14 @@ class AuthService {
     // En mode mock, récupérer les données complètes de l'utilisateur de démo
     if (USE_MOCK_AUTH && response.user && (!response.user.email || isDemoEmail(response.user.email))) {
       const demoUser = getCurrentDemoUser();
-      
-      // Créer une version User complète en utilisant les données de démo
+        // Créer une version User complète en utilisant les données de démo
       const fullUser: User = {
         id: response.user.id || demoUser.id,
         name: response.user.name || demoUser.name,
         email: demoUser.email || '',
         role: convertAuthRoleToUserRole(demoUser.role || 'superadmin'),
+        userType: demoUser.userType || 'internal',
+        customerAccountId: demoUser.customerAccountId,
         status: 'active',
         createdAt: new Date().toISOString(),
         permissions: [],
@@ -232,14 +299,15 @@ class AuthService {
         user: fullUser
       };
     }
-    
-    // Pour l'authentification normale
-    const authRole = typeof response.user?.role === 'string' ? response.user.role : 'user';
+      // Pour l'authentification normale
+    const authRole = typeof response.user?.role === 'string' ? response.user.role : 'customer_support';
     const fullUser: User = {
       id: response.user.id,
       name: response.user.name,
       email: response.user?.email || '',
       role: convertAuthRoleToUserRole(authRole),
+      userType: 'internal', // Default to internal for regular authentication
+      customerAccountId: undefined,
       status: 'active',
       createdAt: new Date().toISOString(),
       permissions: [],
@@ -324,21 +392,21 @@ class AuthService {
       const { state } = JSON.parse(authData);
       if (!state || !state.user) {
         return null;
-      }
-
-      // Conversion du rôle si nécessaire
+      }      // Conversion du rôle si nécessaire
       const userRole = state.user.role;
       const role: AuthUser['role'] = 
         typeof userRole === 'string' ? 
         (convertUserRoleToAuthRole(userRole) as AuthUser['role']) : 
-        'user';
+        'customer_support';
 
       return {
         id: state.user.id,
         name: state.user.name,
         email: state.user.email,
         role,
-        picture: state.user.avatar || state.user.picture
+        picture: state.user.avatar || state.user.picture,
+        userType: state.user.userType || 'internal',
+        customerAccountId: state.user.customerAccountId
       };
     } catch (error) {
       console.error('Error parsing stored user:', error);
@@ -407,13 +475,12 @@ class AuthService {
       if (!state || !state.isAuthenticated || !state.user || !state.token) {
         return { user: null, token: null, isAuthenticated: false };
       }
-      
-      // Conversion du rôle si nécessaire
+        // Conversion du rôle si nécessaire
       const userRole = state.user.role;
       const role: AuthUser['role'] = 
         typeof userRole === 'string' ? 
         (convertUserRoleToAuthRole(userRole) as AuthUser['role']) : 
-        'user';
+        'customer_support';
       
       // Convertir l'utilisateur stocké au format AuthUser
       const authUser: AuthUser = {
@@ -421,7 +488,9 @@ class AuthService {
         name: state.user.name,
         email: state.user.email,
         role,
-        picture: state.user.avatar || state.user.picture
+        picture: state.user.avatar || state.user.picture,
+        userType: state.user.userType || 'internal',
+        customerAccountId: state.user.customerAccountId
       };
       
       return {

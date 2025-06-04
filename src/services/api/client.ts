@@ -31,6 +31,9 @@ apiClient.interceptors.request.use(
         } else {
           isUsingDemoAccount = false;
         }
+      } else if (authService.isAuth0Authentication()) {
+        // Si l'authentification est via Auth0, indiquer le type d'authentification
+        config.headers['X-Auth-Type'] = 'auth0';
       }
     }
     return config;
@@ -58,6 +61,16 @@ apiClient.interceptors.response.use(
       // Si nous utilisons un compte démo, ne pas tenter de rafraîchir le token
       if (isUsingDemoAccount) {
         console.warn('Demo account authentication error - redirecting to login');
+        authService.logout();
+        window.location.href = '/auth/login';
+        return Promise.reject(error);
+      }
+      
+      // Si c'est une authentification Auth0, traiter différemment
+      if (authService.isAuth0Authentication()) {
+        console.warn('Auth0 token expired - redirecting to login');
+        // Pour Auth0, une redirection vers la page de login
+        // sera gérée par le Auth0Provider
         authService.logout();
         window.location.href = '/auth/login';
         return Promise.reject(error);

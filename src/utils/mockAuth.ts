@@ -1,8 +1,5 @@
 import { AuthUser, AuthState, AuthResponse } from '../types/auth';
 
-// Type pour les rôles des utilisateurs de démonstration, aligné avec AuthUser
-type DemoUserRole = 'admin' | 'user' | 'super_admin' | 'cto' | 'growth_finance' | 'customer_support';
-
 // Plusieurs utilisateurs de démonstration avec différents rôles
 export const demoUsers: Record<string, AuthUser> = {
   superAdmin: {
@@ -10,28 +7,32 @@ export const demoUsers: Record<string, AuthUser> = {
     email: 'super-admin@example.com',
     name: 'Super Admin Demo',
     picture: 'https://via.placeholder.com/150?text=SA',
-    role: 'super_admin' as DemoUserRole,
+    role: 'super_admin',
+    userType: 'internal',
   },
   cto: {
     id: 'demo-cto-123',
     email: 'cto@example.com',
     name: 'CTO Demo',
     picture: 'https://via.placeholder.com/150?text=CTO',
-    role: 'cto' as DemoUserRole,
+    role: 'cto',
+    userType: 'internal',
   },
   finance: {
     id: 'demo-finance-123',
     email: 'finance@example.com',
     name: 'Finance Demo',
     picture: 'https://via.placeholder.com/150?text=FIN',
-    role: 'growth_finance' as DemoUserRole,
+    role: 'growth_finance',
+    userType: 'internal',
   },
   support: {
     id: 'demo-support-123',
     email: 'support@example.com',
     name: 'Support Demo',
     picture: 'https://via.placeholder.com/150?text=SUP',
-    role: 'customer_support' as DemoUserRole,
+    role: 'customer_support',
+    userType: 'internal',
   }
 };
 

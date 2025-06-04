@@ -1,61 +1,49 @@
 import { BrowserRouter as Router } from 'react-router-dom';
-import { useEffect } from 'react'; // Added useEffect import
+import { useEffect } from 'react';
+import { useAuth0 } from '@auth0/auth0-react';
 import { AppRoutes } from './routes';
 import { ToastProvider } from './contexts/ToastContext';
 import { CurrencyProvider } from './contexts/CurrencyContext';
 import { useAuth } from './hooks/useAuth';
-import { authService } from './services/auth/authService'; // Corrected import path
-import { USE_MOCK_AUTH, AUTO_LOGIN, mockLogin, getCurrentDemoUser } from './utils/mockAuth'; // Added getCurrentDemoUser
+import { authService } from './services/auth/authService';
+import { convertAuth0UserToAuthUser } from './services/auth/auth0Service';
+import { USE_MOCK_AUTH } from './utils/mockAuth';
 
 function App() {
+  const { isLoading, isAuthenticated, user, getAccessTokenSilently } = useAuth0();
   const { login } = useAuth();
 
+  // Intégration du flux Auth0 avec le système d'auth existant
   useEffect(() => {
     const initAuth = async () => {
-      // Initialize auth service to handle token in URL and apply initial auth state
-      authService.initialize();
-
-      // Restore auth state from localStorage or mock auth
-      const user = authService.getStoredUser();
-      const token = authService.getToken();
-      
-      // Only set login state if we have both user and token
-      if (user && token) {
-        console.log('Initializing with user:', user.name, 'role:', user.role);
-        login(user, token);
-      } else if (USE_MOCK_AUTH && AUTO_LOGIN) {
-        console.log('Auto-login activé avec authentification simulée');
+      // Si l'utilisateur est déjà authentifié via le système de démo, ne rien faire
+      if (!USE_MOCK_AUTH && isAuthenticated && user) {
         try {
-          // Call mockLogin with the expected credentials object
-          const authResponse = await mockLogin({ 
-            username: getCurrentDemoUser().email, // Use current demo user's email
-            password: 'password' // Mock password, as it's not used by mockLogin logic but is expected
-          });
-
-          if (authResponse.token && authResponse.user) {
-            // Ensure the user object conforms to AuthUser by adding email and role
-            const demoUser = getCurrentDemoUser(); // Get the full demo user object
-            login(
-              { 
-                id: authResponse.user.id, 
-                name: authResponse.user.name, 
-                email: demoUser.email, // Add email from demoUser
-                role: demoUser.role, // Add role from demoUser
-                picture: demoUser.picture // Add picture from demoUser
-              }, 
-              authResponse.token
-            );
-          }
+          // Récupérer le token d'accès depuis Auth0
+          const token = await getAccessTokenSilently();
+          
+          // Convertir l'utilisateur Auth0 en format attendu par notre application
+          const authUser = convertAuth0UserToAuthUser(user);
+          
+          // Mettre à jour notre système d'authentification avec les informations Auth0
+          login(authUser, token);
+          
+          // Mettre à jour le service d'authentification avec le token Auth0
+          await authService.refreshTokenFromAuth0(user, token);
         } catch (error) {
-          console.error('Échec de l\'auto-login:', error);
+          console.error('Erreur lors de l\'authentification avec Auth0:', error);
         }
-      } else if (USE_MOCK_AUTH) {
-        console.warn('Mock auth is enabled but AUTO_LOGIN is disabled or no valid user/token was found.');
       }
     };
 
-    initAuth();
-  }, [login]);
+    if (!isLoading) {
+      initAuth();
+    }
+  }, [isAuthenticated, isLoading, user, getAccessTokenSilently, login]);
+
+  if (isLoading) {
+    return <div>Chargement...</div>;
+  }
 
   return (
     <Router>
