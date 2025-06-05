@@ -7,6 +7,7 @@ import { useAuth } from './hooks/useAuth';
 import { authService } from './services/auth/authService';
 import { convertAuth0UserToAuthUser } from './services/auth/auth0Service';
 import { USE_MOCK_AUTH } from './utils/mockAuth';
+import { AdvancedLoader } from './components/common/AdvancedLoader';
 
 function App() {
   const { isLoading, isAuthenticated, user, getAccessTokenSilently } = useAuth0();
@@ -37,11 +38,10 @@ function App() {
 
     if (!isLoading) {
       initAuth();
-    }
-  }, [isAuthenticated, isLoading, user, getAccessTokenSilently, login]);
+    }  }, [isAuthenticated, isLoading, user, getAccessTokenSilently, login]);
 
   if (isLoading) {
-    return <div>Chargement...</div>;
+    return <AdvancedLoader fullScreen message="Initialisation de l'application..." />;
   }
   return (
     <ToastProvider>

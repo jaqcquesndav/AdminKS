@@ -1,4 +1,4 @@
-```tsx
+
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Shield, Key, Smartphone } from 'lucide-react';
@@ -17,12 +17,11 @@ export function SecurityForm({ onPasswordChange, onDeleteAccount }: SecurityForm
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   return (
-    <div className="space-y-6">
-      <div className="card">
-        <h3 className="text-lg font-medium mb-4">
+    <div className="space-y-6">      <div className="card bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
+        <h3 className="text-lg font-medium mb-4 text-gray-900 dark:text-gray-100">
           {t('settings.security.password.title')}
         </h3>
-        <p className="text-sm text-gray-500 mb-4">
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
           {t('settings.security.password.description')}
         </p>
         <Button
@@ -32,13 +31,11 @@ export function SecurityForm({ onPasswordChange, onDeleteAccount }: SecurityForm
         >
           {t('settings.security.password.change')}
         </Button>
-      </div>
-
-      <div className="card">
-        <h3 className="text-lg font-medium mb-4">
+      </div>      <div className="card bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
+        <h3 className="text-lg font-medium mb-4 text-gray-900 dark:text-gray-100">
           {t('settings.security.twoFactor.title')}
         </h3>
-        <p className="text-sm text-gray-500 mb-4">
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
           {t('settings.security.twoFactor.description')}
         </p>
         <Button
@@ -47,13 +44,11 @@ export function SecurityForm({ onPasswordChange, onDeleteAccount }: SecurityForm
         >
           {t('settings.security.twoFactor.setup')}
         </Button>
-      </div>
-
-      <div className="card border-red-200 dark:border-red-800">
-        <h3 className="text-lg font-medium text-red-600 mb-4">
+      </div>      <div className="card border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-6 rounded-lg shadow-sm">
+        <h3 className="text-lg font-medium text-red-600 dark:text-red-400 mb-4">
           {t('settings.security.deleteAccount.title')}
         </h3>
-        <p className="text-sm text-gray-500 mb-4">
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
           {t('settings.security.deleteAccount.description')}
         </p>
         <Button
@@ -80,4 +75,3 @@ export function SecurityForm({ onPasswordChange, onDeleteAccount }: SecurityForm
     </div>
   );
 }
-```

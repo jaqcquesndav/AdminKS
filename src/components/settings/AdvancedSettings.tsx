@@ -8,33 +8,30 @@ export const AdvancedSettings: React.FC = () => {
   const { showToast } = useToast();
   const [confirmReset, setConfirmReset] = useState(false);
   const [exportFormat, setExportFormat] = useState('json');
-
   const handleDataExport = () => {
-    showToast({
-      title: t('settings.advanced.exportStarted'),
-      description: t('settings.advanced.exportDescription'),
-      type: 'info'
-    });
+    showToast(
+      'info',
+      t('settings.advanced.exportStarted'),
+      5000
+    );
     // Actual export logic would be implemented here
   };
-
   const handleDataImport = () => {
     // In a real app, this would open a file selector
-    showToast({
-      title: t('settings.advanced.importStarted'),
-      description: t('settings.advanced.importDescription'),
-      type: 'info'
-    });
+    showToast(
+      'info',
+      t('settings.advanced.importStarted'),
+      5000
+    );
   };
-
   const handleResetConfirm = () => {
     if (confirmReset) {
       // Actual reset logic would be implemented here
-      showToast({
-        title: t('settings.advanced.resetComplete'),
-        description: t('settings.advanced.resetDescription'),
-        type: 'success'
-      });
+      showToast(
+        'success',
+        t('settings.advanced.resetComplete'),
+        5000
+      );
       setConfirmReset(false);
     } else {
       setConfirmReset(true);
@@ -42,22 +39,21 @@ export const AdvancedSettings: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8">
-      {/* Data Export Section */}
-      <div className="card">
-        <h3 className="text-lg font-medium mb-4">
+    <div className="space-y-8">      {/* Data Export Section */}
+      <div className="card bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
+        <h3 className="text-lg font-medium mb-4 text-gray-900 dark:text-gray-100">
           {t('settings.advanced.exportData')}
         </h3>
-        <p className="text-gray-600 mb-4">
+        <p className="text-gray-600 dark:text-gray-400 mb-4">
           {t('settings.advanced.exportDescription')}
         </p>
         
         <div className="mb-4">
-          <label className="block mb-2 text-sm font-medium">
+          <label className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-100">
             {t('settings.advanced.exportFormat')}
           </label>
           <select
-            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5"
+            className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 text-sm rounded-lg focus:ring-primary focus:border-primary dark:focus:ring-primary-light dark:focus:border-primary-light block w-full p-2.5"
             value={exportFormat}
             onChange={(e) => setExportFormat(e.target.value)}
           >
@@ -69,54 +65,50 @@ export const AdvancedSettings: React.FC = () => {
         
         <button
           onClick={handleDataExport}
-          className="flex items-center justify-center gap-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors"
+          className="flex items-center justify-center gap-2 bg-primary dark:bg-primary-dark text-white px-4 py-2 rounded-lg hover:bg-primary-light dark:hover:bg-primary transition-colors"
         >
           <Download size={16} />
           {t('settings.advanced.exportButton')}
         </button>
-      </div>
-
-      {/* Data Import Section */}
-      <div className="card">
-        <h3 className="text-lg font-medium mb-4">
+      </div>      {/* Data Import Section */}
+      <div className="card bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
+        <h3 className="text-lg font-medium mb-4 text-gray-900 dark:text-gray-100">
           {t('settings.advanced.importData')}
         </h3>
-        <p className="text-gray-600 mb-4">
+        <p className="text-gray-600 dark:text-gray-400 mb-4">
           {t('settings.advanced.importWarning')}
         </p>
         
-        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-          <Upload className="mx-auto h-12 w-12 text-gray-400" />
-          <p className="mt-2 text-sm font-medium text-gray-900">
+        <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center">
+          <Upload className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
+          <p className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">
             {t('settings.advanced.dropFiles')}
           </p>
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
             {t('settings.advanced.supportedFormats')}
           </p>
           <button
             onClick={handleDataImport}
-            className="mt-4 px-4 py-2 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 transition-colors"
+            className="mt-4 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
           >
             {t('settings.advanced.browseFiles')}
           </button>
         </div>
-      </div>
-
-      {/* Reset Application Section */}
-      <div className="card border border-red-200 bg-red-50">
+      </div>      {/* Reset Application Section */}
+      <div className="card border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-900/20 p-6 rounded-lg shadow-sm">
         <div className="flex items-start gap-3">
-          <AlertCircle className="h-6 w-6 text-red-500 flex-shrink-0 mt-1" />
+          <AlertCircle className="h-6 w-6 text-red-500 dark:text-red-400 flex-shrink-0 mt-1" />
           <div>
-            <h3 className="text-lg font-medium text-red-700 mb-2">
+            <h3 className="text-lg font-medium text-red-700 dark:text-red-400 mb-2">
               {t('settings.advanced.resetApplication')}
             </h3>
-            <p className="text-gray-600 mb-4">
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
               {t('settings.advanced.resetWarning')}
             </p>
             
             {confirmReset && (
-              <div className="bg-white p-4 rounded-lg border border-red-300 mb-4">
-                <p className="text-red-700 font-medium mb-2">
+              <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-red-300 dark:border-red-800 mb-4">
+                <p className="text-red-700 dark:text-red-400 font-medium mb-2">
                   {t('settings.advanced.confirmReset')}
                 </p>
                 <p className="text-sm text-gray-600 mb-3">

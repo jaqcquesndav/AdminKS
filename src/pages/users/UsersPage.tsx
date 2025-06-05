@@ -118,11 +118,10 @@ export function UsersPage() {
     user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     user.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">{t('common.loading')}</div>
+        <div className="text-gray-500 dark:text-gray-400">{t('common.loading')}</div>
       </div>
     );
   }
@@ -130,20 +129,18 @@ export function UsersPage() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">{t('users.title')}</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('users.title')}</h1>
         {(currentUser?.role === 'super_admin' || currentUser?.role === 'company_admin') && (
           <button
             onClick={handleCreateUser}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-light dark:bg-primary-dark dark:hover:bg-primary"
           >
             <Plus className="w-4 h-4 mr-2" />
             {t('users.actions.create')}
           </button>
         )}
-      </div>
-
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-4 border-b border-gray-200">
+      </div>      <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
@@ -151,7 +148,7 @@ export function UsersPage() {
               placeholder={t('users.search.placeholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              className="pl-10 w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm focus:border-primary focus:ring-primary dark:focus:border-primary dark:focus:ring-primary-light"
             />
           </div>
         </div>

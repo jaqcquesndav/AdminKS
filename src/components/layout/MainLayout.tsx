@@ -3,7 +3,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { ChatWindow } from '../chat/ChatWindow';
-import { PageLoader } from '../common/PageLoader';
+import { AdvancedLoader } from '../common/AdvancedLoader';
 import { useTheme } from '../../contexts/ThemeContext';
 import { ChatProvider } from '../../contexts/ChatContext';
 import { authService } from '../../services/auth/authService'; // Corrected import path
@@ -59,7 +59,7 @@ export function MainLayout() {
   }, [location]);
 
   if (isLoading) {
-    return <PageLoader />;
+    return <AdvancedLoader fullScreen message="Chargement du tableau de bord..." />;
   }
 
   return (
@@ -79,7 +79,7 @@ export function MainLayout() {
           />
           <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
             <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 dark:bg-gray-900 p-4 md:p-6">
-              <Suspense fallback={<PageLoader />}>
+              <Suspense fallback={<AdvancedLoader message="Chargement du contenu..." />}>
                 <Outlet />
               </Suspense>
             </main>

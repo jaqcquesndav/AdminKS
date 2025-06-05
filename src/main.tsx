@@ -6,6 +6,7 @@ import { AuthProvider } from './auth/AuthProvider';
 import App from './App';
 import './i18n';
 import './index.css';
+import './styles/loader.css';
 
 // Enable React concurrent features
 const root = createRoot(document.getElementById('root')!);

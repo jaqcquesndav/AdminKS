@@ -41,103 +41,99 @@ const AdminProfileSettings = () => {
         )}
       </div>
       
-      {isEditing ? (
-        <form onSubmit={handleSubmit} className="p-4 border rounded-lg space-y-4">
+      {isEditing ? (        <form onSubmit={handleSubmit} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg space-y-4 bg-white dark:bg-gray-800">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.profile.name')}</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('settings.profile.name')}</label>
               <input
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData({...formData, name: e.target.value})}
-                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50"
+                className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.profile.email')}</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('settings.profile.email')}</label>
               <input
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({...formData, email: e.target.value})}
-                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50"
+                className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.profile.phone', 'Téléphone')}</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('settings.profile.phone', 'Téléphone')}</label>
               <input
                 type="text"
                 value={formData.phoneNumber}
                 onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})}
-                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50"
+                className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.profile.position', 'Poste')}</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('settings.profile.position', 'Poste')}</label>
               <input
                 type="text"
                 value={formData.position}
                 onChange={(e) => setFormData({...formData, position: e.target.value})}
-                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50"
+                className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
               />
             </div>
           </div>
-          
-          <div className="flex justify-end space-x-3 mt-4">
+            <div className="flex justify-end space-x-3 mt-4">
             <button
               type="button"
               onClick={() => setIsEditing(false)}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               {t('common.cancel')}
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors"
+              className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 dark:bg-primary-dark dark:hover:bg-primary transition-colors"
             >
               {t('common.save')}
             </button>
           </div>
         </form>
-      ) : (
-        <div className="p-4 border rounded-lg">
+      ) : (        <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4">
             <div>
-              <p className="text-sm text-gray-500">{t('settings.profile.name')}</p>
-              <p className="font-medium">{formData.name}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t('settings.profile.name')}</p>
+              <p className="font-medium text-gray-900 dark:text-gray-100">{formData.name}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">{t('settings.profile.email')}</p>
-              <p className="font-medium">{formData.email}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t('settings.profile.email')}</p>
+              <p className="font-medium text-gray-900 dark:text-gray-100">{formData.email}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">{t('settings.profile.phone', 'Téléphone')}</p>
-              <p className="font-medium">{formData.phoneNumber || "-"}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t('settings.profile.phone', 'Téléphone')}</p>
+              <p className="font-medium text-gray-900 dark:text-gray-100">{formData.phoneNumber || "-"}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">{t('settings.profile.position', 'Poste')}</p>
-              <p className="font-medium">{formData.position}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t('settings.profile.position', 'Poste')}</p>
+              <p className="font-medium text-gray-900 dark:text-gray-100">{formData.position}</p>
             </div>
             <div className="col-span-full mt-2">
-              <p className="text-sm text-gray-500">{t('settings.profile.role')}</p>
-              <div className="mt-1 inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-md">Administrateur</div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t('settings.profile.role')}</p>
+              <div className="mt-1 inline-block bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-300 text-xs px-2 py-1 rounded-md">Administrateur</div>
             </div>
           </div>
         </div>
       )}
-      
-      <div className="p-4 border rounded-lg">
-        <h4 className="font-medium mb-3">{t('settings.profile.avatar', 'Photo de profil')}</h4>
+        <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+        <h4 className="font-medium mb-3 text-gray-900 dark:text-gray-100">{t('settings.profile.avatar', 'Photo de profil')}</h4>
         <div className="flex items-center space-x-4">
-          <div className="h-16 w-16 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
+          <div className="h-16 w-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400">
             <User size={24} />
           </div>
           <div>
-            <button className="px-3 py-1 bg-primary text-white text-sm rounded hover:bg-primary/90 transition-colors">
+            <button className="px-3 py-1 bg-primary text-white text-sm rounded hover:bg-primary/90 dark:bg-primary-dark dark:hover:bg-primary transition-colors">
               {t('settings.profile.changeAvatar', 'Changer')}
             </button>
-            <p className="text-xs text-gray-500 mt-1">JPG, GIF ou PNG. 1MB maximum.</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">JPG, GIF ou PNG. 1MB maximum.</p>
           </div>
         </div>
       </div>
@@ -153,51 +149,48 @@ const SecuritySettings = () => {
     <div className="space-y-6">
       <h3 className="text-lg font-medium">{t('settings.security.title')}</h3>
       
-      {/* Authentification à deux facteurs */}
-      <div className="p-4 border rounded-lg">
+      {/* Authentification à deux facteurs */}      <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h4 className="font-medium">{t('settings.security.twoFactor')}</h4>
-            <p className="text-sm text-gray-500">{t('settings.security.twoFactorDesc')}</p>
+            <h4 className="font-medium text-gray-900 dark:text-gray-100">{t('settings.security.twoFactor')}</h4>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{t('settings.security.twoFactorDesc')}</p>
           </div>
           <div className="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" className="sr-only peer" />
-            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+            <div className="w-11 h-6 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 dark:peer-focus:ring-primary/40 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 dark:after:border-gray-500 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary dark:peer-checked:bg-primary-dark"></div>
           </div>
         </div>
         <button 
-          className="text-sm text-primary hover:text-primary/80 transition-colors"
+          className="text-sm text-primary dark:text-primary-light hover:text-primary/80 dark:hover:text-primary-light/80 transition-colors"
           onClick={() => alert(t('settings.security.setupTwoFactor', 'Configuration de l\'authentification à deux facteurs'))}
         >
           {t('settings.security.configureTwoFactor', 'Configurer l\'authentification à deux facteurs')}
         </button>
       </div>
       
-      {/* Changement de mot de passe */}
-      <div className="p-4 border rounded-lg">
-        <h4 className="font-medium mb-2">{t('settings.security.password', 'Mot de passe')}</h4>
-        <p className="text-sm text-gray-500 mb-4">
+      {/* Changement de mot de passe */}      <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+        <h4 className="font-medium mb-2 text-gray-900 dark:text-gray-100">{t('settings.security.password', 'Mot de passe')}</h4>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
           {t('settings.security.passwordLastChanged', 'Dernier changement: 15/03/2025')}
         </p>
         <button 
-          className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors"
+          className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 dark:bg-primary-dark dark:hover:bg-primary transition-colors"
           onClick={() => setShowPasswordModal(true)}
         >
           {t('settings.security.changePassword', 'Changer le mot de passe')}
         </button>
       </div>
       
-      {/* Sessions actives */}
-      <div className="p-4 border rounded-lg">
-        <h4 className="font-medium mb-4">{t('settings.security.sessions', 'Sessions actives')}</h4>
+      {/* Sessions actives */}      <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+        <h4 className="font-medium mb-4 text-gray-900 dark:text-gray-100">{t('settings.security.sessions', 'Sessions actives')}</h4>
         
         <div className="space-y-3">
           {/* Session actuelle */}
-          <div className="p-3 bg-primary/5 border border-primary/10 rounded-lg">
+          <div className="p-3 bg-primary/5 dark:bg-primary/10 border border-primary/10 dark:border-primary/20 rounded-lg">
             <div className="flex justify-between items-start">
               <div>
-                <p className="font-medium text-sm">Chrome sur Windows</p>
-                <p className="text-xs text-gray-500">Kinshasa, RDC · {t('settings.security.currentSession', 'Session actuelle')}</p>
+                <p className="font-medium text-sm text-gray-900 dark:text-gray-100">Chrome sur Windows</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Kinshasa, RDC · {t('settings.security.currentSession', 'Session actuelle')}</p>
               </div>
               <div className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">
                 {t('settings.security.active', 'Active')}
@@ -327,34 +320,33 @@ const SecuritySettings = () => {
 const NotificationSettings = () => {
   const { t } = useTranslation();
   
-  return (
-    <div className="space-y-6">
-      <div className="card">
-        <h3 className="text-lg font-medium mb-4">
+  return (    <div className="space-y-6">
+      <div className="card bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
+        <h3 className="text-lg font-medium mb-4 text-gray-900 dark:text-gray-100">
           {t('settings.notifications.preferences')}
         </h3>
         <div className="space-y-4">
           {/* Email Notifications */}
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+          <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
             <div>
-              <h4 className="font-medium">{t('settings.notifications.email')}</h4>
-              <p className="text-sm text-gray-500">{t('settings.notifications.emailDescription')}</p>
+              <h4 className="font-medium text-gray-900 dark:text-gray-100">{t('settings.notifications.email')}</h4>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t('settings.notifications.emailDescription')}</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input type="checkbox" className="sr-only peer" />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+              <div className="w-11 h-6 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 dark:peer-focus:ring-primary/40 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 dark:after:border-gray-500 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary dark:peer-checked:bg-primary-dark"></div>
             </label>
           </div>
           
           {/* Push Notifications */}
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+          <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
             <div>
-              <h4 className="font-medium">{t('settings.notifications.push')}</h4>
-              <p className="text-sm text-gray-500">{t('settings.notifications.pushDescription')}</p>
+              <h4 className="font-medium text-gray-900 dark:text-gray-100">{t('settings.notifications.push')}</h4>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t('settings.notifications.pushDescription')}</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input type="checkbox" className="sr-only peer" />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+              <div className="w-11 h-6 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 dark:peer-focus:ring-primary/40 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 dark:after:border-gray-500 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary dark:peer-checked:bg-primary-dark"></div>
             </label>
           </div>
           
@@ -380,43 +372,40 @@ const DisplaySettings = () => {
   const { t } = useTranslation();
   
   return (
-    <div className="space-y-6">
-      <div className="card">
-        <h3 className="text-lg font-medium mb-4">
+    <div className="space-y-6">      <div className="card bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
+        <h3 className="text-lg font-medium mb-4 text-gray-900 dark:text-gray-100">
           {t('settings.display.theme')}
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="border rounded-lg p-4 cursor-pointer hover:border-primary transition-colors">
-            <div className="h-24 bg-white border-b mb-2"></div>
-            <p className="text-center font-medium">{t('settings.display.lightTheme')}</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">          <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 cursor-pointer hover:border-primary transition-colors">
+            <div className="h-24 bg-white dark:bg-gray-200 border-b border-gray-200 dark:border-gray-700 mb-2"></div>
+            <p className="text-center font-medium text-gray-900 dark:text-gray-100">{t('settings.display.lightTheme')}</p>
           </div>
-          <div className="border rounded-lg p-4 cursor-pointer hover:border-primary transition-colors">
-            <div className="h-24 bg-gray-800 border-b mb-2"></div>
-            <p className="text-center font-medium">{t('settings.display.darkTheme')}</p>
+          <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 cursor-pointer hover:border-primary transition-colors">
+            <div className="h-24 bg-gray-800 border-b border-gray-200 dark:border-gray-700 mb-2"></div>
+            <p className="text-center font-medium text-gray-900 dark:text-gray-100">{t('settings.display.darkTheme')}</p>
           </div>
-          <div className="border rounded-lg p-4 cursor-pointer hover:border-primary transition-colors">
-            <div className="h-24 bg-gradient-to-b from-white to-gray-800 border-b mb-2"></div>
-            <p className="text-center font-medium">{t('settings.display.systemTheme')}</p>
+          <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 cursor-pointer hover:border-primary transition-colors">
+            <div className="h-24 bg-gradient-to-b from-white to-gray-800 border-b border-gray-200 dark:border-gray-700 mb-2"></div>
+            <p className="text-center font-medium text-gray-900 dark:text-gray-100">{t('settings.display.systemTheme')}</p>
           </div>
         </div>
-        
-        <h3 className="text-lg font-medium mb-4 mt-8">
+          <h3 className="text-lg font-medium mb-4 mt-8 text-gray-900 dark:text-gray-100">
           {t('settings.display.layout')}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="border rounded-lg p-4 cursor-pointer hover:border-primary transition-colors">
+          <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 cursor-pointer hover:border-primary transition-colors">
             <div className="h-24 flex mb-2">
-              <div className="w-16 bg-gray-200 h-full"></div>
-              <div className="flex-1 bg-white"></div>
+              <div className="w-16 bg-gray-200 dark:bg-gray-700 h-full"></div>
+              <div className="flex-1 bg-white dark:bg-gray-800"></div>
             </div>
-            <p className="text-center font-medium">{t('settings.display.sidebarLayout')}</p>
+            <p className="text-center font-medium text-gray-900 dark:text-gray-100">{t('settings.display.sidebarLayout')}</p>
           </div>
-          <div className="border rounded-lg p-4 cursor-pointer hover:border-primary transition-colors">
+          <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 cursor-pointer hover:border-primary transition-colors">
             <div className="h-24 flex flex-col mb-2">
-              <div className="h-8 bg-gray-200 w-full"></div>
-              <div className="flex-1 bg-white"></div>
+              <div className="h-8 bg-gray-200 dark:bg-gray-700 w-full"></div>
+              <div className="flex-1 bg-white dark:bg-gray-800"></div>
             </div>
-            <p className="text-center font-medium">{t('settings.display.topNavLayout')}</p>
+            <p className="text-center font-medium text-gray-900 dark:text-gray-100">{t('settings.display.topNavLayout')}</p>
           </div>
         </div>
       </div>
@@ -430,30 +419,29 @@ const LanguageSettings = () => {
   
   return (
     <div className="space-y-6">
-      {/* Section langue */}
-      <div className="p-4 border rounded-lg">
-        <h3 className="text-lg font-medium mb-4">
+      {/* Section langue */}      <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+        <h3 className="text-lg font-medium mb-4 text-gray-900 dark:text-gray-100">
           {t('settings.language.selectLanguage')}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="border rounded-lg p-4 cursor-pointer hover:border-primary transition-colors bg-primary/5">
+          <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 cursor-pointer hover:border-primary transition-colors bg-primary/5 dark:bg-primary-dark/10">
             <div className="flex items-center space-x-3">
               <span className="text-xl">🇫🇷</span>
               <div>
-                <p className="font-medium">Français</p>
-                <p className="text-sm text-gray-500">Langue française</p>
+                <p className="font-medium text-gray-900 dark:text-gray-100">Français</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Langue française</p>
               </div>
               <div className="ml-auto">
-                <div className="w-4 h-4 rounded-full bg-primary"></div>
+                <div className="w-4 h-4 rounded-full bg-primary dark:bg-primary-dark"></div>
               </div>
             </div>
           </div>
-          <div className="border rounded-lg p-4 cursor-pointer hover:border-primary transition-colors">
+          <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 cursor-pointer hover:border-primary transition-colors">
             <div className="flex items-center space-x-3">
               <span className="text-xl">🇬🇧</span>
               <div>
-                <p className="font-medium">English</p>
-                <p className="text-sm text-gray-500">English language</p>
+                <p className="font-medium text-gray-900 dark:text-gray-100">English</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">English language</p>
               </div>
             </div>
           </div>
@@ -505,13 +493,12 @@ const SupportSettings = () => {
   const { t } = useTranslation();
   
   return (
-    <div className="space-y-6">
-      <div className="card">
-        <h3 className="text-lg font-medium mb-4">
+    <div className="space-y-6">      <div className="card bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
+        <h3 className="text-lg font-medium mb-4 text-gray-900 dark:text-gray-100">
           {t('settings.support.help', 'Help & Support')}
         </h3>
         <div className="space-y-4">
-          <div className="bg-gray-50 p-6 rounded-lg">
+          <div className="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg">
             <h4 className="font-medium mb-2">{t('settings.support.documentation', 'Documentation')}</h4>
             <p className="text-sm text-gray-600 mb-4">{t('settings.support.documentationDesc', 'Find detailed information and guides in our documentation.')}</p>
             <button className="btn btn-primary">
