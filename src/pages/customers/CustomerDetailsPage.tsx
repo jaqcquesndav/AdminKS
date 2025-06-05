@@ -10,6 +10,7 @@ import { CustomerTransactionHistory } from '../../components/customers/CustomerT
 import { CustomerUsersList } from '../../components/customers/CustomerUsersList';
 import { CustomerInviteUserModal, InviteUserData } from '../../components/customers/CustomerInviteUserModal';
 import { useToastContext } from '../../contexts/ToastContext';
+import { PlanStatus } from '../../types/subscription';
 
 // Types pour le client complet
 interface Customer {
@@ -100,13 +101,12 @@ export function CustomerDetailsPage() {
         nextRenewal.setMonth(today.getMonth() + 1);
         nextRenewal.setDate(1);
         setNextTokenRenewalDate(nextRenewal);
-        
-        // Données mockées pour un client spécifique
+          // Données mockées pour un client spécifique
         const mockCustomer: Customer = {
           id,
-          name: id === '123' ? 'Kiota Tech' : 'Client ' + id,
+          name: id === '123' ? 'Wanzo Tech' : 'Client ' + id,
           type: 'pme',
-          email: id === '123' ? 'contact@kiota.tech' : `contact@client${id}.com`,
+          email: id === '123' ? 'contact@wanzo.tech' : `contact@client${id}.com`,
           phone: '+33 1 23 45 67 89',
           address: '123 Rue de la République',
           city: 'Paris',
@@ -115,7 +115,7 @@ export function CustomerDetailsPage() {
           createdAt: '2023-01-15',
           updatedAt: '2023-03-22',
           billingContactName: 'Jean Dupont',
-          billingContactEmail: 'jean.dupont@kiota.tech',
+          billingContactEmail: 'jean.dupont@wanzo.tech',
           usersCount: 12,
           subscriptionStatus: 'active',
           subscriptionPlan: 'Business',
@@ -128,7 +128,7 @@ export function CustomerDetailsPage() {
           validatedAt: '2023-01-16',
           validatedBy: 'admin_user_001',
           ownerId: 'user123',
-          ownerEmail: 'owner@kiota.tech',
+          ownerEmail: 'owner@wanzo.tech',
           validationHistory: [
             {
               date: '2023-01-16',
@@ -207,8 +207,7 @@ export function CustomerDetailsPage() {
     setValidationReason('');
     showToast('success', 'Compte client validé avec succès');
   };
-  
-  const handleRevokeValidation = async () => {
+    const handleRevokeValidation = async () => {
     if (!customer) return;
     
     // Simuler une révocation
@@ -234,9 +233,8 @@ export function CustomerDetailsPage() {
     setCustomer(updatedCustomer);
     showToast('info', 'Validation du compte révoquée');
   };
-  
   const handleAddTokens = async (customerId: string, amount: number) => {
-    if (!customer) return;
+    if (!customer || customer.id !== customerId) return;
     
     // Simuler l'ajout de tokens
     await new Promise(resolve => setTimeout(resolve, 800));
@@ -484,17 +482,28 @@ export function CustomerDetailsPage() {
             </div>
             
             {/* Subscription Info Card */}
-            <div>
-              <SubscriptionInfoCard 
+            <div>              <SubscriptionInfoCard 
                 subscription={{
-                  subscriptionStatus: customer.subscriptionStatus,
-                  subscriptionPlan: customer.subscriptionPlan,
-                  subscriptionExpiry: customer.subscriptionExpiry,
-                  billingContactName: customer.billingContactName,
-                  billingContactEmail: customer.billingContactEmail,
-                  lastInvoiceAmount: customer.lastInvoiceAmount,
-                  lastInvoiceDate: customer.lastInvoiceDate
+                  id: customer.id,
+                  customerId: customer.id,
+                  planId: 'plan-' + customer.id,
+                  planName: customer.subscriptionPlan,
+                  planCategory: 'premium',
+                  startDate: customer.createdAt,
+                  endDate: customer.subscriptionExpiry,
+                  tokenAllocation: customer.tokenAllocation,
+                  tokensRemaining: customer.tokenAllocation - (customer.tokenUsage || 0),
+                  priceUSD: customer.lastInvoiceAmount,
+                  status: customer.subscriptionStatus as PlanStatus,
+                  paymentMethod: 'credit_card',
+                  billingCycle: 'monthly',                  // Add missing required properties
+                  autoRenew: true,
+                  createdAt: customer.createdAt,
+                  paymentStatus: 'completed',
+                  updatedAt: customer.updatedAt
                 }}
+                customerName={customer.name}
+                customerEmail={customer.email}
                 onViewInvoices={handleViewInvoices}
               />
             </div>

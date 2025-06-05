@@ -1,7 +1,7 @@
 # Intégration Auth0 - Documentation Technique
 
 ## Vue d'ensemble
-Cette documentation décrit l'intégration d'Auth0 dans l'application d'administration Kiota Suite. L'implémentation a été conçue pour fonctionner parallèlement au système d'authentification de démonstration existant, permettant une transition en douceur vers Auth0 tout en conservant la capacité de se connecter avec des comptes de démonstration.
+Cette documentation décrit l'intégration d'Auth0 dans l'application d'administration wanzo Suite. L'implémentation a été conçue pour fonctionner parallèlement au système d'authentification de démonstration existant, permettant une transition en douceur vers Auth0 tout en conservant la capacité de se connecter avec des comptes de démonstration.
 
 ## Architecture
 

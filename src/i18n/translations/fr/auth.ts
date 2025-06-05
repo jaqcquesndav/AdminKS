@@ -9,7 +9,8 @@ export default {
     loading: 'Connexion en cours...',
     forgotPassword: 'Mot de passe oublié ?',
     noAccount: 'Pas encore de compte ?',
-    signUpLink: 'Créer un compte'
+    signUpLink: 'Créer un compte',
+    success: 'Connexion réussie'
   },
   signup: {
     title: 'Créer un compte',
@@ -35,6 +36,17 @@ export default {
     backToLogin: 'Retour à la connexion',
     successTitle: 'E-mail envoyé',
     successMessage: 'Vérifiez votre boîte de réception pour réinitialiser votre mot de passe'
+  },  demo: {
+    title: 'Comptes de démonstration',
+    choose: 'Choisir un compte de démonstration',
+    hide: 'Masquer les comptes',
+    selectRole: 'Sélectionner un rôle:',
+    roles: {
+      superAdmin: 'Super Admin',
+      cto: 'CTO',
+      finance: 'Finance',
+      support: 'Support'
+    }
   },
   errors: {
     invalidCredentials: 'Email ou mot de passe incorrect',

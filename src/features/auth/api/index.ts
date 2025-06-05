@@ -3,11 +3,11 @@ import type { AuthUser, SignUpData } from '../types';
 const USERS = new Map<string, AuthUser>();
 
 // Superadmin credentials
-const SUPERADMIN_EMAIL = 'admin@kiota-suite.com';
+const SUPERADMIN_EMAIL = 'admin@wanzo-suite.com';
 const SUPERADMIN_PASSWORD = 'K10t@Adm1n2024!';
 
 const SUPERADMIN_USER: AuthUser = {
-  id: 'sa-01-kiota',
+  id: 'sa-01-wanzo',
   email: SUPERADMIN_EMAIL,
   role: 'admin',
   name: 'Administrateur Système',

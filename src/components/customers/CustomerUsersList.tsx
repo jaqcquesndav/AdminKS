@@ -78,7 +78,7 @@ export function CustomerUsersList({ customerId, customerName, onInviteUser }: Cu
         const mockUsers: CustomerUser[] = [
           {
             id: 'user1',
-            email: 'owner@kiota.tech',
+            email: 'owner@wanzo.tech',
             name: 'Jean Dupont',
             role: 'admin',
             status: 'active',
@@ -88,7 +88,7 @@ export function CustomerUsersList({ customerId, customerName, onInviteUser }: Cu
           },
           {
             id: 'user2',
-            email: 'sophie.martin@kiota.tech',
+            email: 'sophie.martin@wanzo.tech',
             name: 'Sophie Martin',
             role: 'editor',
             status: 'active',
@@ -98,7 +98,7 @@ export function CustomerUsersList({ customerId, customerName, onInviteUser }: Cu
           },
           {
             id: 'user3',
-            email: 'thomas.bernard@kiota.tech',
+            email: 'thomas.bernard@wanzo.tech',
             name: 'Thomas Bernard',
             role: 'viewer',
             status: 'active',
@@ -108,7 +108,7 @@ export function CustomerUsersList({ customerId, customerName, onInviteUser }: Cu
           },
           {
             id: 'user4',
-            email: 'claire.dubois@kiota.tech',
+            email: 'claire.dubois@wanzo.tech',
             name: 'Claire Dubois',
             role: 'finance',
             status: 'inactive',
@@ -118,7 +118,7 @@ export function CustomerUsersList({ customerId, customerName, onInviteUser }: Cu
           },
           {
             id: 'user5',
-            email: 'marc.petit@kiota.tech',
+            email: 'marc.petit@wanzo.tech',
             role: 'viewer',
             status: 'pending',
             createdAt: '2025-04-15',

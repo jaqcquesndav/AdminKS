@@ -5,12 +5,13 @@ export default {
       empty: 'Aucune notification',
       markAllRead: 'Tout marquer comme lu',
       clear: 'Effacer tout'
-    },
-    userMenu: {
+    },    userMenu: {
       profile: 'Mon profil',
       settings: 'Paramètres',
       help: 'Aide',
-      logout: 'Déconnexion'
+      logout: 'Déconnexion',
+      defaultName: 'Utilisateur',
+      defaultEmail: 'Email non disponible'
     },
     theme: {
       toggle: 'Changer le thème',
@@ -28,9 +29,8 @@ export default {
       users: 'Utilisateurs',
       settings: 'Paramètres'
     }
-  },
-  footer: {
-    copyright: '© {{year}} Kiota Suite. Tous droits réservés.',
+  },  footer: {
+    copyright: '© {{year}} Wanzo. Tous droits réservés.',
     version: 'Version {{version}}'
   }
 };

@@ -3,7 +3,7 @@ import { useLocation, NavLink } from 'react-router-dom';
 import * as LucideIcons from 'lucide-react';
 import { ChevronLeft, ChevronRight, ChevronDown, Building2, HelpCircle } from 'lucide-react';
 import { COMPANY_INFO } from '../../types/payment';
-import { getNavigationByRole } from '../../config/navigation';
+import { getNavigationByRole, navigationConfig } from '../../config/navigation';
 import { useUserInfo } from '../../hooks/useAuth';
 import { UserRole } from '../../types/user';
 import { NavigationItem } from '../../config/navigation';
@@ -56,8 +56,7 @@ const getLucideIcon = (iconName: string): ElementType => {
 export function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [expandedItems, setExpandedItems] = useState<string[]>([]);
-  const userInfo = useUserInfo();
+  const [expandedItems, setExpandedItems] = useState<string[]>([]);  const userInfo = useUserInfo();
   
   // Utiliser directement le rôle mappé du hook useUserInfo pour garantir la cohérence
   const userRole = userInfo.role as UserRole;
@@ -65,10 +64,17 @@ export function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
   // Log pour déboguer - à supprimer en production
   useEffect(() => {
     console.log('Current user role for navigation:', userRole);
-  }, [userRole]);
+    console.log('User info:', userInfo);
+    console.log('Is super admin?', userInfo.isSuperAdmin);
+    console.log('Navigation items before filter:', navigationConfig);
+    console.log('Navigation items after filter:', getNavigationByRole(userRole));
+  }, [userRole, userInfo]);
   
   // Obtenir les éléments de navigation filtrés par le rôle de l'utilisateur
-  const navigationItems = getNavigationByRole(userRole);
+  // Si c'est un super admin, utiliser navigationConfig directement
+  const navigationItems = userInfo.isSuperAdmin 
+    ? navigationConfig 
+    : getNavigationByRole(userRole);
 
   useEffect(() => {
     if (isMobile) {

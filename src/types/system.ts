@@ -1,4 +1,4 @@
-// Types pour les métriques et la gestion du système Kiota Suit
+// Types pour les métriques et la gestion du système Wanzo
 
 export interface ServerHealthMetrics {
   cpuUsage: number;  // pourcentage d'utilisation du CPU

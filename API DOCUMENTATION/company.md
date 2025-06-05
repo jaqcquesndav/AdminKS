@@ -1,19 +1,19 @@
 # API Documentation: Company Management
 
-This document outlines the API endpoints for managing company-specific information for Kiota. This includes retrieving and updating the company profile and managing company-level documents.
+This document outlines the API endpoints for managing company-specific information for wanzo. This includes retrieving and updating the company profile and managing company-level documents.
 
 ## 1. Company Profile Endpoints
 
 ### 1.1. Get Company Profile
 *   **Endpoint:** `GET /api/company/profile`
-*   **Description:** Retrieves the profile information for Kiota.
+*   **Description:** Retrieves the profile information for wanzo.
 *   **Request:** None
 *   **Response:** `200 OK`
     ```json
     {
       "data": {
-        "id": "kiota_singleton_id",
-        "name": "Kiota Inc.",
+        "id": "wanzo_singleton_id",
+        "name": "wanzo Inc.",
         "registrationNumber": "123456789",
         "taxId": "TAXID123",
         "address": {
@@ -23,13 +23,13 @@ This document outlines the API endpoints for managing company-specific informati
           "postalCode": "90210",
           "country": "USA"
         },
-        "contactEmail": "info@kiota.com",
+        "contactEmail": "info@wanzo.com",
         "phoneNumber": "+1-555-0100",
-        "website": "https://www.kiota.com",
-        "logoUrl": "https://cdn.kiota.com/logo.png",
+        "website": "https://www.wanzo.com",
+        "logoUrl": "https://cdn.wanzo.com/logo.png",
         "industry": "Technology",
         "foundedDate": "2020-01-15",
-        "description": "Kiota provides cutting-edge solutions for enterprise needs.",
+        "description": "wanzo provides cutting-edge solutions for enterprise needs.",
         "updatedAt": "2023-05-01T12:00:00Z",
         "createdAt": "2020-01-15T09:00:00Z"
       }
@@ -44,11 +44,11 @@ This document outlines the API endpoints for managing company-specific informati
 
 ### 1.2. Update Company Profile
 *   **Endpoint:** `PUT /api/company/profile`
-*   **Description:** Updates the profile information for Kiota.
+*   **Description:** Updates the profile information for wanzo.
 *   **Request Body:**
     ```json
     {
-      "name": "Kiota Solutions Ltd.",
+      "name": "wanzo Solutions Ltd.",
       "address": {
         "street": "456 Enterprise Avenue",
         "city": "Innovation Hub",
@@ -56,9 +56,9 @@ This document outlines the API endpoints for managing company-specific informati
         "postalCode": "75001",
         "country": "USA"
       },
-      "contactEmail": "support@kiota.com",
+      "contactEmail": "support@wanzo.com",
       "phoneNumber": "+1-555-0101",
-      "website": "https://www.kiota.com/solutions"
+      "website": "https://www.wanzo.com/solutions"
       // Include other fields to update as necessary
     }
     ```
@@ -68,8 +68,8 @@ This document outlines the API endpoints for managing company-specific informati
       "message": "Company profile updated successfully.",
       "data": {
         // The updated company profile object
-        "id": "kiota_singleton_id",
-        "name": "Kiota Solutions Ltd.",
+        "id": "wanzo_singleton_id",
+        "name": "wanzo Solutions Ltd.",
         "registrationNumber": "123456789",
         "taxId": "TAXID123",
         "address": {
@@ -79,13 +79,13 @@ This document outlines the API endpoints for managing company-specific informati
           "postalCode": "75001",
           "country": "USA"
         },
-        "contactEmail": "support@kiota.com",
+        "contactEmail": "support@wanzo.com",
         "phoneNumber": "+1-555-0101",
-        "website": "https://www.kiota.com/solutions",
-        "logoUrl": "https://cdn.kiota.com/logo.png",
+        "website": "https://www.wanzo.com/solutions",
+        "logoUrl": "https://cdn.wanzo.com/logo.png",
         "industry": "Technology",
         "foundedDate": "2020-01-15",
-        "description": "Kiota provides cutting-edge solutions for enterprise needs.",
+        "description": "wanzo provides cutting-edge solutions for enterprise needs.",
         "updatedAt": "2023-06-01T10:00:00Z",
         "createdAt": "2020-01-15T09:00:00Z"
       }
@@ -113,7 +113,7 @@ This document outlines the API endpoints for managing company-specific informati
 
 ### 2.1. List Company Documents
 *   **Endpoint:** `GET /api/company/documents`
-*   **Description:** Retrieves a list of documents associated with Kiota.
+*   **Description:** Retrieves a list of documents associated with wanzo.
 *   **Request:**
     *   Query Parameters:
         *   `category` (optional, string): Filter documents by category (e.g., "legal", "financial_reports", "compliance").
@@ -132,7 +132,7 @@ This document outlines the API endpoints for managing company-specific informati
           "fileSize": 5242880, // in bytes
           "uploadDate": "2024-01-20T10:00:00Z",
           "uploadedBy": "user_admin_001",
-          "description": "Kiota Annual Financial Report for FY2023.",
+          "description": "wanzo Annual Financial Report for FY2023.",
           "url": "/api/documents/doc_company_abc123/download" // Example download link
         }
       ],
@@ -153,7 +153,7 @@ This document outlines the API endpoints for managing company-specific informati
 
 ### 2.2. Upload Company Document
 *   **Endpoint:** `POST /api/company/documents/upload`
-*   **Description:** Uploads a new document for Kiota. This is typically a multipart/form-data request.
+*   **Description:** Uploads a new document for wanzo. This is typically a multipart/form-data request.
 *   **Request Body (multipart/form-data):**
     *   `file`: The document file.
     *   `category` (string, optional): Category of the document (e.g., "legal", "internal_policy").
@@ -164,13 +164,13 @@ This document outlines the API endpoints for managing company-specific informati
       "message": "Document uploaded successfully.",
       "data": {
         "id": "doc_company_xyz789",
-        "fileName": "NDA_Template_Kiota.docx",
+        "fileName": "NDA_Template_wanzo.docx",
         "category": "legal",
         "fileType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "fileSize": 150320, // in bytes
         "uploadDate": "2024-06-01T11:00:00Z",
         "uploadedBy": "user_admin_002", // ID of the uploading admin user
-        "description": "Standard Non-Disclosure Agreement template for Kiota.",
+        "description": "Standard Non-Disclosure Agreement template for wanzo.",
         "url": "/api/documents/doc_company_xyz789/download"
       }
     }

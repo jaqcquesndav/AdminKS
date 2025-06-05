@@ -48,20 +48,18 @@ export function UserMenu() {
               {getInitials()}
             </span>
           </div>
-        )}
-        <span className="hidden sm:block text-sm font-medium text-gray-700 dark:text-gray-200 max-w-[120px] truncate">
-          {userInfo.name || t('common.user')}
+        )}        <span className="hidden sm:block text-sm font-medium text-gray-700 dark:text-gray-200 max-w-[120px] truncate">
+          {userInfo.name || t('header.userMenu.defaultName')}
         </span>
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg py-2 z-50 border border-gray-200 dark:border-gray-700">
-          <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+        <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg py-2 z-50 border border-gray-200 dark:border-gray-700">          <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
             <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-              {userInfo.name}
+              {userInfo.name || t('header.userMenu.defaultName', 'Utilisateur')}
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-              {userInfo.email}
+              {userInfo.email || t('header.userMenu.defaultEmail', 'Email non disponible')}
             </p>
           </div>
 
@@ -72,9 +70,8 @@ export function UserMenu() {
                 navigate('/profile');
               }}
               className="flex w-full items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-            >
-              <User className="w-4 h-4 mr-3" />
-              {t('header.profile')}
+            >              <User className="w-4 h-4 mr-3" />
+              {t('header.userMenu.profile')}
             </button>
             
             <button
@@ -85,7 +82,7 @@ export function UserMenu() {
               className="flex w-full items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
             >
               <Settings className="w-4 h-4 mr-3" />
-              {t('header.settings')}
+              {t('header.userMenu.settings')}
             </button>
           </div>
           
@@ -93,9 +90,8 @@ export function UserMenu() {
             <button
               onClick={handleLogout}
               className="flex w-full items-center px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10"
-            >
-              <LogOut className="w-4 h-4 mr-3" />
-              {t('header.logout')}
+            >              <LogOut className="w-4 h-4 mr-3" />
+              {t('header.userMenu.logout')}
             </button>
           </div>
         </div>

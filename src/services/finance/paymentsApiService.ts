@@ -3,11 +3,10 @@
 import type { Payment, TransactionFilterParams } from '../../types/finance';
 
 // Mock data for manual payments - Updated to align with the new Payment interface
-const mockManualPayments: Payment[] = [
-  {
+const mockManualPayments: Payment[] = [  {
     id: 'manual-payment-1',
     customerId: 'customer-123',
-    customerName: 'Kiota Tech', // Added
+    customerName: 'Wanzo Tech', // Added
     amount: 100,
     currency: 'USD',
     method: 'bank_transfer',

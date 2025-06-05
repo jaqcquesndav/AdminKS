@@ -367,7 +367,7 @@ Allows an authenticated user to change their own password.
 
 ## 8. KS Auth (OIDC - if applicable)
 
-These endpoints are specific to Kiota Suite's internal OpenID Connect based authentication.
+These endpoints are specific to wanzo Suite's internal OpenID Connect based authentication.
 
 ### 8.1. Initiate KS Auth
 

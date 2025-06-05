@@ -67,7 +67,7 @@ export function PaymentFormModal({
         await new Promise(resolve => setTimeout(resolve, 500));
         
         const mockCustomers: CustomerOption[] = [
-          { id: '123', name: 'Kiota Tech' },
+          { id: '123', name: 'wanzo Tech' },
           { id: '456', name: 'Exoscode' },
           { id: '789', name: 'Banque Centrale' },
           { id: '101', name: 'Startup Innovation' },

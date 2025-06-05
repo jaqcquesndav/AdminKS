@@ -1,4 +1,4 @@
-// Configuration de la navigation pour le système d'administration Kiota Suit
+// Configuration de la navigation pour le système d'administration Wanzo
 import { UserRole } from '../types/user';
 
 export interface NavigationItem {
@@ -198,6 +198,11 @@ export const navigationConfig: NavigationItem[] = [
 
 // Fonction pour filtrer les éléments de navigation en fonction du rôle de l'utilisateur
 export const getNavigationByRole = (role: UserRole): NavigationItem[] => {
+  // Si c'est un super admin, retourner tous les éléments sans filtrage
+  if (role === 'super_admin') {
+    return navigationConfig;
+  }
+  
   return navigationConfig
     .filter(item => item.roles.includes(role))
     .map(item => {

@@ -6,16 +6,18 @@ import { TwoFactorVerification } from '../../components/auth/TwoFactorVerificati
 import { useAuth } from '../../hooks/useAuth';
 import { authService } from '../../services/auth/authService';
 import { useToastStore } from '../../components/common/ToastContainer';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export function LoginPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { login } = useAuth();
+  const { isDark } = useTheme();
   const [error, setError] = useState<string>();
   const [showTwoFactor, setShowTwoFactor] = useState(false);
   const [tempLoginData, setTempLoginData] = useState<{ email: string, tempToken: string } | null>(null);
   const addToast = useToastStore(state => state.addToast);
-
+  
   const handleLogin = async (email: string, password: string) => {
     try {
       setError(undefined);
@@ -36,7 +38,7 @@ export function LoginPage() {
       if (response.user) {
         login(response.user, response.token);
         addToast('success', t('auth.login.success'));
-        navigate('/', { replace: true });
+        navigate('/dashboard', { replace: true });
       } else {
         setError(t('auth.errors.invalidCredentials'));
       }
@@ -55,7 +57,7 @@ export function LoginPage() {
       if (response.user) {
         login(response.user, response.token);
         addToast('success', t('auth.login.success'));
-        navigate('/', { replace: true });
+        navigate('/dashboard', { replace: true });
       } else {
         throw new Error('Authentification échouée');
       }
@@ -64,20 +66,14 @@ export function LoginPage() {
       throw err; // Rethrow pour que TwoFactorVerification puisse gérer l'erreur
     }
   };
-  
-  const handleKsAuth = async () => {
-    try {
-      // Implémenter l'authentification KS ici
-      addToast('info', 'Authentification KS non implémentée');
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (error) {
-      setError(t('auth.errors.general'));
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-      <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+    <div className={`min-h-screen bg-bg-secondary dark:bg-bg-secondary flex items-center justify-center ${isDark ? 'dark' : ''}`}>
+      <div className="bg-bg-primary dark:bg-bg-primary p-8 rounded-lg shadow-md w-full max-w-md border border-gray-200 dark:border-gray-700">        <div className="text-center mb-6">
+          <h1 className="text-2xl font-bold text-primary mb-1">Wanzo Administration</h1>
+          <p className="text-sm text-text-secondary">Portail d'administration pour les gestionnaires Wanzo</p>
+          <div className="h-1 w-20 bg-primary mx-auto rounded-full mt-2"></div>
+        </div>
+        
         {showTwoFactor ? (
           <TwoFactorVerification 
             onVerify={handleVerifyTwoFactor}
@@ -85,10 +81,8 @@ export function LoginPage() {
           />
         ) : (
           <LoginForm 
-            onSubmit={handleLogin} 
-            onKsAuth={handleKsAuth}
+            onSubmit={handleLogin}
             error={error}
-            onSwitchToSignUp={() => navigate('/register')}
             onForgotPassword={() => navigate('/forgot-password')}
           />
         )}

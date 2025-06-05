@@ -9,10 +9,9 @@ export async function generateInvoice(payment: PaymentHistory): Promise<string> 
   // En-tête
   doc.setFontSize(20);
   doc.text('FACTURE', 105, 20, { align: 'center' });
-  
-  // Logo et informations de l'entreprise
+    // Logo et informations de l'entreprise
   doc.setFontSize(16);
-  doc.text('Kiota Suite', 20, 35);
+  doc.text('Wanzo', 20, 35);
   doc.setFontSize(10);
   doc.text('Le numérique au service de l\'inclusion financière des PMEs', 20, 42);
   

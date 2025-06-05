@@ -48,7 +48,7 @@ export const TOKEN_PACKAGES: TokenPackage[] = [
 ];
 
 export const COMPANY_INFO = {
-  name: 'Kiota Suite',
+  name: 'Wanzo',
   slogan: 'Le numérique au service de l\'inclusion financière des PMEs',
   address: {
     street: 'Avenue Kabanda',
@@ -61,10 +61,9 @@ export const COMPANY_INFO = {
   registration: {
     rccm: 'CD/GOMA/RCCM/23-B-00196',
     nationalId: '19-H5300-N40995F',
-    taxNumber: 'A2321658S'
-  },
+    taxNumber: 'A2321658S'  },
   contact: {
-    email: 'contact@kiota-suite.com',
+    email: 'contact@wanzo.com',
     phone: '+243 999 999 999'
   }
 };

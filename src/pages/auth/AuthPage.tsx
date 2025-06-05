@@ -85,10 +85,9 @@ export function AuthPage({ mode }: AuthPageProps) {
   };
   
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="max-w-md w-full p-6 bg-white rounded-lg shadow-md">
+    <div className="min-h-screen flex items-center justify-center bg-gray-100">      <div className="max-w-md w-full p-6 bg-white rounded-lg shadow-md">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold">Kiota Suit Admin</h1>
+          <h1 className="text-2xl font-bold">Wanzo Admin</h1>
           <p className="text-gray-600">
             {mode === 'login' && 'Connectez-vous à votre compte'}
             {mode === 'register' && 'Créez un nouveau compte'}

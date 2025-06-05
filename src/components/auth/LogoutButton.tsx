@@ -7,7 +7,7 @@ export const LogoutButton = () => {
     <button 
       onClick={() => logout({ 
         logoutParams: { 
-          returnTo: window.location.origin 
+          returnTo: `${window.location.origin}/login` 
         } 
       })}
       className="btn btn-secondary"

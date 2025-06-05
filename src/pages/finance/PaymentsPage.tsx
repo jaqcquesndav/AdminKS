@@ -39,12 +39,11 @@ export function PaymentsPage() {
       try {
         // Simule une requête API avec données mockées
         await new Promise(resolve => setTimeout(resolve, 800));
-        
-        const mockPayments: Payment[] = [
+          const mockPayments: Payment[] = [
           {
             id: 'pay_123456',
             customerId: '123',
-            customerName: 'Kiota Tech',
+            customerName: 'Wanzo Tech',
             amount: 599.99,
             currency: 'USD', // Assuming mock data amounts are in USD (baseCurrency)
             status: 'completed',

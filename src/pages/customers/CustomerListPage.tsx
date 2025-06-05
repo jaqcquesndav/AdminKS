@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { PlusCircle, Search, Filter, MoreHorizontal, Building, Users, Mail, Phone, CalendarClock, Check, X, AlertCircle } from 'lucide-react';
@@ -35,13 +35,12 @@ export function CustomerListPage() {
       try {
         // Simule une requête API avec données mockées
         await new Promise(resolve => setTimeout(resolve, 800));
-        
-        const mockCustomers: CustomerListItem[] = [
+          const mockCustomers: CustomerListItem[] = [
           {
             id: '123',
-            name: 'Kiota Tech',
+            name: 'Wanzo Tech',
             type: 'pme',
-            email: 'contact@kiota.tech',
+            email: 'contact@wanzo.tech',
             phone: '+33 1 23 45 67 89',
             status: 'active',
             createdAt: '2023-01-15',
@@ -170,10 +169,9 @@ export function CustomerListPage() {
 
   return (
     <>
-      <div className="space-y-6">
-        {/* Header with search and filters */}
+      <div className="space-y-6">        {/* Header with search and filters */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <h1 className="text-2xl font-bold">Clients</h1>
+          <h1 className="text-2xl font-bold">{t('customers.title', 'Clients')}</h1>
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -181,7 +179,7 @@ export function CustomerListPage() {
               </div>
               <input
                 type="text"
-                placeholder="Rechercher un client..."
+                placeholder={t('customers.search.placeholder', 'Rechercher un client...')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 w-full"
@@ -192,16 +190,14 @@ export function CustomerListPage() {
               className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark"
             >
               <PlusCircle className="mr-2 h-4 w-4" />
-              Ajouter un client
+              {t('customers.actions.add', 'Ajouter un client')}
             </button>
           </div>
-        </div>
-
-        {/* Filters */}
+        </div>        {/* Filters */}
         <div className="flex flex-wrap gap-3 items-center">
           <div className="flex items-center">
             <Filter className="h-4 w-4 text-gray-500 mr-2" />
-            <span className="text-sm text-gray-600 dark:text-gray-400">Filtres:</span>
+            <span className="text-sm text-gray-600 dark:text-gray-400">{t('customers.filters.title', 'Filtres:')}</span>
           </div>
           
           <div className="space-x-2">
@@ -210,11 +206,11 @@ export function CustomerListPage() {
               onChange={(e) => setFilterStatus(e.target.value)}
               className="text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1"
             >
-              <option value="all">Tous les statuts</option>
-              <option value="active">Actif</option>
-              <option value="pending">En attente</option>
-              <option value="suspended">Suspendu</option>
-              <option value="inactive">Inactif</option>
+              <option value="all">{t('customers.filters.status.all', 'Tous les statuts')}</option>
+              <option value="active">{t('customers.filters.status.active', 'Actif')}</option>
+              <option value="pending">{t('customers.filters.status.pending', 'En attente')}</option>
+              <option value="suspended">{t('customers.filters.status.suspended', 'Suspendu')}</option>
+              <option value="inactive">{t('customers.filters.status.inactive', 'Inactif')}</option>
             </select>
             
             <select
@@ -222,9 +218,9 @@ export function CustomerListPage() {
               onChange={(e) => setFilterType(e.target.value)}
               className="text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1"
             >
-              <option value="all">Tous les types</option>
-              <option value="pme">PME</option>
-              <option value="financial">Institution Financière</option>
+              <option value="all">{t('customers.filters.type.all', 'Tous les types')}</option>
+              <option value="pme">{t('customers.filters.type.pme', 'PME')}</option>
+              <option value="financial">{t('customers.filters.type.financial', 'Institution Financière')}</option>
             </select>
           </div>
         </div>
@@ -237,44 +233,43 @@ export function CustomerListPage() {
             </div>
           ) : filteredCustomers.length > 0 ? (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="bg-gray-50 dark:bg-gray-700">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">                <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       <div className="flex items-center">
                         <Building className="w-4 h-4 mr-2" />
-                        Client
+                        {t('customers.table.client', 'Client')}
                       </div>
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       <div className="flex items-center">
                         <Users className="w-4 h-4 mr-2" />
-                        Utilisateurs
+                        {t('customers.table.users', 'Utilisateurs')}
                       </div>
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       <div className="flex items-center">
                         <Mail className="w-4 h-4 mr-2" />
-                        Email
+                        {t('customers.table.email', 'Email')}
                       </div>
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       <div className="flex items-center">
                         <Phone className="w-4 h-4 mr-2" />
-                        Téléphone
+                        {t('customers.table.phone', 'Téléphone')}
                       </div>
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       <div className="flex items-center">
                         <CalendarClock className="w-4 h-4 mr-2" />
-                        Date de création
+                        {t('customers.table.createdAt', 'Date de création')}
                       </div>
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Statut
+                      {t('customers.table.status', 'Statut')}
                     </th>
                     <th scope="col" className="relative px-6 py-3">
-                      <span className="sr-only">Actions</span>
+                      <span className="sr-only">{t('customers.table.actions', 'Actions')}</span>
                     </th>
                   </tr>
                 </thead>
@@ -351,12 +346,11 @@ export function CustomerListPage() {
                   strokeWidth="2"
                   d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
                 />
-              </svg>
-              <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">Aucun client trouvé</h3>
+              </svg>              <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">{t('customers.empty.title', 'Aucun client trouvé')}</h3>
               <p className="mt-1 text-sm text-gray-500">
                 {searchTerm || filterStatus !== 'all' || filterType !== 'all'
-                  ? "Aucun client ne correspond à vos critères de recherche."
-                  : "Commencez par ajouter un nouveau client."}
+                  ? t('customers.empty.filtered', "Aucun client ne correspond à vos critères de recherche.")
+                  : t('customers.empty.default', "Commencez par ajouter un nouveau client.")}
               </p>
               <div className="mt-6">
                 <button
@@ -364,21 +358,19 @@ export function CustomerListPage() {
                   className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark"
                 >
                   <PlusCircle className="mr-2 h-4 w-4" />
-                  Ajouter un client
+                  {t('customers.actions.add', 'Ajouter un client')}
                 </button>
               </div>
             </div>
           )}
         </div>
-      </div>
-
-      {/* Add Customer Modal */}
+      </div>      {/* Add Customer Modal */}
       {isAddModalOpen && (
         <CustomerFormModal
           isOpen={isAddModalOpen}
           onClose={() => setIsAddModalOpen(false)}
           onSubmit={handleAddCustomer}
-          title="Ajouter un client"
+          title={t('customers.modal.add.title', 'Ajouter un client')}
         />
       )}
     </>

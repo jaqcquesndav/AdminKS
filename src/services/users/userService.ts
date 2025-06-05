@@ -5,10 +5,9 @@ import { ROLE_PERMISSIONS } from '../../types/user'; // Import ROLE_PERMISSIONS
 const users = new Map<string, User>();
 
 // Add default admin user
-const defaultAdmin: User = {
-  id: 'admin-1',
+const defaultAdmin: User = {  id: 'admin-1',
   name: 'Jean Dupont',
-  email: 'jean.dupont@kiota-suite.com',
+  email: 'jean.dupont@wanzo.com',
   role: 'super_admin',
   userType: 'internal', // Added userType
   status: 'active',
@@ -143,10 +142,9 @@ export async function updateCompanyUser(companyAdminId: string, targetUserId: st
   if (!user || user.customerAccountId !== admin.customerAccountId) {
     throw new Error('User not found in this company or user is not an external user.');
   }
-
   // Company admin cannot change the role to super_admin or other internal roles.
   if (data.role && (data.role === 'super_admin' || data.role === 'cto' || data.role === 'growth_finance' || data.role === 'customer_support' || data.role === 'content_manager')) {
-    throw new Error('Company admin cannot assign internal Kiota roles.');
+    throw new Error('Company admin cannot assign internal Wanzo roles.');
   }
   // Company admin can only assign 'company_admin' or 'company_user' from their own company.
   if (data.role && data.role !== 'company_admin' && data.role !== 'company_user') {

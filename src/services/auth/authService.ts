@@ -342,8 +342,7 @@ class AuthService {
       throw error;
     }
   }
-  
-  // Déconnexion de l'utilisateur
+    // Déconnexion de l'utilisateur
   async logout(): Promise<void> {
     try {
       // Si nous utilisons un utilisateur de démo
@@ -354,6 +353,8 @@ class AuthService {
           this.cachedAuthState = null;
           localStorage.removeItem(this.storageKey);
           localStorage.removeItem('auth_token');
+          // Rediriger vers la page de login après déconnexion
+          window.location.href = '/login';
           return;
         }
       }
@@ -365,8 +366,13 @@ class AuthService {
       this.cachedAuthState = null;
       localStorage.removeItem(this.storageKey);
       localStorage.removeItem('auth_token');
+      
+      // Rediriger vers la page de login après déconnexion
+      window.location.href = '/login';
     } catch (error) {
       console.error('Erreur de déconnexion:', error);
+      // En cas d'erreur, rediriger quand même vers la page de login
+      window.location.href = '/login';
       throw error;
     }
   }

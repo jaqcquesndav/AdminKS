@@ -11,7 +11,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
 
   const onRedirectCallback = (appState: RedirectCallbackState | undefined) => {
-    navigate(appState?.returnTo || '/dashboard');
+    // Rediriger vers le tableau de bord ou la page spécifiée après l'authentification
+    navigate(appState?.returnTo || '/dashboard', { replace: true });
   };
 
   return (

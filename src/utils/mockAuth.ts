@@ -58,7 +58,7 @@ export const isDemoEmail = (email: string): boolean => {
   return Object.values(demoUsers).some(user => user.email === email) ||
          email.endsWith('@example.com') || 
          email.includes('demo') || 
-         email === 'admin@kiota-suite.com';
+         email === 'admin@wanzo.com';
 };
 
 // Stocker l'utilisateur sélectionné dans le localStorage pour maintenir la session

@@ -1,18 +1,20 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Mail, Lock, Eye, EyeOff, LogIn, Users } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Users } from 'lucide-react';
 import { USE_MOCK_AUTH, demoUsers } from '../../utils/mockAuth';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface LoginFormProps {
   onSubmit: (email: string, password: string) => Promise<void>;
-  onKsAuth: () => Promise<void>;
+  onKsAuth?: () => Promise<void>;
   error?: string;
-  onSwitchToSignUp: () => void;
   onForgotPassword?: () => void;
+  onSwitchToSignUp?: () => void;
 }
 
-export function LoginForm({ onSubmit, onKsAuth, error, onSwitchToSignUp, onForgotPassword }: LoginFormProps) {
+export function LoginForm({ onSubmit, error, onForgotPassword }: LoginFormProps) {
   const { t } = useTranslation();
+  const { isDark } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -62,29 +64,29 @@ export function LoginForm({ onSubmit, onKsAuth, error, onSwitchToSignUp, onForgo
   };
 
   return (
-    <div>
-      <h2 className="text-2xl font-bold text-center mb-6">{t('auth.login.title')}</h2>
+    <div className={isDark ? 'dark' : ''}>
+      <h2 className="text-2xl font-bold text-center mb-6 text-text-primary">{t('auth.login.title')}</h2>
       
       <form onSubmit={handleSubmit} className="space-y-6">
         {error && (
-          <div className="bg-red-50 text-red-700 p-3 rounded-md text-sm">
+          <div className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 p-3 rounded-md text-sm">
             {error}
           </div>
         )}
         
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-text-primary mb-2">
             {t('auth.login.email')}
           </label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Mail className="h-5 w-5 text-gray-400" />
+              <Mail className="h-5 w-5 text-text-tertiary" />
             </div>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+              className="input pl-10"
               placeholder={t('auth.login.emailPlaceholder')}
               required
             />
@@ -92,18 +94,18 @@ export function LoginForm({ onSubmit, onKsAuth, error, onSwitchToSignUp, onForgo
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-text-primary mb-2">
             {t('auth.login.password')}
           </label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Lock className="h-5 w-5 text-gray-400" />
+              <Lock className="h-5 w-5 text-text-tertiary" />
             </div>
             <input
               type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="block w-full pl-10 pr-12 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+              className="input pl-10 pr-12"
               placeholder={t('auth.login.passwordPlaceholder')}
               required
             />
@@ -113,9 +115,9 @@ export function LoginForm({ onSubmit, onKsAuth, error, onSwitchToSignUp, onForgo
               className="absolute inset-y-0 right-0 pr-3 flex items-center"
             >
               {showPassword ? (
-                <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                <EyeOff className="h-5 w-5 text-text-tertiary hover:text-text-secondary" />
               ) : (
-                <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                <Eye className="h-5 w-5 text-text-tertiary hover:text-text-secondary" />
               )}
             </button>
           </div>
@@ -125,7 +127,7 @@ export function LoginForm({ onSubmit, onKsAuth, error, onSwitchToSignUp, onForgo
           <button
             type="button"
             onClick={onForgotPassword}
-            className="text-sm text-indigo-600 hover:text-indigo-500"
+            className="text-sm text-primary hover:text-primary-light"
           >
             {t('auth.login.forgotPassword')}
           </button>
@@ -134,7 +136,7 @@ export function LoginForm({ onSubmit, onKsAuth, error, onSwitchToSignUp, onForgo
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+          className="btn btn-primary w-full"
         >
           {isLoading ? t('auth.login.loading') : t('auth.login.submit')}
         </button>
@@ -144,93 +146,61 @@ export function LoginForm({ onSubmit, onKsAuth, error, onSwitchToSignUp, onForgo
           <>
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
+                <div className="w-full border-t border-gray-300 dark:border-gray-700" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Comptes de démonstration</span>
+                <span className="px-2 bg-bg-primary text-text-secondary">{t('auth.demo.title', 'Comptes de démonstration')}</span>
               </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowDemoAccounts(!showDemoAccounts)}
-              className="w-full flex justify-center items-center py-2 px-4 border border-green-500 text-green-500 rounded-md hover:bg-green-500 hover:text-white transition-colors duration-200"
-            >
-              <Users className="w-5 h-5 mr-2" />
-              {showDemoAccounts ? 'Masquer les comptes' : 'Choisir un compte de démonstration'}
-            </button>
+            </div>          <button
+            type="button"
+            onClick={() => setShowDemoAccounts(!showDemoAccounts)}
+            className="w-full flex justify-center items-center py-2 px-4 border border-success text-success rounded-md hover:bg-success hover:text-white transition-colors duration-200"
+          >
+            <Users className="w-5 h-5 mr-2" />
+            {showDemoAccounts ? t('auth.demo.hide', 'Masquer les comptes') : t('auth.demo.choose', 'Choisir un compte de démonstration')}
+          </button>
 
             {showDemoAccounts && (
-              <div className="mt-3 space-y-2 border p-3 rounded-md">
-                <h3 className="font-medium text-gray-700 mb-2">Sélectionner un rôle:</h3>
+              <div className="mt-3 space-y-2 border border-gray-200 dark:border-gray-700 p-3 rounded-md bg-bg-secondary dark:bg-bg-secondary">
+                <h3 className="font-medium text-text-primary mb-2">{t('auth.demo.selectRole', 'Sélectionner un rôle:')}</h3>
                 
                 <button
                   type="button"
                   onClick={() => handleSelectDemoUser(demoUsers.superAdmin.email)}
-                  className="w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 flex items-center"
-                >
-                  <span className="w-8 h-8 rounded-full bg-purple-100 text-purple-800 mr-3 flex items-center justify-center font-bold">SA</span>
-                  Super Admin - {demoUsers.superAdmin.email}
+                  className="w-full text-left px-3 py-2 rounded-md hover:bg-bg-tertiary dark:hover:bg-bg-tertiary flex items-center"
+                >                  <span className="w-8 h-8 rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 mr-3 flex items-center justify-center font-bold">SA</span>
+                  {t('auth.demo.roles.superAdmin')} - {demoUsers.superAdmin.email}
                 </button>
                 
                 <button
                   type="button"
                   onClick={() => handleSelectDemoUser(demoUsers.cto.email)}
-                  className="w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 flex items-center"
+                  className="w-full text-left px-3 py-2 rounded-md hover:bg-bg-tertiary dark:hover:bg-bg-tertiary flex items-center"
                 >
-                  <span className="w-8 h-8 rounded-full bg-blue-100 text-blue-800 mr-3 flex items-center justify-center font-bold">CT</span>
-                  CTO - {demoUsers.cto.email}
+                  <span className="w-8 h-8 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 mr-3 flex items-center justify-center font-bold">CT</span>
+                  {t('auth.demo.roles.cto')} - {demoUsers.cto.email}
                 </button>
                 
                 <button
                   type="button"
                   onClick={() => handleSelectDemoUser(demoUsers.finance.email)}
-                  className="w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 flex items-center"
+                  className="w-full text-left px-3 py-2 rounded-md hover:bg-bg-tertiary dark:hover:bg-bg-tertiary flex items-center"
                 >
-                  <span className="w-8 h-8 rounded-full bg-green-100 text-green-800 mr-3 flex items-center justify-center font-bold">FI</span>
-                  Finance - {demoUsers.finance.email}
+                  <span className="w-8 h-8 rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 mr-3 flex items-center justify-center font-bold">FI</span>
+                  {t('auth.demo.roles.finance')} - {demoUsers.finance.email}
                 </button>
                 
                 <button
                   type="button"
                   onClick={() => handleSelectDemoUser(demoUsers.support.email)}
-                  className="w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 flex items-center"
+                  className="w-full text-left px-3 py-2 rounded-md hover:bg-bg-tertiary dark:hover:bg-bg-tertiary flex items-center"
                 >
-                  <span className="w-8 h-8 rounded-full bg-yellow-100 text-yellow-800 mr-3 flex items-center justify-center font-bold">CS</span>
-                  Support - {demoUsers.support.email}
+                  <span className="w-8 h-8 rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 mr-3 flex items-center justify-center font-bold">CS</span>
+                  {t('auth.demo.roles.support')} - {demoUsers.support.email}
                 </button>
-              </div>
-            )}
+              </div>        )}
           </>
         )}
-
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-300" />
-          </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white text-gray-500">ou</span>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={onKsAuth}
-          className="w-full flex justify-center items-center py-2 px-4 border border-primary text-primary rounded-md hover:bg-primary hover:text-white transition-colors duration-200"
-        >
-          <LogIn className="w-5 h-5 mr-2" />
-          Se connecter avec KS Auth
-        </button>
-
-        <div className="text-center">
-          <button
-            type="button"
-            onClick={onSwitchToSignUp}
-            className="text-sm text-indigo-600 hover:text-indigo-500"
-          >
-            {t('auth.login.signUpLink')}
-          </button>
-        </div>
       </form>
     </div>
   );

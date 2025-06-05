@@ -4,14 +4,15 @@ import type { AuthUser } from '../types/auth';
 const USERS = new Map<string, AuthUser>();
 
 // Superadmin credentials
-const SUPERADMIN_EMAIL = 'admin@kiota-suite.com';
+const SUPERADMIN_EMAIL = 'admin@wanzo.com';
 const SUPERADMIN_PASSWORD = 'K10t@Adm1n2024!';
 
 const SUPERADMIN_USER: AuthUser = {
-  id: 'sa-01-kiota',
+  id: 'sa-01-wanzo',
   email: SUPERADMIN_EMAIL,
-  role: 'admin', // Modifié de 'superadmin' à 'admin' pour être compatible avec AuthUser
+  role: 'super_admin', // Modifié pour être compatible avec le système de rôles
   name: 'Administrateur Système',
+  userType: 'internal', // Added required userType property
 };
 
 export async function authenticateUser(email: string, password: string): Promise<AuthUser | null> {
@@ -39,13 +40,13 @@ export async function registerUser(data: {
   if (Array.from(USERS.values()).some(u => u.email === data.email)) {
     throw new Error('Email already exists');
   }
-
   // Create new user
   const newUser: AuthUser = {
     id: `user-${Date.now()}`,
     email: data.email,
     name: data.name,
-    role: 'user',
+    role: 'company_user', // Changed from 'user' to a valid UserRole value
+    userType: 'external', // Added required userType property
   };
 
   // Store user

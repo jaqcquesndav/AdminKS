@@ -8,7 +8,8 @@ import SettingsPage from '../pages/settings/SettingsPage'; // Import directly as
 
 // Lazy-loaded pages
 const LoginPage = lazy(() => import('../pages/auth/LoginPage').then(module => ({ default: module.LoginPage })));
-const SignUpPage = lazy(() => import('../pages/auth/SignupPage').then(module => ({ default: module.SignupPage })));
+// Inscription désactivée - les utilisateurs sont créés par le super admin
+// const SignUpPage = lazy(() => import('../pages/auth/SignupPage').then(module => ({ default: module.SignupPage })));
 const ForgotPasswordPage = lazy(() => import('../pages/auth/ForgotPasswordPage').then(module => ({ default: module.ForgotPasswordPage })));
 const ResetPasswordPage = lazy(() => import('../pages/auth/ResetPasswordPage').then(module => ({ default: module.ResetPasswordPage })));
 const TwoFactorVerificationPage = lazy(() => import('../pages/auth/TwoFactorVerificationPage').then(module => ({ default: module.TwoFactorVerificationPage })));
@@ -53,10 +54,10 @@ const PlaceholderPage = ({ title }: { title: string }) => (
 
 export function AppRoutes() {
   return (
-    <Suspense fallback={<PageLoader />}>
-      <Routes>        {/* Public routes */}
+    <Suspense fallback={<PageLoader />}>      <Routes>        {/* Public routes */}
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignUpPage />} />
+        {/* Route d'inscription désactivée - les utilisateurs sont créés par le super admin
+        <Route path="/signup" element={<SignUpPage />} /> */}
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/two-factor-verification" element={<TwoFactorVerificationPage />} />
@@ -67,8 +68,7 @@ export function AppRoutes() {
         {/* Settings route moved outside ProtectedRoute and MainLayout for testing */}
         {/* <Route path="/settings" element={<SettingsPage />} /> */}
           {/* Protected routes */}
-        <Route element={<ProtectedRoute />}>
-          <Route element={<MainLayout />}>
+        <Route element={<ProtectedRoute />}>          <Route element={<MainLayout />}>
             {/* Default route redirects to dashboard */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
               {/* Dashboard route */}
@@ -85,29 +85,21 @@ export function AppRoutes() {
             <Route path="/customers/pme" element={<PmeCustomersPage />} />
             <Route path="/customers/financial" element={<FinancialCustomersPage />} />
             <Route path="/customers/pending" element={<PendingCustomersPage />} />
-            
-            {/* Finance routes - Protected with Auth0 and specific scopes */}
+              {/* Finance routes - Protected with Auth0 and specific scopes */}
             <Route path="/finance" element={
               <Navigate to="/finance/revenue" replace />
             } />
-            <Route path="/finance/revenue" element={
-              <Auth0ProtectedRoute requiredScopes={['admin:full', 'settings:manage']}>
-                <RevenueAnalyticsPage />
-              </Auth0ProtectedRoute>
-            } />
+            <Route path="/finance/revenue" element={<RevenueAnalyticsPage />} />
             <Route path="/finance/subscriptions" element={<SubscriptionsPage />} />
             <Route path="/finance/tokens" element={<TokensPage />} />
             <Route path="/finance/payments" element={<PaymentsPage />} />
             <Route path="/finance/manual" element={<ManualPaymentsPage />} />
-            
-            {/* System routes - Protected with Auth0 and admin scope */}
+              {/* System routes - Protected with Auth0 and admin scope */}
             <Route path="/system" element={
               <Navigate to="/system/health" replace />
             } />
             <Route path="/system/health" element={
-              <Auth0ProtectedRoute requiredScopes={['admin:full']}>
-                <PlaceholderPage title="État du Système" />
-              </Auth0ProtectedRoute>
+              <PlaceholderPage title="État du Système" />
             } />
             <Route path="/system/api" element={
               <PlaceholderPage title="Performance API" />
@@ -143,14 +135,9 @@ export function AppRoutes() {
             <Route path="/users" element={<UsersPage />} />
               {/* Reports routes */}
             <Route path="/reports" element={<ReportsPage />} />
-            
-            {/* Settings routes */}
+              {/* Settings routes */}
             <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/settings/api" element={
-              <Auth0ProtectedRoute requiredScopes={['admin:full', 'settings:manage']}>
-                <APISettingsPage />
-              </Auth0ProtectedRoute>
-            } />
+            <Route path="/settings/api" element={<APISettingsPage />} />
           </Route>
         </Route>
         

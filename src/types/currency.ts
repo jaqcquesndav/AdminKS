@@ -1,4 +1,4 @@
-// Types pour la gestion des devises dans Kiota Suit
+// Types pour la gestion des devises dans Wanzo
 
 /**
  * Types de devises supportées dans l'application

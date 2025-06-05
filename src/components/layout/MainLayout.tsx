@@ -48,14 +48,13 @@ export function MainLayout() {
     checkAuth();
     return () => window.removeEventListener('resize', handleResize);
   }, [navigate]);
-
   // Ajouter un effet pour surveiller les changements de route
   useEffect(() => {
     console.log('Route changée:', location.pathname);
     // Forcer un rechargement de la page si la navigation vers une autre route que dashboard ne fonctionne pas
-    if (location.pathname !== '/dashboard' && document.title === 'Dashboard - Kiota Suit Admin') {
+    if (location.pathname !== '/dashboard' && document.title === 'Dashboard - Wanzo Admin') {
       console.log('Changement de titre pour refléter la nouvelle route');
-      document.title = `${location.pathname.substring(1)} - Kiota Suit Admin`;
+      document.title = `${location.pathname.substring(1)} - Wanzo Admin`;
     }
   }, [location]);
 

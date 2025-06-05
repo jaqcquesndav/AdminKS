@@ -1,4 +1,3 @@
-import { BrowserRouter as Router } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { AppRoutes } from './routes';
@@ -44,15 +43,12 @@ function App() {
   if (isLoading) {
     return <div>Chargement...</div>;
   }
-
   return (
-    <Router>
-      <ToastProvider>
-        <CurrencyProvider>
-          <AppRoutes />
-        </CurrencyProvider>
-      </ToastProvider>
-    </Router>
+    <ToastProvider>
+      <CurrencyProvider>
+        <AppRoutes />
+      </CurrencyProvider>
+    </ToastProvider>
   );
 }
 

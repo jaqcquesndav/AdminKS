@@ -118,7 +118,7 @@ export const FINANCE_GROUP: ApplicationGroup = {
   }
 };
 
-// Types pour la gestion des abonnements et tokens dans Kiota Suit
+// Types pour la gestion des abonnements et tokens dans Wanzo
 
 export type SubscriptionPlanId = 
   | 'pme_freemium' 

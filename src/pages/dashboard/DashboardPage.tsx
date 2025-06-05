@@ -121,10 +121,9 @@ export function DashboardPage() {
   // Adapter le contenu en fonction du rôle de l'utilisateur
   const showFinancialMetrics = ['super_admin', 'growth_finance'].includes(user?.role || '');
   const showSystemMetrics = ['super_admin', 'cto'].includes(user?.role || '');
-
   return (
     <div className="container mx-auto px-4 py-6">
-      <h1 className="text-2xl font-bold mb-6">Tableau de bord Kiota Suit Admin</h1>
+      <h1 className="text-2xl font-bold mb-6">Tableau de bord Wanzo Admin</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8">
         <StatCard

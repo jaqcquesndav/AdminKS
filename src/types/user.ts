@@ -1,4 +1,4 @@
-// Types d'utilisateurs pour le système d'administration Kiota Suit
+// Types d'utilisateurs pour le système d'administration Wanzo
 
 export type UserRole = 'super_admin' | 'cto' | 'growth_finance' | 'customer_support' | 'content_manager' | 'company_admin' | 'company_user';
 export type UserStatus = 'active' | 'inactive' | 'pending' | 'suspended';

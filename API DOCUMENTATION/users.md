@@ -31,7 +31,7 @@ Represents a user in the system.
 
 **Key changes:**
 *   `role`: Updated example roles to include `company_admin` and `company_user`.
-*   `userType`: Added. Indicates if the user is internal to Kiota or an external client user.
+*   `userType`: Added. Indicates if the user is internal to wanzo or an external client user.
 *   `customerAccountId`: Added. Links an external user to their company/customer account.
 *   `updatedAt`: Added. Timestamp of the last update to the user object.
 *   `permissions`: Clarified that permissions are now derived from `ROLE_PERMISSIONS` based on the user's role. Direct assignment of arbitrary permissions is deprecated.

@@ -21,21 +21,20 @@ export function PmeCustomersPage() {
       try {
         // Simuler une requête API
         await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Données mockées
+          // Données mockées
         const mockCustomers: CustomerFormData[] = [
           {
             id: 'pme-1',
-            name: 'Kiota Tech',
+            name: 'Wanzo Tech',
             type: 'pme' as const,
-            email: 'info@kiotatech.com',
+            email: 'info@wanzotech.com',
             phone: '+243 812 345 678',
             address: '123 Avenue de l\'Innovation',
             city: 'Kinshasa',
             country: 'RDC',
             status: 'active' as const,
             billingContactName: 'Marie Mutombo',
-            billingContactEmail: 'm.mutombo@kiotatech.com',
+            billingContactEmail: 'm.mutombo@wanzotech.com',
             tokenAllocation: 1000000,
             accountType: 'premium' as const
           },

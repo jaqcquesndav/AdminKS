@@ -74,7 +74,6 @@ export function useUserInfo() {
   
   // Vérifier si un utilisateur Auth0 est présent et utilisable
   const auth0UserActive = isAuth0Authenticated && auth0User && !USE_MOCK_AUTH;
-  
   // Obtenir le rôle à partir de Auth0 ou de notre système local
   const role = auth0UserActive 
     ? mapAuthRoleToUserRole(auth0User['https://api.wanzo.com/role'])
@@ -82,6 +81,11 @@ export function useUserInfo() {
     
   // Déterminer si c'est un super admin
   const isSuperAdmin = role === 'super_admin';
+  
+  // Log pour débogage
+  console.log('useUserInfo - Auth user:', user);
+  console.log('useUserInfo - Role:', role);
+  console.log('useUserInfo - Is super admin:', isSuperAdmin);
   
   // Fonction pour vérifier si l'utilisateur a un rôle spécifique
   const hasRole = (checkRole: string) => {
