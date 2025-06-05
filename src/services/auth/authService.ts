@@ -31,6 +31,8 @@ function convertAuthRoleToUserRole(role: string): UserRole {
   switch (role) {
     case 'superadmin':
       return 'super_admin';
+    case 'super_admin':
+      return 'super_admin';
     case 'customer_support':
       return 'customer_support';
     case 'growth_finance':
@@ -38,9 +40,9 @@ function convertAuthRoleToUserRole(role: string): UserRole {
     case 'cto':
       return 'cto';
     case 'content_manager':
-      return 'content_manager';
+      return 'content_manager';    
     case 'admin':
-      return 'customer_support'; // Map admin to customer_support as fallback
+      return 'super_admin'; // Map admin to super_admin to ensure full access
     default:
       // Si le rôle n'est pas reconnu, assumer un rôle par défaut
       return 'customer_support';
@@ -192,12 +194,16 @@ class AuthService {
       return false; // En cas d'erreur, on considère que le token est valide
     }
   }
-  
-  // Initialiser avec l'utilisateur de démo
+    // Initialiser avec l'utilisateur de démo
   private initializeMockAuth(): void {
     const initialState = getInitialAuthState();
     
     if (initialState.isAuthenticated && initialState.user && initialState.token) {
+      // Make sure the role is correctly preserved, especially for super_admin
+      if (initialState.user.role === 'super_admin') {
+        console.log('Preserving super_admin role for demo user');
+      }
+      
       // Conversion de l'utilisateur de démo en utilisateur complet
       const fullUser = this.convertToFullUser(initialState.user);
       
@@ -224,15 +230,19 @@ class AuthService {
     } else {
       console.warn('Auto-login enabled but no valid demo user was found.');
     }
-  }
-    // Convertir un AuthUser basique en utilisateur complet
+  }  // Convertir un AuthUser basique en utilisateur complet
   private convertToFullUser(authUser: AuthUser): User {
+    // Preserve the original role if it's already super_admin
+    const role = authUser.role === 'super_admin' 
+      ? 'super_admin' 
+      : convertAuthRoleToUserRole(authUser.role);
+      
     // Transformation en structure User complète
     return {
       id: authUser.id,
       name: authUser.name,
       email: authUser.email,
-      role: convertAuthRoleToUserRole(authUser.role),
+      role: role,
       userType: authUser.userType,
       customerAccountId: authUser.customerAccountId,
       status: 'active',

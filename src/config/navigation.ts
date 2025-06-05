@@ -10,8 +10,7 @@ export interface NavigationItem {
   subItems?: NavigationItem[];
 }
 
-export const navigationConfig: NavigationItem[] = [
-  {
+export const navigationConfig: NavigationItem[] = [  {
     id: 'dashboard',
     label: 'Dashboard',
     path: '/dashboard',

@@ -409,53 +409,51 @@ export const TokenUsageChart = ({
       </div>
     );
   };
-  
-  return (
-    <div className="bg-white p-4 rounded-lg shadow">
+    return (
+    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-medium">{title}</h3>
+        <h3 className="text-lg font-medium dark:text-white">{title}</h3>
         <div className="flex space-x-2">
-          <div className="flex border border-gray-200 rounded-md overflow-hidden">
+          <div className="flex border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden">
             <button 
-              className={`px-2 py-1 text-xs ${timeFrame === 'daily' ? 'bg-blue-100 text-blue-800' : 'bg-white text-gray-600'}`}
+              className={`px-2 py-1 text-xs ${timeFrame === 'daily' ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300'}`}
               onClick={() => setTimeFrame('daily')}
             >
               7J
             </button>
             <button 
-              className={`px-2 py-1 text-xs ${timeFrame === 'weekly' ? 'bg-blue-100 text-blue-800' : 'bg-white text-gray-600'}`}
+              className={`px-2 py-1 text-xs ${timeFrame === 'weekly' ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300'}`}
               onClick={() => setTimeFrame('weekly')}
             >
               30J
             </button>
             <button 
-              className={`px-2 py-1 text-xs ${timeFrame === 'monthly' ? 'bg-blue-100 text-blue-800' : 'bg-white text-gray-600'}`}
+              className={`px-2 py-1 text-xs ${timeFrame === 'monthly' ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300'}`}
               onClick={() => setTimeFrame('monthly')}
             >
               6M
             </button>
             <button 
-              className={`px-2 py-1 text-xs ${timeFrame === 'quarterly' ? 'bg-blue-100 text-blue-800' : 'bg-white text-gray-600'}`}
+              className={`px-2 py-1 text-xs ${timeFrame === 'quarterly' ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300'}`}
               onClick={() => setTimeFrame('quarterly')}
             >
               1A
             </button>
           </div>
           <button 
-            className={`px-2 py-1 text-xs border ${showPrediction ? 'bg-green-100 text-green-800 border-green-200' : 'bg-white text-gray-600 border-gray-200'} rounded-md`}
+            className={`px-2 py-1 text-xs border ${showPrediction ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border-green-200 dark:border-green-700' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'} rounded-md`}
             onClick={() => setShowPrediction(!showPrediction)}
           >
             {showPrediction ? 'Cacher prédiction' : 'Montrer prédiction'}
           </button>
         </div>
       </div>
-      
-      {loading ? (
+        {loading ? (
         <div className="animate-pulse flex flex-col">
-          <div className="h-4 bg-gray-200 rounded w-1/4 mb-6"></div>
-          <div className="h-64 bg-gray-200 rounded w-full mb-4"></div>
-          <div className="h-4 bg-gray-200 rounded w-1/5 mb-2"></div>
-          <div className="h-40 bg-gray-200 rounded w-full"></div>
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4 mb-6"></div>
+          <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded w-full mb-4"></div>
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/5 mb-2"></div>
+          <div className="h-40 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
         </div>
       ) : (
         <>

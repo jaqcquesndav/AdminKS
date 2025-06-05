@@ -48,16 +48,17 @@ export const useAuth = create<AuthState>((set, get) => ({
 export function useUserInfo() {
   const { user } = useAuth();
   const { user: auth0User, isAuthenticated: isAuth0Authenticated } = useAuth0();
-  
-  // Fonction pour mapper le rôle d'authentification au rôle de navigation
+    // Fonction pour mapper le rôle d'authentification au rôle de navigation
   const mapAuthRoleToUserRole = (authRole?: string) => {
     switch(authRole) {
       case 'admin':
-        return 'customer_support';
+        return 'super_admin'; // Mapping admin to super_admin for consistent access
+      case 'superadmin':
+        return 'super_admin'; // Make sure superadmin also maps correctly
+      case 'super_admin':
+        return 'super_admin'; // Explicitly handle super_admin case
       case 'user':
         return 'content_manager';
-      case 'super_admin':
-        return 'super_admin';
       case 'cto':
         return 'cto';
       case 'growth_finance':

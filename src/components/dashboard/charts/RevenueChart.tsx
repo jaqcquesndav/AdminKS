@@ -79,14 +79,13 @@ export const RevenueChart = ({ data, title, loading = false }: RevenueChartProps
     return [format(value), name];
   };
 
-
   return (
-    <div className="bg-white p-4 rounded-lg shadow">
-      <h3 className="text-lg font-medium mb-4">{title}</h3>
+    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+      <h3 className="text-lg font-medium mb-4 dark:text-white">{title}</h3>
       {loading ? (
         <div className="animate-pulse flex flex-col">
-          <div className="h-4 bg-gray-200 rounded w-1/4 mb-6"></div>
-          <div className="h-64 bg-gray-200 rounded w-full"></div>
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4 mb-6"></div>
+          <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
         </div>
       ) : (
         <div className="h-64">
@@ -94,25 +93,26 @@ export const RevenueChart = ({ data, title, loading = false }: RevenueChartProps
             <AreaChart
               data={groupedData}
               margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+            >              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" strokeOpacity={0.7} />
               <XAxis 
                 dataKey="date" 
-                tickLine={false} 
+                tickLine={false}
                 axisLine={false} 
-                tick={{ fontSize: 12 }}
+                tick={{ fontSize: 12, fill: 'var(--text-secondary)' }}
               />
               <YAxis 
                 tickFormatter={yAxisTickFormatter}
                 axisLine={false}
                 tickLine={false}
-                tick={{ fontSize: 12 }}
-              />
-              <Tooltip
+                tick={{ fontSize: 12, fill: 'var(--text-secondary)' }}
+              />              <Tooltip
                 formatter={tooltipFormatter}
                 labelFormatter={(label) => `Période: ${label}`}
+                contentStyle={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--bg-tertiary)', borderRadius: '0.375rem', color: 'var(--text-primary)' }}
               />
-              <Legend />
+              <Legend 
+                wrapperStyle={{ color: 'var(--text-primary)' }} 
+              />
               <Area
                 type="monotone"
                 dataKey="subscription"
