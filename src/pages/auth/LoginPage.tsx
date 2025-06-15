@@ -2,11 +2,13 @@ import { useTranslation } from 'react-i18next';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export function LoginPage() {
   const { t } = useTranslation();
   const { isDark } = useTheme();
   const { loginWithRedirect, isAuthenticated, isLoading } = useAuth0();
+  const navigate = useNavigate();
   
   // Vérifier l'état de l'authentification au chargement
   useEffect(() => {
@@ -15,7 +17,11 @@ export function LoginPage() {
       isLoading,
       currentUrl: window.location.href
     });
-  }, [isAuthenticated, isLoading]);  const handleAuth0Login = () => {
+    if (isAuthenticated && !isLoading) {
+      console.log('👤 Utilisateur déjà authentifié sur LoginPage, redirection vers /dashboard');
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, isLoading, navigate]);  const handleAuth0Login = () => {
     console.log('🚀 Démarrage de l\'authentification Auth0...');
     console.log('🔗 URL de redirection configurée:', import.meta.env.VITE_AUTH0_REDIRECT_URI);
     

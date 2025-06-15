@@ -1,4 +1,13 @@
 export default {
+  header: {
+    userMenu: {
+      defaultName: 'Utilisateur',
+      defaultEmail: 'Email non disponible',
+      profile: 'Mon Profil',
+      settings: 'Paramètres',
+      logout: 'Déconnexion'
+    }
+  },
   // ... other translations
   company: {
     profile: {

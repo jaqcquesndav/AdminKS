@@ -48,11 +48,5 @@ export const useApi = () => {
     post: <T>(endpoint: string, data: unknown) => apiClient.post<T>(endpoint, data),
     put: <T>(endpoint: string, data: unknown) => apiClient.put<T>(endpoint, data),
     delete: <T>(endpoint: string) => apiClient.delete<T>(endpoint),
-    
-    // Méthodes API spécifiques à l'administration
-    getUsers: () => apiClient.get('/admin/users'),
-    getSettings: () => apiClient.get('/admin/settings'),
-    getCompanies: () => apiClient.get('/admin/companies'),
-    getDashboardStats: () => apiClient.get('/admin/dashboard/stats'),
   };
 };

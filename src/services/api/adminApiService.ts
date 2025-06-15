@@ -47,35 +47,36 @@ export const useAdminApi = () => {
 
   return {
     // Gestion des utilisateurs
-    getUsers: () => api.get<AdminUser[]>('/admin/users'),
-    getUserById: (id: string) => api.get<AdminUser>(`/admin/users/${id}`),
-    createUser: (userData: Partial<AdminUser>) => api.post<AdminUser>('/admin/users', userData),
-    updateUser: (id: string, userData: Partial<AdminUser>) => api.put<AdminUser>(`/admin/users/${id}`, userData),
-    deleteUser: (id: string) => api.delete<void>(`/admin/users/${id}`),
+    getUsers: () => api.get<AdminUser[]>('/users'),
+    getUserById: (id: string) => api.get<AdminUser>(`/users/${id}`),
+    createUser: (userData: Partial<AdminUser>) => api.post<AdminUser>('/users', userData),
+    updateUser: (id: string, userData: Partial<AdminUser>) => api.put<AdminUser>(`/users/${id}`, userData),
+    deleteUser: (id: string) => api.delete<void>(`/users/${id}`),
     
     // Gestion des entreprises
-    getCompanies: () => api.get<Company[]>('/admin/companies'),
-    getCompanyById: (id: string) => api.get<Company>(`/admin/companies/${id}`),
-    updateCompany: (id: string, companyData: Partial<Company>) => api.put<Company>(`/admin/companies/${id}`, companyData),
+    getCompanies: () => api.get<Company[]>('/companies'),
+    getCompanyById: (id: string) => api.get<Company>(`/companies/${id}`),
+    updateCompany: (id: string, companyData: Partial<Company>) => api.put<Company>(`/companies/${id}`, companyData),
     
     // Tableau de bord et statistiques
-    getDashboardStats: () => api.get<DashboardStats>('/admin/dashboard/stats'),
+    getDashboardStats: () => api.get<DashboardStats>('/dashboard/stats'),
     
     // Paramètres système
-    getSettings: () => api.get('/admin/settings'),
+    getSettings: () => api.get('/settings'),
     updateSetting: (id: string, value: string | number | boolean | Record<string, unknown>) => 
-      api.put(`/admin/settings/${id}`, { value }),
+      api.put(`/settings/${id}`, { value }),
     
     // Rapports et exports
     generateUserReport: (filters: { 
       status?: string; 
       role?: string; 
       dateRange?: { start: string; end: string } 
-    }) => api.post('/admin/reports/users', filters),    generateRevenueReport: (period: string) => api.get(`/admin/reports/revenue?period=${period}`),
+    }) => api.post('/reports/users', filters),
+    generateRevenueReport: (period: string) => api.get(`/reports/revenue?period=${period}`),
     
     // Fonctionnalités spécifiques
-    approveCustomer: (id: string) => api.post(`/admin/customers/${id}/approve`, {}),
-    rejectCustomer: (id: string, reason: string) => api.post(`/admin/customers/${id}/reject`, { reason }),
-    resetUserPassword: (userId: string) => api.post(`/admin/users/${userId}/reset-password`, {}),
+    approveCustomer: (id: string) => api.post(`/customers/${id}/approve`, {}),
+    rejectCustomer: (id: string, reason: string) => api.post(`/customers/${id}/reject`, { reason }),
+    resetUserPassword: (userId: string) => api.post(`/users/${userId}/reset-password`, {}),
   };
 };

@@ -12,8 +12,8 @@ const adminAuth0Config = {
   domain: 'dev-tezmln0tk0g1gouf.eu.auth0.com',
   clientId: '43d64kgsVYyCZHEFsax7zlRBVUiraCKL', // Client ID spécifique à l'Admin
   audience: 'https://api.wanzo.com',
-  redirectUri: 'http://localhost:3000/admin/callback', // Page de callback admin
-  scope: 'openid profile email read:admin write:admin' // Scopes spécifiques admin
+  redirectUri: 'http://localhost:5173/auth/callback', // Page de callback admin
+  scope: 'openid profile email offline_access' // Scopes spécifiques admin
 };
 ```
 

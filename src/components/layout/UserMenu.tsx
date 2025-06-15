@@ -1,14 +1,14 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import { LogOut, User, Settings } from 'lucide-react';
+import { useAuth0 } from '@auth0/auth0-react';
 import { useAuth, useUserInfo } from '../../hooks/useAuth';
 import { useOnClickOutside } from '../../hooks/useOnClickOutside';
 
 export function UserMenu() {
-  const { t } = useTranslation();
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout: localLogout } = useAuth();
+  const { logout: auth0Logout } = useAuth0();
   const userInfo = useUserInfo();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -16,7 +16,10 @@ export function UserMenu() {
   useOnClickOutside(menuRef, () => setIsOpen(false));
 
   const handleLogout = () => {
-    logout();
+    console.log('UserMenu: Déconnexion initiée.');
+    localLogout();
+    auth0Logout({ logoutParams: { returnTo: window.location.origin + '/login' } });
+    console.log('UserMenu: Redirection vers Auth0 pour déconnexion et retour à /login.');
   };
 
   if (!userInfo) return null;
@@ -39,7 +42,7 @@ export function UserMenu() {
         {userInfo.picture ? (
           <img
             src={userInfo.picture}
-            alt={userInfo.name}
+            alt={userInfo.name || 'Avatar utilisateur'}
             className="w-8 h-8 rounded-full"
           />
         ) : (
@@ -49,17 +52,17 @@ export function UserMenu() {
             </span>
           </div>
         )}        <span className="hidden sm:block text-sm font-medium text-gray-700 dark:text-gray-200 max-w-[120px] truncate">
-          {userInfo.name || t('header.userMenu.defaultName')}
+          {userInfo.name || 'Utilisateur'}
         </span>
       </button>
 
       {isOpen && (
         <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg py-2 z-50 border border-gray-200 dark:border-gray-700">          <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
             <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-              {userInfo.name || t('header.userMenu.defaultName', 'Utilisateur')}
+              {userInfo.name || 'Utilisateur'}
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-              {userInfo.email || t('header.userMenu.defaultEmail', 'Email non disponible')}
+              {userInfo.email || 'Email non disponible'}
             </p>
           </div>
 
@@ -71,7 +74,7 @@ export function UserMenu() {
               }}
               className="flex w-full items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
             >              <User className="w-4 h-4 mr-3" />
-              {t('header.userMenu.profile')}
+              {'Mon Profil'} 
             </button>
             
             <button
@@ -82,7 +85,7 @@ export function UserMenu() {
               className="flex w-full items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
             >
               <Settings className="w-4 h-4 mr-3" />
-              {t('header.userMenu.settings')}
+              {'Paramètres'}
             </button>
           </div>
           
@@ -91,7 +94,7 @@ export function UserMenu() {
               onClick={handleLogout}
               className="flex w-full items-center px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10"
             >              <LogOut className="w-4 h-4 mr-3" />
-              {t('header.userMenu.logout')}
+              {'Déconnexion'}
             </button>
           </div>
         </div>

@@ -156,7 +156,8 @@ class AuthService {
       
       // 6. Sauvegarder l'objet utilisateur
       this.saveUserInfo(userInfo);
-      
+      console.log('👤 UserInfo sauvegardé dans authService:', userInfo); // LOG AJOUTÉ
+
       // 7. Stocker également les informations individuelles pour rétrocompatibilité
       localStorage.setItem('auth_user_email', email);
       localStorage.setItem('auth_user_name', name);

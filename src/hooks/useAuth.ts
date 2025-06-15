@@ -1,14 +1,15 @@
 import { create } from 'zustand';
-import { useAuth0 } from '@auth0/auth0-react';
-import { authService } from '../services/auth/authService'; // Corrected path
-import type { AuthUser } from '../types/auth'; // Corrected path
+import { useAuth0 } from '@auth0/auth0-react'; // Suppression de LogoutOptions
+import { authService } from '../services/auth/authService';
+import type { AuthUser } from '../types/auth';
 
 interface AuthState {
   user: AuthUser | null;
   token: string | null;
   isAuthenticated: boolean;
   login: (user: AuthUser, token: string) => void;
-  logout: () => void;
+  // Modifié pour accepter les options de déconnexion Auth0
+  logout: () => void; 
   updateUser: (data: Partial<AuthUser>) => void;
   getUserInfo: () => {
     id: string;
@@ -24,9 +25,11 @@ export const useAuth = create<AuthState>((set, get) => ({
   token: null,
   isAuthenticated: false,
   login: (user, token) => set({ user, token, isAuthenticated: true }),
-  logout: () => {
+  logout: () => { // Suppression de l'argument options
+    authService.logout(); // Nettoie les tokens locaux
     set({ user: null, token: null, isAuthenticated: false });
-    authService.logout();
+    // La déconnexion Auth0 sera gérée dans le composant pour avoir accès à auth0Client.logout
+    console.log("useAuth: Local logout done. Auth0 logout should be called from component.");
   },
   updateUser: (data) => set((state) => ({
     user: state.user ? { ...state.user, ...data } : null
