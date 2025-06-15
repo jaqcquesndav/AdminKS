@@ -48,10 +48,10 @@ const DEMO_TOKENS = {
 };
 
 // Constante pour activer/désactiver facilement le mode démo
-export const USE_MOCK_AUTH = true;
+export const USE_MOCK_AUTH = false;
 
 // Nouvelle constante pour contrôler l'auto-connexion - Activée pour résoudre le problème de connexion des comptes démo
-export const AUTO_LOGIN = true;
+export const AUTO_LOGIN = false;
 
 // Nouvelle constante pour détecter le mode démo basé sur les emails spéciaux
 export const isDemoEmail = (email: string): boolean => {

@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { useAuth0 } from '@auth0/auth0-react';
 import { authService } from '../services/auth/authService'; // Corrected path
 import type { AuthUser } from '../types/auth'; // Corrected path
-import { USE_MOCK_AUTH } from '../utils/mockAuth';
 
 interface AuthState {
   user: AuthUser | null;
@@ -46,9 +45,9 @@ export const useAuth = create<AuthState>((set, get) => ({
 
 // Hook utilitaire pour accéder rapidement aux informations de l'utilisateur
 export function useUserInfo() {
-  const { user } = useAuth();
   const { user: auth0User, isAuthenticated: isAuth0Authenticated } = useAuth0();
-    // Fonction pour mapper le rôle d'authentification au rôle de navigation
+  
+  // Fonction pour mapper le rôle d'authentification au rôle de navigation
   const mapAuthRoleToUserRole = (authRole?: string) => {
     switch(authRole) {
       case 'admin':
@@ -73,20 +72,13 @@ export function useUserInfo() {
     }
   };
   
-  // Vérifier si un utilisateur Auth0 est présent et utilisable
-  const auth0UserActive = isAuth0Authenticated && auth0User && !USE_MOCK_AUTH;
-  // Obtenir le rôle à partir de Auth0 ou de notre système local
-  const role = auth0UserActive 
+  // Obtenir le rôle à partir de Auth0
+  const role = isAuth0Authenticated && auth0User 
     ? mapAuthRoleToUserRole(auth0User['https://api.wanzo.com/role'])
-    : user?.role;
+    : null;
     
   // Déterminer si c'est un super admin
   const isSuperAdmin = role === 'super_admin';
-  
-  // Log pour débogage
-  console.log('useUserInfo - Auth user:', user);
-  console.log('useUserInfo - Role:', role);
-  console.log('useUserInfo - Is super admin:', isSuperAdmin);
   
   // Fonction pour vérifier si l'utilisateur a un rôle spécifique
   const hasRole = (checkRole: string) => {
@@ -95,10 +87,10 @@ export function useUserInfo() {
   };
   
   return {
-    id: auth0UserActive ? auth0User?.sub : user?.id,
-    email: auth0UserActive ? auth0User?.email : user?.email,
-    name: auth0UserActive ? auth0User?.name : user?.name,
-    picture: auth0UserActive ? auth0User?.picture : user?.picture,
+    id: isAuth0Authenticated ? auth0User?.sub : null,
+    email: isAuth0Authenticated ? auth0User?.email : null,
+    name: isAuth0Authenticated ? auth0User?.name : null,
+    picture: isAuth0Authenticated ? auth0User?.picture : null,
     role,
     isSuperAdmin,
     hasRole

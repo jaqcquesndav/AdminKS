@@ -7,7 +7,7 @@ export const LogoutButton = () => {
     <button 
       onClick={() => logout({ 
         logoutParams: { 
-          returnTo: `${window.location.origin}/login` 
+          returnTo: import.meta.env.VITE_AUTH0_LOGOUT_URI || `${window.location.origin}/login` 
         } 
       })}
       className="btn btn-secondary"

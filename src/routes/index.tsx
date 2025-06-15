@@ -13,6 +13,7 @@ const LoginPage = lazy(() => import('../pages/auth/LoginPage').then(module => ({
 const ForgotPasswordPage = lazy(() => import('../pages/auth/ForgotPasswordPage').then(module => ({ default: module.ForgotPasswordPage })));
 const ResetPasswordPage = lazy(() => import('../pages/auth/ResetPasswordPage').then(module => ({ default: module.ResetPasswordPage })));
 const TwoFactorVerificationPage = lazy(() => import('../pages/auth/TwoFactorVerificationPage').then(module => ({ default: module.TwoFactorVerificationPage })));
+const AuthCallbackPage = lazy(() => import('../pages/auth/AuthCallbackPage').then(module => ({ default: module.AuthCallbackPage })));
 const DashboardPage = lazy(() => import('../pages/dashboard/DashboardPage').then(module => ({ default: module.DashboardPage })));
 const NonAutorisePage = lazy(() => import('../pages/auth/NonAutorisePage').then(module => ({ default: module.NonAutorisePage })));
 const APISettingsPage = lazy(() => import('../pages/settings/APISettingsPage').then(module => ({ default: module.APISettingsPage })));
@@ -57,12 +58,11 @@ export function AppRoutes() {
     <Suspense fallback={<PageLoader />}>      <Routes>        {/* Public routes */}
         <Route path="/login" element={<LoginPage />} />
         {/* Route d'inscription désactivée - les utilisateurs sont créés par le super admin
-        <Route path="/signup" element={<SignUpPage />} /> */}
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/signup" element={<SignUpPage />} /> */}        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/two-factor-verification" element={<TwoFactorVerificationPage />} />
         <Route path="/non-autorise" element={<NonAutorisePage />} />
-        <Route path="/auth/callback" element={<div>Traitement de la connexion...</div>} />
+        <Route path="/auth/callback" element={<AuthCallbackPage />} />
         <Route path="/auth0" element={<Auth0Page />} />
         
         {/* Settings route moved outside ProtectedRoute and MainLayout for testing */}

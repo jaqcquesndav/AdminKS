@@ -11,6 +11,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
 
   const onRedirectCallback = (appState: RedirectCallbackState | undefined) => {
+    // Log pour débogage
+    console.log('Auth0 callback appelé avec appState:', appState);
+    
     // Rediriger vers le tableau de bord ou la page spécifiée après l'authentification
     navigate(appState?.returnTo || '/dashboard', { replace: true });
   };
@@ -25,6 +28,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         scope: import.meta.env.VITE_AUTH0_SCOPE
       }}
       onRedirectCallback={onRedirectCallback}
+      useRefreshTokens={true}
+      cacheLocation="localstorage"
     >
       {children}
     </Auth0Provider>
