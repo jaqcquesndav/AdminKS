@@ -1,16 +1,46 @@
 import { useTranslation } from 'react-i18next';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useEffect } from 'react';
 
 export function LoginPage() {
   const { t } = useTranslation();
   const { isDark } = useTheme();
-  const { loginWithRedirect } = useAuth0();
-
-  const handleAuth0Login = () => {
-    loginWithRedirect({
-      appState: { returnTo: '/dashboard' }
+  const { loginWithRedirect, isAuthenticated, isLoading } = useAuth0();
+  
+  // Vérifier l'état de l'authentification au chargement
+  useEffect(() => {
+    console.log('🔍 État de l\'authentification sur LoginPage:', { 
+      isAuthenticated, 
+      isLoading,
+      currentUrl: window.location.href
     });
+  }, [isAuthenticated, isLoading]);  const handleAuth0Login = () => {
+    console.log('🚀 Démarrage de l\'authentification Auth0...');
+    console.log('🔗 URL de redirection configurée:', import.meta.env.VITE_AUTH0_REDIRECT_URI);
+    
+    // Utiliser l'URL de redirection exacte depuis .env
+    const redirectUri = import.meta.env.VITE_AUTH0_REDIRECT_URI;
+    console.log('🌐 URL de callback utilisée:', redirectUri);
+    
+    // Vérifier et utiliser le scope configuré ou un scope par défaut si vide
+    const scope = import.meta.env.VITE_AUTH0_SCOPE || 'openid profile email';
+    console.log('🔓 Scopes utilisés:', scope);
+    
+    // Utiliser les paramètres complets depuis .env
+    const authParams = {
+      appState: { returnTo: '/dashboard' },
+      authorizationParams: {
+        redirect_uri: redirectUri,
+        audience: import.meta.env.VITE_AUTH0_AUDIENCE,
+        scope: scope,
+        response_type: 'code',
+      }
+    };
+    
+    console.log('📝 Paramètres d\'authentification:', JSON.stringify(authParams));
+    
+    loginWithRedirect(authParams);
   };
 
   return (

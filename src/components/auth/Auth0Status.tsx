@@ -1,9 +1,35 @@
+import React from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { LoginButton } from './LoginButton';
 import { LogoutButton } from './LogoutButton';
 
 export const Auth0Status = () => {
-  const { isAuthenticated, user, isLoading } = useAuth0();
+  const { isAuthenticated, user, isLoading, getAccessTokenSilently } = useAuth0();
+
+  // Effet pour log des informations utilisateur une fois authentifié
+  React.useEffect(() => {
+    if (isAuthenticated && user) {
+      console.log('👤 Utilisateur Auth0 authentifié:', {
+        sub: user.sub,
+        email: user.email,
+        name: user.name,
+        role: user['https://api.wanzo.com/role'],
+        scopes: user['https://api.wanzo.com/scopes']
+      });
+      
+      // Vérifier le token
+      const checkToken = async () => {
+        try {
+          const token = await getAccessTokenSilently();
+          console.log('🎫 Token disponible:', token.substring(0, 20) + '...');
+        } catch (error) {
+          console.error('❌ Erreur lors de la récupération du token:', error);
+        }
+      };
+      
+      checkToken();
+    }
+  }, [isAuthenticated, user, getAccessTokenSilently]);
 
   if (isLoading) {
     return <div className="flex items-center text-gray-500">Vérification de l'authentification...</div>;

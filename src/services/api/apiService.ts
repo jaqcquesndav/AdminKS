@@ -12,7 +12,6 @@ const apiClient = axios.create({
 // Hook pour obtenir une instance API authentifiée
 export const useApi = () => {
   const { getAccessTokenSilently, isAuthenticated } = useAuth0();
-
   // Ajouter le token aux requêtes si l'utilisateur est authentifié
   apiClient.interceptors.request.use(
     async (config) => {
@@ -20,11 +19,22 @@ export const useApi = () => {
         try {
           const token = await getAccessTokenSilently();
           if (token) {
+            console.log('🔐 Token Auth0 récupéré avec succès:', token.substring(0, 20) + '...');
             config.headers.Authorization = `Bearer ${token}`;
+            // Log pour vérifier les headers de la requête
+            console.log('📤 Requête API avec token:', {
+              url: config.url,
+              method: config.method?.toUpperCase(),
+              hasAuthHeader: !!config.headers.Authorization
+            });
+          } else {
+            console.warn('⚠️ Token Auth0 vide ou non défini');
           }
         } catch (error) {
-          console.error('Erreur lors de l\'obtention du token:', error);
+          console.error('❌ Erreur lors de l\'obtention du token:', error);
         }
+      } else {
+        console.log('👤 Utilisateur non authentifié - aucun token envoyé');
       }
       return config;
     },
