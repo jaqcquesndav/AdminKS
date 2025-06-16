@@ -3,7 +3,15 @@
 export type UserRole = 'super_admin' | 'cto' | 'growth_finance' | 'customer_support' | 'content_manager' | 'company_admin' | 'company_user';
 export type UserStatus = 'active' | 'inactive' | 'pending' | 'suspended';
 export type OrganizationType = 'pme' | 'financial_institution';
-export type UserType = 'internal' | 'external'; // Added UserType
+export type UserType = 'internal' | 'external'; // 'internal' = Wanzo staff, 'external' = customer users
+
+// Interface pour les permissions par application
+// Cette interface est utilisée par UserPermissionsForm, mais pas encore implémentée
+// dans l'API ou dans les composants actuels
+export interface ApplicationPermission {
+  applicationId: string;
+  permissions: string[]; // Permissions génériques pour l'instant, à remplacer par des types plus précis à l'avenir
+}
 
 // Type représentant un utilisateur du système d'administration
 export interface User {
@@ -11,17 +19,21 @@ export interface User {
   email: string;
   name: string;
   role: UserRole;
-  userType: UserType; // Added userType field
-  customerAccountId?: string; // Added customerAccountId field
+  userType: UserType; // 'internal' = Wanzo staff, 'external' = customer users
+  customerAccountId?: string; // ID of the customer account for external users
+  customerName?: string; // Name of the customer (for external users)
+  customerType?: OrganizationType; // Type of the customer (pme/financial_institution)
   avatar?: string; // This could be avatarUrl
   status: UserStatus;
   createdAt: string;
-  updatedAt?: string; // Added updatedAt field
+  updatedAt?: string;
   lastLogin?: string;
-  permissions: string[];
+  permissions: ApplicationPermission[];
   departement?: string;
   phoneNumber?: string;
-  position?: string; // Added position for admin profile
+  position?: string; // Position for admin profile
+  // Le type de permissions pourra évoluer vers ApplicationPermission[] dans une future version
+  // applicationPermissions?: ApplicationPermission[];
 }
 
 // Specific type for Admin Profile, can extend User or be separate

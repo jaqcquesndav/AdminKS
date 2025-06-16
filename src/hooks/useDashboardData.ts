@@ -3,7 +3,7 @@ import { useAdminApi } from '../services/api/adminApiService';
 import { UserStatistics } from '../types/user';
 import { SystemHealthSnapshot, SystemMetrics } from '../types/system'; // Added SystemMetrics
 import { RevenueStatistics, TokenStatistics } from '../types/subscription';
-import { PlanCategory } from '../types/subscription'; // Assuming PlanCategory is defined elsewhere
+// PlanCategory est un type, pas un enum - nous allons créer les clés comme des chaînes de caractères
 
 interface DashboardData {
   userStats: UserStatistics;
@@ -29,7 +29,25 @@ const initialUserStats: UserStatistics = {
 
 const initialSystemMetrics: SystemMetrics = {
   serverHealth: { cpuUsage: 0, memoryUsage: 0, diskUsage: 0, uptime: 0, activeConnections: 0, responseTime: 0 },
-  databaseMetrics: { /* Define nested defaults as needed */ },
+  databaseMetrics: {
+    postgresql: {
+      connectionPoolSize: 0,
+      activeConnections: 0,
+      queryPerformance: 0,
+      storageUsage: 0
+    },
+    neo4j: {
+      activeConnections: 0,
+      queryPerformance: 0,
+      storageUsage: 0
+    },
+    timescale: {
+      activeConnections: 0,
+      compressionRatio: 0,
+      retentionPeriod: 0,
+      storageUsage: 0
+    }
+  },
   apiMetrics: { totalRequests: 0, requestsPerMinute: 0, averageResponseTime: 0, errorRate: 0, requestsByEndpoint: {} },
   aiServiceMetrics: { totalRequests: 0, tokensProcessed: 0, averageProcessingTime: 0, errorRate: 0, costIncurred: 0, requestsByModel: {} },
 };
@@ -43,34 +61,46 @@ const initialSystemHealth: SystemHealthSnapshot = {
 };
 
 const initialRevenueStats: RevenueStatistics = {
-  totalRevenue: { usd: 0 }, // Corrected to match type
-  subscriptionRevenue: { usd: 0 },
-  tokenRevenue: { usd: 0 },
-  revenueTrend: [],
-  revenueByCountry: {},
-  revenueByPlan: {
-    [PlanCategory.FREEMIUM]: 0, // Corrected to match type, assuming PlanCategory enum/type exists
-    [PlanCategory.STARTER]: 0,
-    [PlanCategory.PREMIUM]: 0,
-    [PlanCategory.ENTERPRISE]: 0,
-    [PlanCategory.PAY_AS_YOU_GO]: 0,
-    [PlanCategory.TRIAL]: 0,
+  totalRevenue: { usd: 0 },
+  revenueByPeriod: [],
+  averageRevenuePerCustomer: 0,
+  revenueByCustomerType: {
+    pme: 0,
+    financial: 0
   },
-  conversionRate: 0,
-  churnRate: 0,
-  averageRevenuePerUser: 0,
+  revenueByPlan: {
+    'freemium': 0,
+    'starter': 0,
+    'premium': 0,
+    'enterprise': 0,
+    'custom': 0,
+    'base': 0
+  },
+  revenueByPaymentMethod: {
+    'credit_card': 0,
+    'bank_transfer': 0,
+    'mobile_money': 0,
+    'cash': 0,
+    'check': 0
+  },
+  recurringRevenue: 0,
+  oneTimeRevenue: 0,
+  tokenRevenue: 0,
+  revenueTrend: [],
 };
 
 const initialTokenStats: TokenStatistics = {
+  totalTokensAllocated: 0,
   totalTokensUsed: 0,
-  // totalTokensSold: 0, // Removed as it's not in the type definition
-  tokensUsedToday: 0,
-  tokensCostToday: 0,
-  revenueFromTokens: { usd: 0 },
-  profitFromTokens: { usd: 0 },
-  tokenUsageByApp: {},
-  tokenUsageByFeature: {},
-  tokenUsageTrend: [],
+  totalTokensPurchased: 0,
+  tokenUsageByPeriod: [],
+  tokenUsageByCustomerType: {
+    pme: 0,
+    financial: 0
+  },
+  averageTokensPerCustomer: 0,
+  top10TokenConsumers: [],
+  tokenUsageTrend: []
 };
 
 export const useDashboardData = (userRole: string) => {

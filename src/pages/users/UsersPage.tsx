@@ -1,67 +1,54 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, Search } from 'lucide-react';
-import { UserForm } from '../../components/users/forms/UserForm';
+import { UserForm } from '../../components/users/UserForm';
 import { UsersTable } from '../../components/users/table/UsersTable';
 import { DeleteUserModal } from '../../components/users/modals/DeleteUserModal';
-// import { UserDetailsModal } from '../../components/users/UserDetailsModal'; // Disabled UserDetailsModal import
+import { UserDetailsModal } from '../../components/users/UserDetailsModal';
 import { useUsers } from '../../hooks/useUsers';
 import type { User, UserType } from '../../types/user';
-// import type { ActivityLog, UserSession } from '../../types/activity'; // Commented out as UserDetailsModal is disabled
 import { useAuth } from '../../hooks/useAuth';
-
-// Mock data for demonstration - Commented out as UserDetailsModal is disabled
-/*
-const mockActivities: ActivityLog[] = [
-  {
-    id: '1',
-    userId: '1',
-    userName: 'Jean Dupont',
-    applicationId: 'accounting',
-    applicationName: 'Comptabilité',
-    type: 'login',
-    message: 'Connexion au système',
-    timestamp: new Date(),
-    severity: 'info'
-  },
-  {
-    id: '2',
-    userId: '1',
-    userName: 'Jean Dupont',
-    applicationId: 'sales',
-    applicationName: 'Ventes',
-    type: 'create',
-    message: 'Création d\'une nouvelle facture',
-    timestamp: new Date(),
-    severity: 'info'
-  }
-];
-
-const mockSessions: UserSession[] = [
-  {
-    id: '1',
-    userId: '1',
-    userName: 'Jean Dupont',
-    applicationId: 'accounting',
-    applicationName: 'Comptabilité',
-    ipAddress: '192.168.1.1',
-    userAgent: 'Chrome/Windows',
-    startedAt: new Date(),
-    lastActivityAt: new Date(),
-    status: 'active'
-  }
-];
-*/
+import { useToast } from '../../hooks/useToast';
 
 export function UsersPage() {
   const { t } = useTranslation();
-  const { users, isLoading, loadUsers, createUser, updateUser, deleteUser } = useUsers();
-  const { user: currentUser } = useAuth();
+  const { 
+    users, 
+    isLoading, 
+    loadUsers, 
+    createUser, 
+    updateUser, 
+    deleteUser, 
+    terminateUserSession,
+    userActivities,
+    userSessions,
+    loadUserActivities,
+    loadUserSessions
+  } = useUsers();  const { user: currentUser } = useAuth();
+  const { showToast } = useToast();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  // const [selectedUserForDetails, setSelectedUserForDetails] = useState<User | null>(null); // Commented out
+  const [selectedUserForDetails, setSelectedUserForDetails] = useState<User | null>(null);
+
+  // Fonction pour convertir AuthUser en User (pour corriger l'erreur de type)
+  const convertAuthToUser = (authUser: typeof currentUser): User | null => {
+    if (!authUser) return null;
+    
+    return {
+      id: authUser.id,
+      name: authUser.name,
+      email: authUser.email,
+      role: authUser.role,
+      userType: authUser.userType,
+      customerAccountId: authUser.customerAccountId,
+      avatar: authUser.picture,
+      status: 'active', // Valeur par défaut
+      createdAt: new Date().toISOString(), // Valeur par défaut
+      permissions: [], // Valeur par défaut
+    };
+  };
 
   useEffect(() => {
     if (currentUser) {
@@ -80,44 +67,74 @@ export function UsersPage() {
   };
 
   const handleSubmit = async (data: Partial<User> & { password?: string; userType?: UserType; customerAccountId?: string }) => {
-    if (selectedUser) {
-      await updateUser(selectedUser.id, data);
-    } else {
-      if (!data.name || !data.email || !data.password || !data.role || !data.userType) {
-        console.error("Missing required fields for user creation");
-        // TODO: Show toast message
-        return;
+    try {
+      if (selectedUser) {
+        await updateUser(selectedUser.id, data);
+      } else {
+        if (!data.name || !data.email || !data.password || !data.role || !data.userType) {
+          showToast('error', t('users.errors.missingFields'));
+          return;
+        }
+        await createUser({
+          name: data.name,
+          email: data.email,
+          password: data.password,
+          role: data.role,
+          userType: data.userType,
+          customerAccountId: data.userType === 'external' ? data.customerAccountId : undefined,
+        });
       }
-      await createUser({
-        name: data.name,
-        email: data.email,
-        password: data.password,
-        role: data.role,
-        userType: data.userType,
-        customerAccountId: data.userType === 'external' ? data.customerAccountId : undefined,
-      });
+      setIsFormOpen(false);
+    } catch (error) {
+      // Error is already handled in useUsers hook with toasts
+      console.error("Error in user form submission:", error);
     }
-    setIsFormOpen(false);
   };
 
   const handleDeleteConfirm = async () => {
     if (userToDelete) {
-      await deleteUser(userToDelete.id);
-      setUserToDelete(null);
-      // if (selectedUserForDetails?.id === userToDelete.id) { // Commented out
-      //   setSelectedUserForDetails(null);
-      // }
+      try {
+        await deleteUser(userToDelete.id);
+        setUserToDelete(null);
+        if (selectedUserForDetails?.id === userToDelete.id) {
+          setSelectedUserForDetails(null);
+        }
+      } catch (error) {
+        // Error is already handled in useUsers hook with toasts
+        console.error("Error deleting user:", error);
+      }
     }
   };
 
-  // const handleTerminateSession = async (sessionId: string) => { // Commented out
-  //   console.log('Terminate session:', sessionId);
-  // };
+  const handleTerminateSession = async (sessionId: string) => {
+    if (selectedUserForDetails) {
+      try {
+        await terminateUserSession(selectedUserForDetails.id, sessionId);
+        showToast('success', t('users.notifications.sessionTerminated'));
+        // Optionally, refresh sessions data for the user
+      } catch (error) {
+        // Error already handled in terminateUserSession with toast
+        console.error("Error terminating session:", error);
+      }
+    }
+  };  // Handler for viewing user details
+  const handleViewUserDetails = async (user: User) => {
+    setSelectedUserForDetails(user);
+    
+    try {
+      await loadUserActivities(user.id);
+      await loadUserSessions(user.id);
+    } catch (error) {
+      console.error('Error loading user details:', error);
+      showToast('error', t('users.errors.loadDetailsFailed'));
+    }
+  };
 
   const filteredUsers = users.filter(user =>
     user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     user.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
+  
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -139,7 +156,9 @@ export function UsersPage() {
             {t('users.actions.create')}
           </button>
         )}
-      </div>      <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+      </div>
+      
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -151,36 +170,28 @@ export function UsersPage() {
               className="pl-10 w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm focus:border-primary focus:ring-primary dark:focus:border-primary dark:focus:ring-primary-light"
             />
           </div>
-        </div>
-
-        <UsersTable
+        </div>        <UsersTable
           users={filteredUsers}
           onEdit={handleEditUser}
           onDelete={setUserToDelete}
-          // onSelect={setSelectedUserForDetails} // Commented out
-          onSelect={() => {}} // Temporarily pass an empty function for onSelect
+          onSelect={handleViewUserDetails}
           currentUser={currentUser}
         />
-      </div>
-
-      {/* {selectedUserForDetails && ( // Commented out UserDetailsModal section
+      </div>      {selectedUserForDetails && (
         <UserDetailsModal
           user={selectedUserForDetails}
           isOpen={true}
           onClose={() => setSelectedUserForDetails(null)}
-          activities={mockActivities}
-          sessions={mockSessions}
+          activities={userActivities}
+          sessions={userSessions}
           onTerminateSession={handleTerminateSession}
         />
-      )} */}
-
-      {isFormOpen && (
+      )}      {isFormOpen && (
         <UserForm
-          user={selectedUser ? selectedUser : undefined}
-          isOpen={isFormOpen}
-          onClose={() => setIsFormOpen(false)}
+          user={selectedUser || undefined}
           onSubmit={handleSubmit}
-          currentUser={currentUser}
+          onCancel={() => setIsFormOpen(false)}
+          currentUser={convertAuthToUser(currentUser)}
         />
       )}
 

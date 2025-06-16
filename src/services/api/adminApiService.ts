@@ -36,6 +36,10 @@ export interface AdminUser {
   name: string;
   role: string;
   status: string;
+  userType?: string; // internal or external
+  customerAccountId?: string; // ID of associated customer account for external users
+  companyName?: string; // Name of the associated company
+  companyType?: string; // Type of the associated company
   lastLogin?: string;
   createdAt: string;
   updatedAt: string;

@@ -116,18 +116,148 @@ export default {
     }
   },
   users: {
+    userTypes: {
+      internal: 'Interne',
+      external: 'Externe (Client)'
+    },
+    title: 'Gestion des Utilisateurs',
+    add: 'Ajouter un Utilisateur',
+    search: 'Rechercher un utilisateur...',
+    form: {
+      create: {
+        title: 'Créer un Utilisateur',
+        submit: 'Créer'
+      },
+      edit: {
+        title: 'Modifier l\'Utilisateur'
+      },
+      name: 'Nom',
+      email: 'Email',
+      role: 'Rôle',
+      status: 'Statut',
+      userType: 'Type d\'utilisateur',
+      customerAccountId: 'ID Compte Client',
+      password: 'Mot de passe',
+      confirmPassword: 'Confirmer le mot de passe',
+      errors: {
+        passwordsDontMatch: 'Les mots de passe ne correspondent pas.',
+        passwordTooShort: 'Le mot de passe doit contenir au moins 8 caractères.',
+        missingCustomerAccountId: 'Veuillez fournir un ID de compte client pour les utilisateurs externes.'
+      }
+    },
+    status: {
+      active: 'Actif',
+      inactive: 'Inactif',
+      pending: 'En attente',
+      suspended: 'Suspendu'
+    },
+    details: {
+      createdAt: 'Créé le',
+      lastLogin: 'Dernière connexion',
+      tabs: {
+        activity: 'Activité',
+        sessions: 'Sessions',
+        permissions: 'Permissions'
+      }
+    },
+    table: {
+      name: 'Nom',
+      email: 'Email',
+      role: 'Rôle',
+      status: 'Statut',
+      company: 'Entreprise',
+      customer: 'Client', // Ajouté pour la colonne client
+      lastLogin: 'Dernière connexion',
+      actions: 'Actions',
+      internal: 'Wanzo (Interne)',
+      unknown: 'Client Inconnu', // Ajouté pour client inconnu
+    },
+    actions: {
+      edit: 'Modifier',
+      delete: 'Supprimer',
+      groupByCustomer: 'Grouper par Client', // Mise à jour de la terminologie
+      ungroupByCustomer: 'Dégrouper par Client', // Mise à jour de la terminologie
+      terminateSession: 'Terminer la Session',
+    },
+    notifications: {
+      created: 'Utilisateur créé avec succès.',
+      updated: 'Utilisateur mis à jour avec succès.',
+      deleted: 'Utilisateur supprimé avec succès.',
+      sessionTerminated: 'Session terminée avec succès.',
+    },
     errors: {
       loadFailed: 'Échec du chargement des utilisateurs.',
       createFailed: 'Échec de la création de l\'utilisateur.',
       updateFailed: 'Échec de la mise à jour de l\'utilisateur.',
       deleteFailed: 'Échec de la suppression de l\'utilisateur.',
-      loadSingleFailed: 'Échec du chargement des détails de l\'utilisateur.'
+      loadSingleFailed: 'Échec du chargement des détails de l\'utilisateur.',
+      missingFields: 'Veuillez remplir tous les champs obligatoires pour créer un utilisateur.',
+      sessionTerminationFailed: 'Échec de la terminaison de la session.',
+      invalidEmail: 'Veuillez saisir une adresse e-mail valide.',
+      missingRequiredFields: 'Veuillez remplir tous les champs obligatoires.',
     },
-    notifications: {
-      created: 'Utilisateur créé avec succès.',
-      updated: 'Utilisateur mis à jour avec succès.',
-      deleted: 'Utilisateur supprimé avec succès.'
+    roles: {
+      super_admin: 'Super Administrateur',
+      cto: 'CTO',
+      growth_finance: 'Croissance et Finance',
+      customer_support: 'Support Client',
+      content_manager: 'Gestionnaire de Contenu',
+      company_admin: 'Administrateur d\'Entreprise',
+      company_user: 'Utilisateur d\'Entreprise',
+    },
+  },
+  common: {
+    cancel: 'Annuler',
+    save: 'Enregistrer',
+    loading: 'Chargement...',
+    close: 'Fermer', // Ajouté
+    // ... other common translations
+  },
+  permissions: { // Traductions pour les permissions
+    view_users: 'Voir les utilisateurs',
+    manage_users: 'Gérer les utilisateurs',
+    view_settings: 'Voir les paramètres',
+    read: 'Lecture',
+    write: 'Écriture',
+    admin: 'Administration',
+    create: 'Créer',
+    update: 'Modifier',
+    delete: 'Supprimer',
+    export: 'Exporter',
+    import: 'Importer',
+    // Ajoutez d\'autres traductions de permissions spécifiques à votre application
+  },
+  userPermissions: { // Section pour le formulaire de permissions
+    title: 'Gestion des permissions',
+    applications: 'Applications',
+    noApplications: 'Aucune application disponible',
+    save: 'Enregistrer les permissions',
+    cancel: 'Annuler',
+    // Groupes d'applications
+    groups: {
+      erp: 'Suite ERP',
+      finance: 'Solutions Financières'
+    },
+    // Applications
+    apps: {
+      accounting: 'Comptabilité',
+      sales: 'Ventes',
+      inventory: 'Stocks',
+      portfolio: 'Gestion de Portefeuille',
+      leasing: 'Gestion de Leasing'
     }
+  },
+  table: {
+    name: 'Nom',
+    email: 'Email',
+    role: 'Rôle',
+    status: 'Statut',
+    company: 'Entreprise',
+    lastLogin: 'Dernière connexion',
+    actions: 'Actions',
+    internal: 'Interne',
+    groupByCompany: 'Grouper par entreprise',
+    ungroupByCompany: 'Dégrouper par entreprise',
   }
   // ... other translations
 };

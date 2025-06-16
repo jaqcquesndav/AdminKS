@@ -1,5 +1,6 @@
 import { useAdminApi, AdminUser } from '../api/adminApiService';
-import type { User, UserRole, UserType, UserStatus } from '../../types/user'; // Added UserStatus
+import type { User, UserRole, UserType, UserStatus, OrganizationType } from '../../types/user';
+import type { ActivityLog, UserSession } from '../../types/activity'; // Import activity types
 import { ROLE_PERMISSIONS } from '../../types/user';
 
 // Helper to map AdminUser from API to frontend User type
@@ -9,12 +10,18 @@ const mapAdminUserToUser = (adminUser: AdminUser): User => {
     name: adminUser.name,
     email: adminUser.email,
     role: adminUser.role as UserRole,
-    status: adminUser.status as UserStatus, // Added cast, ensure backend status strings match UserStatus literals
-    userType: 'internal', // Placeholder: Determine from role or add to AdminUser API type
-    customerAccountId: undefined, // Placeholder: Add to AdminUser API type if needed
+    status: adminUser.status as UserStatus,
+    userType: adminUser.userType as UserType || 'internal', // Default to internal if not specified
+    customerAccountId: adminUser.customerAccountId, // Customer ID for external users
+    customerName: adminUser.companyName, // Map API's companyName to customerName for clarity
+    customerType: adminUser.companyType as OrganizationType, // Map API's companyType to customerType
     createdAt: adminUser.createdAt,
     lastLogin: adminUser.lastLogin,
-    permissions: ROLE_PERMISSIONS[adminUser.role as UserRole] || [],
+    permissions: (adminUser.role as UserRole) ? 
+      ROLE_PERMISSIONS[adminUser.role as UserRole].map(permission => ({
+        applicationId: 'default',
+        permissions: [permission]
+      })) : [],
     // Ensure all other fields expected by frontend User type are mapped
   };
 };
@@ -55,14 +62,20 @@ interface CreateUserDataInternal {
 // It correctly uses the useAdminApi hook internally.
 export const useUserService = () => {
   const adminApi = useAdminApi();
-
   const getUsers = async (requestingUserRole?: UserRole, requestingUserCompanyId?: string): Promise<User[]> => {
     console.log('useUserService.getUsers called with role:', requestingUserRole, 'companyId:', requestingUserCompanyId);
     // TODO: Implement API filtering if backend supports it.
     // Example: const response = await adminApi.getUsers({ params: { role: requestingUserRole, companyId: requestingUserCompanyId } });
     const response = await adminApi.getUsers();
+    
     if (response && response.data) {
-      return response.data.map(mapAdminUserToUser);
+      // Map users and potentially enrich with customer information
+      const users = response.data.map(mapAdminUserToUser);
+      
+      // For external users without company name, we could fetch from the customer service
+      // This is optional and can be implemented later if needed
+      
+      return users;
     }
     return [];
   };
@@ -99,11 +112,38 @@ export const useUserService = () => {
     return null;
   };
 
+  const terminateUserSession = async (userId: string, sessionId: string): Promise<void> => {
+    // This is a placeholder. The actual implementation will depend on how sessions are managed.
+    // If sessions are managed by Auth0 or another external provider, this might involve an API call to that provider.
+    // If sessions are managed internally, this would involve an API call to your backend to invalidate the session.
+    console.log(`Terminating session ${sessionId} for user ${userId}`);
+    // Example: await adminApi.terminateUserSession(userId, sessionId);
+    // For now, we'll simulate success.
+    return Promise.resolve();
+  };
+
+  const getUserActivities = async (userId: string): Promise<ActivityLog[]> => {
+    // This is a placeholder - implement the actual API call when available
+    console.log(`Getting activities for user ${userId}`);
+    // Simulated response
+    return Promise.resolve([]);
+  };
+
+  const getUserSessions = async (userId: string): Promise<UserSession[]> => {
+    // This is a placeholder - implement the actual API call when available
+    console.log(`Getting sessions for user ${userId}`);
+    // Simulated response
+    return Promise.resolve([]);
+  };
+
   return {
     getUsers,
     createUser,
     updateUser,
     deleteUser,
     getUserById,
+    terminateUserSession,
+    getUserActivities,
+    getUserSessions,
   };
 };
