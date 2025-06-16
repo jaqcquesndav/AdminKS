@@ -1,16 +1,14 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Search, Download, Eye, PlusCircle, CheckCircle, XCircle, Clock } from 'lucide-react'; // Removed AlertTriangle
+import { Search, Download, PlusCircle, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { useCurrencySettings } from '../../hooks/useCurrencySettings';
 import type { SupportedCurrency } from '../../types/currency';
 import { usePayments } from '../../hooks/usePayments';
-import type { Payment, TransactionFilterParams, PaymentMethod as FinancePaymentMethod } from '../../types/finance'; // Renamed PaymentMethod to FinancePaymentMethod, removed TransactionStatus
+import type { Payment, TransactionFilterParams, PaymentMethod as FinancePaymentMethod } from '../../types/finance';
 import { useToast } from '../../hooks/useToast';
-import { ConnectionError, BackendError } from '../../components/common/ConnectionError';
-import { getErrorMessage, isNetworkError } from '../../utils/errorUtils';
-import { useTranslation } from 'react-i18next'; // Added for translations
+import { useTranslation } from 'react-i18next';
 
 export function PaymentsPage() {
-  const { t } = useTranslation(); // Added for translations
+  const { t } = useTranslation();
   const { showToast } = useToast();
   const { activeCurrency, formatCurrency, convert, baseCurrency } = useCurrencySettings(); 
   
@@ -21,10 +19,6 @@ export function PaymentsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // Error state from usePayments is already available, but we might want a page-level one too for other ops
-  // const [pageError, setPageError] = useState<string | null>(null);
-  // const [isPageNetworkError, setIsPageNetworkError] = useState(false);
-
   const initialFilterParams: TransactionFilterParams = useMemo(() => ({
     page: currentPage,
     limit: itemsPerPage,
@@ -33,7 +27,7 @@ export function PaymentsPage() {
   const { 
     payments, 
     isLoading, 
-    error: paymentsHookError, // Renamed to avoid conflict if we add page-level error state
+    error: paymentsHookError,
     pagination, 
     fetchPayments,
   } = usePayments(initialFilterParams);
@@ -72,8 +66,6 @@ export function PaymentsPage() {
     return { startDate, endDate };
   };
   
-  // The fetchPayments call within usePayments hook should handle its own errors and update `paymentsHookError`
-  // We rely on that hook's error state for displaying ConnectionError/BackendError related to fetching payments.
   useEffect(() => {
     const { startDate, endDate } = mapDateRangeToParams(filterDateRange);
     const params: TransactionFilterParams = {
@@ -331,93 +323,77 @@ export function PaymentsPage() {
           <p className="mt-1 text-2xl font-semibold text-gray-900 dark:text-white">{formatCurrency(refundedAmount, baseCurrency)}</p>
         </div>
       </div>      {/* Tableau de paiements - Les en-têtes sont toujours affichés */}
-      <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-gray-700">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t('finance.table.date', 'Date')}</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t('finance.table.customer', 'Client')}</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t('finance.table.invoiceId', 'Facture ID')}</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t('finance.table.amount', 'Montant')}</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t('finance.table.method', 'Méthode')}</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t('finance.table.status', 'Statut')}</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t('finance.table.actions', 'Actions')}</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            {/* État de chargement */}
-            {isLoading && displayPayments.length === 0 && !paymentsHookError && (
+      <div className="bg-white dark:bg-gray-800 shadow overflow-hidden rounded-lg">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
-                <td colSpan={7} className="px-6 py-12 text-center">
-                  <div className="flex flex-col items-center justify-center">
-                    <div className="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12 mb-4"></div>
-                    <p className="text-gray-600 dark:text-gray-400">{t('common.loading', 'Chargement...')}</p>
-                  </div>
-                </td>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t('finance.payments.table.customer', 'Client')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t('finance.payments.table.date', 'Date')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t('finance.payments.table.amount', 'Montant')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t('finance.payments.table.method', 'Méthode')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t('finance.payments.table.status', 'Statut')}</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t('finance.payments.table.actions', 'Actions')}</th>
               </tr>
-            )}
-            
-            {/* État d'erreur */}
-            {paymentsHookError && !isLoading && (
-              <tr>
-                <td colSpan={7} className="px-6 py-12 text-center">
-                  {isNetworkError(paymentsHookError) ? (
-                    <ConnectionError 
-                      message={`${t('errors.networkError', 'Erreur de connexion')}: ${getErrorMessage(paymentsHookError)}`}
-                      retry={() => fetchPayments(initialFilterParams)}
-                    />
-                  ) : (
-                    <BackendError 
-                      message={`${t('errors.backendError', 'Erreur du serveur')}: ${getErrorMessage(paymentsHookError)}`}
-                      retry={() => fetchPayments(initialFilterParams)}
-                    />
-                  )}
-                </td>
-              </tr>
-            )}
-            
-            {/* Aucune donnée */}
-            {!isLoading && !paymentsHookError && displayPayments.length === 0 && (
-              <tr>
-                <td colSpan={7} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
-                  {t('finance.payments.noPaymentsFound', 'Aucun paiement trouvé pour les filtres sélectionnés.')}
-                </td>
-              </tr>
-            )}
-            
-            {/* Affichage des paiements lorsque disponibles */}
-            {!isLoading && !paymentsHookError && displayPayments.length > 0 && displayPayments.map((payment) => (
-              <tr key={payment.id} className="hover:bg-gray-50 dark:hover:bg-gray-600">
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{new Date(payment.paidAt).toLocaleDateString()}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{payment.customerName || t('common.notAvailable', 'N/A')}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{payment.invoiceId || t('common.notAvailable', 'N/A')}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{formatDisplayAmount(payment.amount, payment.currency as SupportedCurrency)}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{getPaymentMethodLabel(payment.method)}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusBadgeClass(payment.status)}`}>
-                    {statusIcon(payment.status)}
-                    {getStatusLabel(payment.status)}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                  <button onClick={() => handleViewPayment(payment.id)} className="text-primary hover:text-primary-dark" title={t('common.viewDetails', 'Voir détails') as string}>
-                    <Eye className="h-5 w-5" />
-                  </button>
-                  {payment.invoiceId && (
-                    <button onClick={() => handleDownloadInvoice(payment.invoiceId!)} className="text-green-600 hover:text-green-800" title={t('finance.actions.downloadInvoice', 'Télécharger la facture') as string}>
-                      <Download className="h-5 w-5" />
-                    </button>
-                  )}
-                  {(payment.status === 'completed' || payment.status === 'verified' || payment.status === 'pending') && (
-                    <button onClick={() => handleRefundPayment(payment.id)} className="text-red-600 hover:text-red-800" title={t('finance.actions.refund', 'Rembourser/Annuler') as string}>
-                      <XCircle className="h-5 w-5" />
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              {isLoading && Array.from({ length: 5 }).map((_, i) => (
+                <tr key={`skeleton-${i}`} className="animate-pulse">
+                  <td className="px-6 py-4"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32 mb-2" /></td>
+                  <td className="px-6 py-4"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24" /></td>
+                  <td className="px-6 py-4"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-20" /></td>
+                  <td className="px-6 py-4"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-20" /></td>
+                  <td className="px-6 py-4"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-16" /></td>
+                  <td className="px-6 py-4 text-right"><div className="h-8 bg-gray-200 dark:bg-gray-700 rounded-full w-10 ml-auto" /></td>
+                </tr>
+              ))}
+              {!isLoading && paymentsHookError && (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-red-500">
+                    {t('finance.payments.errorLoading', 'Erreur de chargement des paiements.')}
+                  </td>
+                </tr>
+              )}
+              {!isLoading && !paymentsHookError && displayPayments.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                    {t('finance.payments.noPayments', 'Aucun paiement trouvé.')}
+                  </td>
+                </tr>
+              )}
+              {!isLoading && !paymentsHookError && displayPayments.length > 0 && displayPayments.map((payment) => (
+                <tr key={payment.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{payment.customerName || 'N/A'}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 dark:text-gray-100">{new Date(payment.paidAt).toLocaleDateString()}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{formatDisplayAmount(payment.amount, payment.currency as SupportedCurrency)}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 dark:text-gray-100">{getPaymentMethodLabel(payment.method)}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusBadgeClass(payment.status)}`}>
+                      {statusIcon(payment.status)}
+                      {getStatusLabel(payment.status)}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <div className="flex items-center justify-end space-x-2">
+                      <button onClick={() => handleViewPayment(payment.id)} className="text-blue-600 hover:text-blue-800 text-xs">{t('finance.payments.view', 'Voir')}</button>
+                      <button onClick={() => handleDownloadInvoice(payment.invoiceId || '')} className="text-gray-400 hover:text-gray-500 focus:outline-none"><Download className="h-5 w-5" /></button>
+                      <button onClick={() => handleRefundPayment(payment.id)} className="text-red-600 hover:text-red-800 text-xs">{t('finance.payments.refund', 'Rembourser')}</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {/* Pagination controls ici si besoin */}
       </div>
 
       {/* Pagination */}

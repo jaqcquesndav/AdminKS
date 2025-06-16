@@ -10,6 +10,8 @@ export interface AuthUser {
   customerAccountId?: string; // Added customerAccountId
   phoneNumber?: string; // Added phoneNumber
   kyc?: KYCInfo; // Added kyc
+  idAgent?: string; // Ajout ID agent iKiotahub
+  validityEnd?: string; // Date de fin de validité du compte/contrat
 }
 
 export interface AuthState {

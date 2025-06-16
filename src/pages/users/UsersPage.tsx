@@ -12,18 +12,21 @@ import { useToast } from '../../hooks/useToast';
 
 export function UsersPage() {
   const { t } = useTranslation();
-  const { 
-    users, 
-    isLoading, 
-    loadUsers, 
-    createUser, 
-    updateUser, 
-    deleteUser, 
+  const {
+    users,
+    isLoading,
+    loadUsers,
+    createUser,
+    updateUser,
+    deleteUser,
     terminateUserSession,
     userActivities,
     userSessions,
     loadUserActivities,
-    loadUserSessions
+    loadUserSessions,
+    currentPage,
+    setCurrentPage,
+    totalPages,
   } = useUsers();
   const { user: currentUser } = useAuth();
   const { showToast } = useToast();
@@ -32,6 +35,7 @@ export function UsersPage() {
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUserForDetails, setSelectedUserForDetails] = useState<User | null>(null);
+  const [itemsPerPage] = useState(10);
 
   // Function to convert AuthUser to User (to fix type error)
   const convertAuthToUser = (authUser: typeof currentUser): User | null => {
@@ -53,9 +57,14 @@ export function UsersPage() {
 
   useEffect(() => {
     if (currentUser) {
-      loadUsers(currentUser.role, currentUser.userType === 'external' ? currentUser.customerAccountId : undefined);
+      loadUsers(
+        currentUser.role,
+        currentUser.userType === 'external' ? currentUser.customerAccountId : undefined,
+        currentPage,
+        itemsPerPage
+      );
     }
-  }, [loadUsers, currentUser]);
+  }, [loadUsers, currentUser, currentPage, itemsPerPage]);
 
   const handleCreateUser = () => {
     setSelectedUser(null);
@@ -144,14 +153,10 @@ export function UsersPage() {
     user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     user.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500 dark:text-gray-400">{t('common.loading')}</div>
-      </div>
-    );
-  }
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+  };
 
   return (
     <div className="space-y-6">
@@ -167,7 +172,6 @@ export function UsersPage() {
           </button>
         )}
       </div>
-      
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
           <div className="relative">
@@ -184,10 +188,34 @@ export function UsersPage() {
         <UsersTable
           users={filteredUsers}
           onEdit={handleEditUser}
-          onDelete={setUserToDelete} // Changed from handleDeleteUser to setUserToDelete to open modal
+          onDelete={setUserToDelete}
           onSelect={handleViewUserDetails}
           currentUser={currentUser}
+          isLoading={isLoading}
+          error={null}
         />
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-4 py-2 border-t border-gray-200 dark:border-gray-700">
+            <button
+              onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-50"
+            >
+              {t('common.previous', 'Précédent')}
+            </button>
+            <span className="text-sm text-gray-600 dark:text-gray-300">
+              {t('common.page', 'Page')} {currentPage} {t('common.of', 'sur')} {totalPages}
+            </span>
+            <button
+              onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-50"
+            >
+              {t('common.next', 'Suivant')}
+            </button>
+          </div>
+        )}
       </div>
       {selectedUserForDetails && (
         <UserDetailsModal
@@ -207,7 +235,6 @@ export function UsersPage() {
           currentUser={convertAuthToUser(currentUser)}
         />
       )}
-
       {userToDelete && (
         <DeleteUserModal
           user={userToDelete}

@@ -89,7 +89,8 @@ export const useAdminApi = () => {
 
   return {
     // Gestion des utilisateurs
-    getUsers: () => api.get<AdminUser[]>('/users'),
+    getUsers: (params?: { role?: string; companyId?: string; page?: number; limit?: number }) =>
+      api.get<{ users: AdminUser[]; totalCount: number; page: number; totalPages: number }>(`/users${buildQueryString(params || {})}`),
     getUserById: (id: string) => api.get<AdminUser>(`/users/${id}`),
     createUser: (userData: Partial<AdminUser>) => api.post<AdminUser>('/users', userData),
     updateUser: (id: string, userData: Partial<AdminUser>) => api.put<AdminUser>(`/users/${id}`, userData),

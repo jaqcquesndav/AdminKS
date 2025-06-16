@@ -143,9 +143,7 @@ export function PmeCustomersPage() {
           <Plus className="mr-2 h-4 w-4" />
           {t('customers.addCustomer', 'Ajouter un client')}
         </button>
-      </div>
-
-      {loading && !error && (
+      </div>      {loading && !error && (
         <div className="p-6 flex justify-center">
           <div className="flex flex-col items-center">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>

@@ -1,16 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { 
-  Search, Filter, Download, Check, X, Clock, FileText, 
-  ChevronDown, Image, User 
+  Search, Filter, Download, Check, X, Clock, ChevronDown, Image, User 
 } from 'lucide-react';
 import { useToast } from '../../hooks/useToast';
 import { useCurrencySettings } from '../../hooks/useCurrencySettings';
 import { usePayments } from '../../hooks/usePayments'; 
 import type { Payment as ManualPaymentType, TransactionFilterParams, VerifyPaymentPayload } from '../../types/finance';
 import type { SupportedCurrency } from '../../types/currency';
-import { ConnectionError, BackendError } from '../../components/common/ConnectionError';
-import { getErrorMessage, isNetworkError } from '../../utils/errorUtils';
+import { getErrorMessage } from '../../utils/errorUtils';
 
 // Statut du paiement avec les couleurs correspondantes
 // Keep existing statusConfig, but ensure its keys match ManualPaymentType['status']
@@ -284,100 +282,81 @@ export function ManualPaymentsPage() {
         </div>
       </div>
 
-      {/* Payments Table */}      {/* Centralized Error Handling */}
-      {paymentsHookError && !isLoading && filteredDisplayPayments.length === 0 && (
-        isNetworkError(paymentsHookError) ? (
-          <ConnectionError 
-            message={`${t('errors.networkError', 'Erreur de connexion')}: ${getErrorMessage(paymentsHookError)}`}
-            retry={() => fetchManualPayments({ page: currentPage, limit: itemsPerPage, status: selectedStatusFilter === 'all' ? undefined : selectedStatusFilter })}
-          />
-        ) : (
-          <BackendError 
-            message={`${t('errors.backendError', 'Erreur du serveur')}: ${getErrorMessage(paymentsHookError)}`}
-            retry={() => fetchManualPayments({ page: currentPage, limit: itemsPerPage, status: selectedStatusFilter === 'all' ? undefined : selectedStatusFilter })}
-          />
-        )
-      )}
-
-      {/* Loading State - keep this before the error check if you want loading to take precedence */}
-      {isLoading && filteredDisplayPayments.length === 0 && !paymentsHookError && (
-        <div className="flex justify-center items-center h-64">
-          <div className="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12 mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">{t('common.loading', 'Chargement...')}</p>
-        </div>
-      )}
-      
-      {/* No Data State - This should only show if not loading and no error */}
-      {!isLoading && !paymentsHookError && filteredDisplayPayments.length === 0 && (
-        <div className="text-center py-10 px-4 bg-white dark:bg-gray-800 rounded-lg shadow">
-          <FileText className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-lg font-medium text-gray-900 dark:text-white">
-            {t('finance.manualPayments.noPaymentsFound', 'Aucun paiement manuel trouvé')}
-          </h3>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            {selectedStatusFilter === 'all' && !searchTerm 
-              ? t('finance.manualPayments.noPaymentsYet', 'Il n\\\'y a pas encore de paiements manuels enregistrés.')
-              : t('finance.manualPayments.noMatchingPayments', 'Aucun paiement ne correspond à vos critères de recherche ou de filtre.')
-            }
-          </p>
-        </div>
-      )}
-
-      {/* Table Display - This should only show if not loading, no error, and data exists */}
-      {!isLoading && !paymentsHookError && filteredDisplayPayments.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-700">
-              <tr>
-                {tableHeaderKeys.map(headerKey => (
-                  <th key={headerKey} scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    {t(headerKey)}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-              {filteredDisplayPayments.map((payment) => (
-                <tr key={payment.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400">
-                        <User className="h-5 w-5" />
-                      </div>
-                      <div className="ml-3">
-                        <div className="text-sm font-medium text-gray-900 dark:text-white">{payment.customerName || 'N/A'}</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">{payment.customerId || 'N/A'}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{payment.transactionReference}</td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                    {formatPaymentAmount(payment.amount, payment.currency)}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{payment.currency}</td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{formatDate(payment.paidAt)}</td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{formatDate(payment.createdAt)}</td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${statusConfig[payment.status]?.color || 'bg-gray-100 text-gray-800'}`}>
-                      {statusConfig[payment.status]?.icon}
-                      <span className="ml-1.5">{t(statusConfig[payment.status]?.labelKey || 'common.unknown', statusConfig[payment.status]?.defaultLabel || 'Inconnu')}</span>
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
-                    <button 
-                      onClick={() => openDetailsModal(payment)}
-                      className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition duration-150"
-                      title={t('common.viewDetails', 'Voir les détails') ?? "Voir les détails"}
-                    >
-                      <FileText className="h-5 w-5" />
-                    </button>
-                  </td>
-                </tr>
+      {/* Payments Table */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead className="bg-gray-50 dark:bg-gray-700">
+            <tr>
+              {tableHeaderKeys.map(headerKey => (
+                <th key={headerKey} scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  {t(headerKey)}
+                </th>
               ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            </tr>
+          </thead>
+          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+            {isLoading && Array.from({ length: 5 }).map((_, i) => (
+              <tr key={`skeleton-${i}`} className="animate-pulse">
+                <td className="px-4 py-3"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24 mb-2" /></td>
+                <td className="px-4 py-3"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-20" /></td>
+                <td className="px-4 py-3"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-20" /></td>
+                <td className="px-4 py-3"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-16" /></td>
+                <td className="px-4 py-3"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-20" /></td>
+                <td className="px-4 py-3"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-20" /></td>
+                <td className="px-4 py-3"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-16" /></td>
+                <td className="px-4 py-3"><div className="h-8 bg-gray-200 dark:bg-gray-700 rounded-full w-10 mx-auto" /></td>
+              </tr>
+            ))}
+            {!isLoading && paymentsHookError && (
+              <tr>
+                <td colSpan={tableHeaderKeys.length} className="px-4 py-12 text-center text-red-500">
+                  {t('finance.manualPayments.errorLoading', 'Erreur de chargement des paiements manuels.')}
+                </td>
+              </tr>
+            )}
+            {!isLoading && !paymentsHookError && filteredDisplayPayments.length === 0 && (
+              <tr>
+                <td colSpan={tableHeaderKeys.length} className="px-4 py-12 text-center text-gray-500 dark:text-gray-400">
+                  {t('finance.manualPayments.noPaymentsFound', 'Aucun paiement manuel trouvé')}
+                </td>
+              </tr>
+            )}
+            {!isLoading && !paymentsHookError && filteredDisplayPayments.length > 0 && filteredDisplayPayments.map((payment) => (
+              <tr key={payment.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                <td className="px-4 py-3 whitespace-nowrap">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400">
+                      <User className="h-5 w-5" />
+                    </div>
+                    <div className="ml-3">
+                      <div className="text-sm font-medium text-gray-900 dark:text-white">{payment.customerName || 'N/A'}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">{payment.customerId || 'N/A'}</div>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{payment.transactionReference}</td>
+                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                  {formatPaymentAmount(payment.amount, payment.currency)}
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{payment.currency}</td>
+                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{formatDate(payment.paidAt)}</td>
+                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{formatDate(payment.createdAt)}</td>
+                <td className="px-4 py-3 whitespace-nowrap">
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusConfig[payment.status].color}`}>
+                    {statusConfig[payment.status].icon}
+                    {t(statusConfig[payment.status].labelKey, statusConfig[payment.status].defaultLabel)}
+                  </span>
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
+                  {/* Actions: voir, vérifier, rejeter, etc. */}
+                  <button onClick={() => openDetailsModal(payment)} className="text-blue-600 hover:text-blue-800 text-xs mr-2">{t('common.view', 'Voir')}</button>
+                  {/* ...autres actions... */}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       {/* Pagination - ensure this is also conditional on data existing */}
       {!isLoading && !paymentsHookError && totalPages > 1 && filteredDisplayPayments.length > 0 && (

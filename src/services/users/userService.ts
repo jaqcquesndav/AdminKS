@@ -62,22 +62,28 @@ interface CreateUserDataInternal {
 // It correctly uses the useAdminApi hook internally.
 export const useUserService = () => {
   const adminApi = useAdminApi();
-  const getUsers = async (requestingUserRole?: UserRole, requestingUserCompanyId?: string): Promise<User[]> => {
-    console.log('useUserService.getUsers called with role:', requestingUserRole, 'companyId:', requestingUserCompanyId);
-    // TODO: Implement API filtering if backend supports it.
-    // Example: const response = await adminApi.getUsers({ params: { role: requestingUserRole, companyId: requestingUserCompanyId } });
-    const response = await adminApi.getUsers();
-    
-    if (response && response.data) {
-      // Map users and potentially enrich with customer information
-      const users = response.data.map(mapAdminUserToUser);
-      
-      // For external users without company name, we could fetch from the customer service
-      // This is optional and can be implemented later if needed
-      
-      return users;
+  const getUsers = async (
+    requestingUserRole?: UserRole,
+    requestingUserCompanyId?: string,
+    page: number = 1,
+    limit: number = 10
+  ): Promise<{ users: User[]; totalCount: number; page: number; totalPages: number }> => {
+    const response = await adminApi.getUsers({
+      role: requestingUserRole,
+      companyId: requestingUserCompanyId,
+      page,
+      limit,
+    });
+    if (response && response.data && Array.isArray(response.data.users)) {
+      return {
+        users: response.data.users.map(mapAdminUserToUser),
+        totalCount: response.data.totalCount,
+        page: response.data.page,
+        totalPages: response.data.totalPages,
+      };
     }
-    return [];
+    // fallback vide
+    return { users: [], totalCount: 0, page: 1, totalPages: 1 };
   };
 
   const createUser = async (data: CreateUserDataInternal): Promise<User> => {

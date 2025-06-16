@@ -169,6 +169,13 @@ export const navigationConfig: NavigationItem[] = [  {
         path: '/configuration/ai-costs',
         icon: 'trending-down',
         roles: ['super_admin', 'cto', 'growth_finance'],
+      },
+      {
+        id: 'configuration-adha-context',
+        label: 'Adha Contexte',
+        path: '/configuration/adha-context',
+        icon: 'database',
+        roles: ['super_admin', 'cto', 'growth_finance'],
       }
     ]
   },

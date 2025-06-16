@@ -1,27 +1,51 @@
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, User, Settings } from 'lucide-react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useAuth, useUserInfo } from '../../hooks/useAuth';
 import { useOnClickOutside } from '../../hooks/useOnClickOutside';
-import { useTranslation } from 'react-i18next'; // Add i18next import
+import { useTranslation } from 'react-i18next';
+
+function LogoutConfirmModal({ isOpen, onClose, onLocal, onGlobal }: { isOpen: boolean; onClose: () => void; onLocal: () => void; onGlobal: () => void }) {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
+      <div className="bg-white rounded shadow-lg p-6 w-full max-w-xs">
+        <h3 className="text-lg font-bold mb-2">Déconnexion</h3>
+        <p className="mb-4 text-sm text-gray-700">Voulez-vous vous déconnecter seulement ici ou partout&nbsp;?</p>
+        <div className="flex gap-2 justify-end">
+          <button onClick={onClose} className="px-3 py-1 rounded bg-gray-100">Annuler</button>
+          <button onClick={onLocal} className="px-3 py-1 rounded bg-primary text-white">Seulement ici</button>
+          <button onClick={onGlobal} className="px-3 py-1 rounded bg-red-600 text-white">Partout</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function UserMenu() {
-  const { t } = useTranslation(); // Initialize the translation hook
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { logout: localLogout } = useAuth();
   const { logout: auth0Logout } = useAuth0();
   const userInfo = useUserInfo();
   const [isOpen, setIsOpen] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useOnClickOutside(menuRef, () => setIsOpen(false));
 
-  const handleLogout = () => {
-    console.log('UserMenu: Déconnexion initiée.');
+  const handleLogoutLocal = () => {
     localLogout();
+    setShowLogoutModal(false);
+    setIsOpen(false);
+    navigate('/login');
+  };
+  const handleLogoutGlobal = () => {
+    localLogout();
+    setShowLogoutModal(false);
+    setIsOpen(false);
     auth0Logout({ logoutParams: { returnTo: window.location.origin + '/login' } });
-    console.log('UserMenu: Redirection vers Auth0 pour déconnexion et retour à /login.');
   };
 
   if (!userInfo) return null;
@@ -93,7 +117,7 @@ export function UserMenu() {
           
           <div className="border-t border-gray-200 dark:border-gray-700 py-1">
             <button
-              onClick={handleLogout}
+              onClick={() => setShowLogoutModal(true)}
               className="flex w-full items-center px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10"
             >
               <LogOut className="w-4 h-4 mr-3" />
@@ -102,6 +126,12 @@ export function UserMenu() {
           </div>
         </div>
       )}
+      <LogoutConfirmModal
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        onLocal={handleLogoutLocal}
+        onGlobal={handleLogoutGlobal}
+      />
     </div>
   );
 }

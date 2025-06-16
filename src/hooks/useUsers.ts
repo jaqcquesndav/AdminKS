@@ -14,6 +14,9 @@ export function useUsers() {
   const [userActivities, setUserActivities] = useState<ActivityLog[]>([]);
   const [userSessions, setUserSessions] = useState<UserSession[]>([]);
   const [tokenStats, setTokenStats] = useState<UserTokenStats | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const addToast = useToastStore(state => state.addToast);
   const userService = useUserService();
   const userTokenService = useUserTokenService();
@@ -52,14 +55,21 @@ export function useUsers() {
     return enrichedUsers;
   }, [customerService]);
 
-  const loadUsers = useCallback(async (requestingUserRole?: UserRole, requestingUserCompanyId?: string) => {
+  const loadUsers = useCallback(async (
+    requestingUserRole?: UserRole,
+    requestingUserCompanyId?: string,
+    page: number = 1,
+    limit: number = 10
+  ) => {
     setIsLoading(true);
     try {
-      const data = await userService.getUsers(requestingUserRole, requestingUserCompanyId);
-      // Enrich external users with customer data when missing
-      const enrichedUsers = await enrichUsersWithCustomerData(data);
+      const data = await userService.getUsers(requestingUserRole, requestingUserCompanyId, page, limit);
+      const enrichedUsers = await enrichUsersWithCustomerData(data.users);
       setUsers(enrichedUsers);
-    } catch (err) { // Changed variable name to err
+      setCurrentPage(data.page || 1);
+      setTotalPages(data.totalPages || 1);
+      setTotalCount(data.totalCount || enrichedUsers.length);
+    } catch (err) {
       console.error('Failed to load users:', err);
       addToast('error', t('users.errors.loadFailed'));
     } finally {
@@ -67,9 +77,7 @@ export function useUsers() {
     }
   }, [addToast, t, userService, enrichUsersWithCustomerData]);
 
-  type CreateUserDataHook = Parameters<typeof userService.createUser>[0];
-
-  const createUser = useCallback(async (data: CreateUserDataHook) => {
+  const createUser = useCallback(async (data: Parameters<typeof userService.createUser>[0]) => {
     try {
       const newUser = await userService.createUser(data);
       setUsers(prev => [...prev, newUser]);
@@ -178,12 +186,16 @@ export function useUsers() {
     updateUser,
     deleteUser,
     getUserById,
-    terminateUserSession, // Added terminateUserSession to returned object
+    terminateUserSession,
     userActivities,
     userSessions,
-    tokenStats,
     loadUserActivities,
     loadUserSessions,
+    tokenStats,
     loadTokenStats,
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    totalCount,
   };
 }

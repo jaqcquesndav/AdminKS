@@ -41,6 +41,9 @@ const ReportsPage = lazy(() => import('../pages/reports/ReportsPage').then(modul
 // const SettingsPage = lazy(() => import('../pages/settings/SettingsPage').then(module => ({ default: module.SettingsPage }))); // Comment out lazy load
 const NotFoundPage = lazy(() => import('../pages/NotFoundPage').then(module => ({ default: module.NotFoundPage })));
 
+// ADHA Context page
+const AdhaContextPage = lazy(() => import('../pages/configuration/adha-context').then(module => ({ default: module.default })));
+
 // Fallback components for non-existent pages
 const PlaceholderPage = ({ title }: { title: string }) => (
   <div className="flex flex-col items-center justify-center p-8 text-center">
@@ -128,6 +131,7 @@ export function AppRoutes() {
             <Route path="/configuration/ai-costs" element={
               <PlaceholderPage title="Coûts IA" />
             } />
+            <Route path="/configuration/adha-context" element={<AdhaContextPage />} />
             
             {/* Users routes */}
             <Route path="/users" element={<UsersPage />} />

@@ -91,12 +91,14 @@ export function PendingCustomersPage() {
   // Define sorting state
   const [sortBy, setSortBy] = useState<keyof PendingCustomer>('createdAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  
-  // Define the fetchPendingCustomers function
+    // Define the fetchPendingCustomers function
   const fetchPendingCustomers = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
+      // Simuler un délai pour voir les skeletons
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
       // Utiliser le service API pour récupérer les clients en attente
       const pendingCustomers = await pendingCustomersApiService.getPendingCustomers();
         // Adapter les données si nécessaire pour correspondre à l'interface PendingCustomer
@@ -125,20 +127,27 @@ export function PendingCustomersPage() {
         // Add contact properties explicitly
         contactName: customer.contactName || customer.billingContactName,
         contactEmail: customer.contactEmail || customer.billingContactEmail
-      }));
-      
+      }));      
       setCustomers(formattedCustomers);
       setFilteredCustomers(formattedCustomers);
-      setLoading(false);
     } catch (error) {
       console.error('Erreur lors du chargement des clients en attente:', error);
       setError(t('customers.pending.loadError', 'Erreur lors du chargement des clients en attente'));
-      setLoading(false);
+    } finally {
+      // Maintenir l'état de chargement un peu plus longtemps pour voir les skeletons
+      setTimeout(() => {
+        console.log('Setting loading to false');
+        setLoading(false);
+      }, 1000);
     }
-  }, [t]);
-  
-  useEffect(() => {
+  }, [t]);  useEffect(() => {
+    console.log('Component mounted, fetching data');
     fetchPendingCustomers();
+    
+    // Nettoyage lors du démontage du composant
+    return () => {
+      console.log('Component unmounting');
+    };
   }, [fetchPendingCustomers]);
 
   // Filtrage et tri des clients
@@ -409,31 +418,41 @@ export function PendingCustomersPage() {
           </div>
         </div>
       </div>
-    );
-  };
+    );  };
 
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen py-12 px-4 sm:px-6 lg:px-8">
-        <ConnectionError 
-          title={t('common.connectionError.title', 'Erreur de connexion')}
-          message={t('common.connectionError.message', 'Impossible de charger les données. Vérifiez votre connexion et réessayez.')}
-          onRetry={() => {
-            setError(null);
-            setLoading(true);
-            fetchPendingCustomers();
-          }}
-        />
-      </div>
-    );
-  }
+  // Nous supprimons ce bloc pour intégrer l'erreur à l'intérieur du tableau
+  // if (error) {
+  //   return (
+  //     <div className="flex flex-col items-center justify-center min-h-screen py-12 px-4 sm:px-6 lg:px-8">
+  //       <ConnectionError 
+  //         title={t('common.connectionError.title', 'Erreur de connexion')}
+  //         message={t('common.connectionError.message', 'Impossible de charger les données. Vérifiez votre connexion et réessayez.')}
+  //         onRetry={() => {
+  //           setError(null);
+  //           setLoading(true);
+  //           fetchPendingCustomers();
+  //         }}
+  //       />
+  //     </div>
+  //   );
+  // }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="space-y-6">      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
           {t('customers.pending.title', 'Clients en attente')}
         </h1>
+        <button
+          onClick={() => {
+            setLoading(true);
+            setTimeout(() => {
+              fetchPendingCustomers();
+            }, 100);
+          }}
+          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        >
+          Rafraîchir
+        </button>
       </div>
       
       <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
@@ -503,149 +522,136 @@ export function PendingCustomersPage() {
             </div>
           </div>
         </div>
-        
-        <div className="relative">
-          {loading && customers.length > 0 && (
-            <div className="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-70 dark:bg-opacity-70 flex items-center justify-center z-10">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-            </div>
-          )}
-        {/* Liste des clients en attente */}
-        {loading && customers.length === 0 ? (
-          <div className="p-8 flex justify-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-          </div>
-        ) : error ? (
-          <div className="p-8">
-            <ConnectionError 
-              message={error} 
-              retryAction={() => {
-                const fetchPendingCustomers = async () => {
-                  setLoading(true);
-                  setError(null);
-                  try {                    const pendingCustomers = await pendingCustomersApiService.getPendingCustomers();
-                    const formattedCustomers = pendingCustomers.map((customer: {
-                      id?: string;
-                      name: string;
-                      email: string;
-                      phone?: string;
-                      type: 'pme' | 'financial';
-                      status: 'pending_verification' | 'pending_approval' | 'pending_info' | 'pending_payment';
-                      createdAt?: string;
-                      notes?: string;
-                      contactName?: string;
-                      contactEmail?: string;
-                      billingContactName?: string;
-                      billingContactEmail?: string;
-                    }) => ({
-                      id: customer.id || '',
-                      name: customer.name,
-                      email: customer.email,
-                      phone: customer.phone,
-                      type: customer.type,
-                      status: customer.status,
-                      createdAt: customer.createdAt || new Date().toISOString(),
-                      notes: customer.notes,
-                      // Add contact properties explicitly
-                      contactName: customer.contactName || customer.billingContactName,
-                      contactEmail: customer.contactEmail || customer.billingContactEmail
-                    }));
-                    setCustomers(formattedCustomers);
-                    setFilteredCustomers(formattedCustomers);
-                  } catch (err) {
-                    console.error('Erreur lors du chargement des clients en attente:', err);
-                    setError(t('customers.pending.loadError', 'Erreur lors du chargement des clients en attente'));
-                  } finally {
-                    setLoading(false);
-                  }
-                };
-                fetchPendingCustomers();
-              }}
-            />
-          </div>
-        ) : filteredCustomers.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-700">
+
+        {/* Liste des clients en attente - Toujours afficher le tableau */}
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-700">
+              <tr>
+                <th 
+                  scope="col" 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
+                  onClick={() => {
+                    if (sortBy === 'name') {
+                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                    } else {
+                      setSortBy('name');
+                      setSortDirection('asc');
+                    }
+                  }}
+                >
+                  {t('customers.pending.columns.name', 'Nom')}
+                  {sortBy === 'name' && (
+                    <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </th>
+                <th 
+                  scope="col" 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
+                  onClick={() => {
+                    if (sortBy === 'type') {
+                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                    } else {
+                      setSortBy('type');
+                      setSortDirection('asc');
+                    }
+                  }}
+                >
+                  {t('customers.pending.columns.type', 'Type')}
+                  {sortBy === 'type' && (
+                    <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </th>
+                <th 
+                  scope="col" 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
+                  onClick={() => {
+                    if (sortBy === 'status') {
+                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                    } else {
+                      setSortBy('status');
+                      setSortDirection('asc');
+                    }
+                  }}
+                >
+                  {t('customers.pending.columns.status', 'Statut')}
+                  {sortBy === 'status' && (
+                    <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </th>
+                <th 
+                  scope="col" 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
+                  onClick={() => {
+                    if (sortBy === 'createdAt') {
+                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                    } else {
+                      setSortBy('createdAt');
+                      setSortDirection('desc');
+                    }
+                  }}
+                >
+                  {t('customers.pending.columns.createdAt', 'Date de demande')}
+                  {sortBy === 'createdAt' && (
+                    <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  {t('customers.pending.columns.contact', 'Contact')}
+                </th>
+                <th scope="col" className="relative px-6 py-3">
+                  <span className="sr-only">{t('common.actions', 'Actions')}</span>
+                </th>
+              </tr>
+            </thead>            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              {/* Afficher des skeletons pendant le chargement ou afficher l'erreur à l'intérieur du tableau */}
+              {loading ? (
+                // Afficher des lignes skeleton pendant le chargement
+                Array.from({ length: 5 }).map((_, index) => (
+                  <tr key={`skeleton-${index}`} className="animate-pulse">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-600"></div>
+                        <div className="ml-4">
+                          <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-32"></div>
+                          <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-24 mt-2"></div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="h-6 bg-gray-200 dark:bg-gray-600 rounded-full w-20"></div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="h-6 bg-gray-200 dark:bg-gray-600 rounded-full w-24"></div>
+                      <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-32 mt-2"></div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-24"></div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-28"></div>
+                      <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-24 mt-2"></div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <div className="h-8 bg-gray-200 dark:bg-gray-600 rounded-full w-8 ml-auto"></div>
+                    </td>
+                  </tr>
+                ))
+              ) : error ? (
                 <tr>
-                  <th 
-                    scope="col" 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                    onClick={() => {
-                      if (sortBy === 'name') {
-                        setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                      } else {
-                        setSortBy('name');
-                        setSortDirection('asc');
-                      }
-                    }}
-                  >
-                    {t('customers.pending.columns.name', 'Nom')}
-                    {sortBy === 'name' && (
-                      <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </th>
-                  <th 
-                    scope="col" 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                    onClick={() => {
-                      if (sortBy === 'type') {
-                        setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                      } else {
-                        setSortBy('type');
-                        setSortDirection('asc');
-                      }
-                    }}
-                  >
-                    {t('customers.pending.columns.type', 'Type')}
-                    {sortBy === 'type' && (
-                      <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </th>
-                  <th 
-                    scope="col" 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                    onClick={() => {
-                      if (sortBy === 'status') {
-                        setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                      } else {
-                        setSortBy('status');
-                        setSortDirection('asc');
-                      }
-                    }}
-                  >
-                    {t('customers.pending.columns.status', 'Statut')}
-                    {sortBy === 'status' && (
-                      <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </th>
-                  <th 
-                    scope="col" 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                    onClick={() => {
-                      if (sortBy === 'createdAt') {
-                        setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                      } else {
-                        setSortBy('createdAt');
-                        setSortDirection('desc');
-                      }
-                    }}
-                  >
-                    {t('customers.pending.columns.createdAt', 'Date de demande')}
-                    {sortBy === 'createdAt' && (
-                      <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    {t('customers.pending.columns.contact', 'Contact')}
-                  </th>
-                  <th scope="col" className="relative px-6 py-3">
-                    <span className="sr-only">{t('common.actions', 'Actions')}</span>
-                  </th>
+                  <td colSpan={6} className="px-6 py-4 text-center">
+                    <ConnectionError 
+                      message={error} 
+                      retryAction={() => {
+                        setLoading(true);
+                        setError(null);
+                        fetchPendingCustomers();
+                      }}
+                    />
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {filteredCustomers.map((customer) => (
+              ) : filteredCustomers.length > 0 ? (
+                filteredCustomers.map((customer) => (
                   <tr 
                     key={customer.id}
                     className={`hover:bg-gray-50 dark:hover:bg-gray-700 ${selectedCustomerId === customer.id ? 'bg-gray-50 dark:bg-gray-700' : ''}`}
@@ -671,12 +677,14 @@ export function PendingCustomersPage() {
                           )}
                         </div>
                       </div>
-                    </td>                    <td className="px-6 py-4 whitespace-nowrap" onClick={() => handleSelectCustomer(customer.id)}>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap" onClick={() => handleSelectCustomer(customer.id)}>
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${customerTypes[customer.type].color}`}>
                         {React.createElement(customerTypes[customer.type].icon, { className: "h-3 w-3 mr-1" })}
                         {customerTypes[customer.type].label}
                       </span>
-                    </td><td className="px-6 py-4 whitespace-nowrap" onClick={() => handleSelectCustomer(customer.id)}>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap" onClick={() => handleSelectCustomer(customer.id)}>
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusConfigs[customer.status].color}`}>
                         {React.createElement(statusConfigs[customer.status].icon, { className: "h-3 w-3 mr-1" })}
                         <span className="ml-1">{statusConfigs[customer.status].label}</span>
@@ -721,27 +729,27 @@ export function PendingCustomersPage() {
                       </div>
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <Clock className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">
-              {searchQuery || statusFilter !== 'all' || typeFilter !== 'all'
-                ? t('customers.pending.noResults', 'Aucun résultat trouvé')
-                : t('customers.pending.empty', 'Aucune demande en attente')}
-            </h3>
-            <p className="mt-1 text-sm text-gray-500">
-              {searchQuery || statusFilter !== 'all' || typeFilter !== 'all'
-                ? t('customers.pending.tryDifferentSearch', 'Essayez une recherche différente')
-                : t('customers.pending.checkLater', 'Les nouvelles demandes apparaîtront ici.')}
-            </p>
-          </div>
-        )}
-        </div> {/* This closes the div with className="relative" */}
-      </div> {/* This closes the div with className="bg-white dark:bg-gray-800 ..." */}
+                ))
+              ) : (                <tr>
+                  <td colSpan={6} className="px-6 py-4 text-center">
+                    <Clock className="mx-auto h-12 w-12 text-gray-400" />
+                    <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">
+                      {searchQuery || statusFilter !== 'all' || typeFilter !== 'all'
+                        ? t('customers.pending.noResults', 'Aucun résultat trouvé')
+                        : t('customers.pending.empty', 'Aucune demande en attente')}
+                    </h3>
+                    <p className="mt-1 text-sm text-gray-500">
+                      {searchQuery || statusFilter !== 'all' || typeFilter !== 'all'
+                        ? t('customers.pending.tryDifferentSearch', 'Essayez une recherche différente')
+                        : t('customers.pending.checkLater', 'Les nouvelles demandes apparaîtront ici.')}
+                    </p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
       
       {/* Détails du client sélectionné */}
       {selectedCustomerId && (

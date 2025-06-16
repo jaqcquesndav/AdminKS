@@ -297,37 +297,24 @@ export function TokensPage() {
 
       {/* Table section */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-x-auto">
-        {isLoading && <div className="p-4 text-center">{t('common.loading')}</div>}
-        {!isLoading && error && (
-          <div className="p-4 text-center text-red-500">
-            <AlertTriangle className="inline-block mr-2" />
-            {t('common.error_loading_data')}
-          </div>
-        )}
-        {!isLoading && !error && tokenTransactions && tokenTransactions.length === 0 && (
-          <div className="p-4 text-center text-gray-500 dark:text-gray-400">
-            {t('common.no_data_available')}
-          </div>
-        )}
-        {!isLoading && !error && tokenTransactions && tokenTransactions.length > 0 && (
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-100 dark:bg-gray-700">
-              <tr>
-                {tableHeaderKeys.map(({ key, label, sortable, className }) => (
-                  <th key={key as string} className={`px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider ${className}`}>
-                    {sortable ? (
-                      <button 
-                        onClick={() => {
-                          handleSort(key as keyof TokenTransaction | 'serviceType' | 'tokensConsumed' | 'date');
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead className="bg-gray-100 dark:bg-gray-700">
+            <tr>
+              {tableHeaderKeys.map(({ key, label, sortable, className }) => (
+                <th key={key as string} className={`px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider ${className}`}>
+                  {sortable ? (
+                    <button 
+                      onClick={() => {
+                        handleSort(key as keyof TokenTransaction | 'serviceType' | 'tokensConsumed' | 'date');
                       }}
                       className="flex items-center focus:outline-none"
-                      disabled={key === 'actions'} // Disable button for 'actions'
+                      disabled={key === 'actions'}
                     >
                       <span>{label}</span>
                       {sortBy === key && (
                         sortDirection === 'asc' ? 
-                        <ChevronUp size={16} className="ml-2" /> : 
-                        <ChevronDown size={16} className="ml-2" />
+                          <ChevronUp size={16} className="ml-2" /> : 
+                          <ChevronDown size={16} className="ml-2" />
                       )}
                     </button>
                   ) : (
@@ -338,7 +325,32 @@ export function TokensPage() {
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            {tokenTransactions.map(transaction => (
+            {isLoading && Array.from({ length: 5 }).map((_, i) => (
+              <tr key={`skeleton-${i}`} className="animate-pulse">
+                <td className="px-4 py-2"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24 mb-2" /></td>
+                <td className="px-4 py-2"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-20" /></td>
+                <td className="px-4 py-2"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-28" /></td>
+                <td className="px-4 py-2"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-20" /></td>
+                <td className="px-4 py-2 text-right"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-16 ml-auto" /></td>
+                <td className="px-4 py-2 text-center"><div className="h-8 bg-gray-200 dark:bg-gray-700 rounded-full w-10 mx-auto" /></td>
+              </tr>
+            ))}
+            {!isLoading && error && (
+              <tr>
+                <td colSpan={tableHeaderKeys.length} className="px-4 py-8 text-center text-red-500">
+                  <AlertTriangle className="inline-block mr-2" />
+                  {t('common.error_loading_data')}
+                </td>
+              </tr>
+            )}
+            {!isLoading && !error && tokenTransactions && tokenTransactions.length === 0 && (
+              <tr>
+                <td colSpan={tableHeaderKeys.length} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+                  {t('common.no_data_available')}
+                </td>
+              </tr>
+            )}
+            {!isLoading && !error && tokenTransactions && tokenTransactions.length > 0 && tokenTransactions.map(transaction => (
               <tr key={transaction.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                 <td className="px-4 py-2 whitespace-nowrap">
                   <div className="text-sm font-medium text-gray-900 dark:text-white">{transaction.customerName}</div>
@@ -366,15 +378,10 @@ export function TokensPage() {
                     >
                       <MoreVertical size={16} />
                     </button>
-                    {/* Action menu - Placeholder for future actions (e.g., edit, delete) */}
                     {showActionMenu === transaction.id && (
                       <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden z-10">
-                        {/* <button className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
-                          {t('finance.tokens.actions.edit')}
-                      </button> */}
                         <button 
                           onClick={() => {
-                            // handleDeleteTransaction(transaction.id); // Implement delete logic
                             showToast('info', t('finance.tokens.actions.deleteNotImplemented'));
                           }}
                           className="block w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900"
@@ -389,15 +396,13 @@ export function TokensPage() {
             ))}
           </tbody>
         </table>
+      </div>
+      {/* Pagination section */}
+      {!isLoading && !error && tokenTransactions && tokenTransactions.length > 0 && (
+        <div className="mt-4 flex justify-between items-center">
+          {renderPagination()}
+        </div>
       )}
     </div>
-
-    {/* Pagination section */}
-    {!isLoading && !error && tokenTransactions && tokenTransactions.length > 0 && (
-      <div className="mt-4 flex justify-between items-center">
-        {renderPagination()}
-      </div>
-    )}
-  </div>
   );
 }

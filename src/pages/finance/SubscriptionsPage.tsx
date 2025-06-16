@@ -312,36 +312,51 @@ export function SubscriptionsPage() {
 
       {/* Subscriptions table */}
       <div className="bg-white dark:bg-gray-800 shadow overflow-hidden rounded-lg">
-        {isLoading && clientSideFilteredSubscriptions.length === 0 ? (
-          <div className="h-64 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-          </div>
-        ) : clientSideFilteredSubscriptions.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-700">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-700">
+              <tr>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <div className="flex items-center"><Building className="w-4 h-4 mr-2" />Client / Plan</div>
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <div className="flex items-center"><Calendar className="w-4 h-4 mr-2" />Période</div>
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <div className="flex items-center"><CreditCard className="w-4 h-4 mr-2" />Montant / Cycle</div>
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Statut</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <div className="flex items-center"><RefreshCcw className="w-4 h-4 mr-2" />Renouvellement</div>
+                </th>
+                <th scope="col" className="relative px-6 py-3"><span className="sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              {isLoading && (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={`skeleton-${i}`} className="animate-pulse">
+                    <td className="px-6 py-4"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32 mb-2" /></td>
+                    <td className="px-6 py-4"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24" /></td>
+                    <td className="px-6 py-4"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-28" /></td>
+                    <td className="px-6 py-4"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-16" /></td>
+                    <td className="px-6 py-4"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-20" /></td>
+                    <td className="px-6 py-4"><div className="h-8 bg-gray-200 dark:bg-gray-700 rounded-full w-10 mx-auto" /></td>
+                  </tr>
+                ))
+              )}
+              {!isLoading && clientSideFilteredSubscriptions.length === 0 && (
                 <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    <div className="flex items-center"><Building className="w-4 h-4 mr-2" />Client / Plan</div>
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    <div className="flex items-center"><Calendar className="w-4 h-4 mr-2" />Période</div>
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    <div className="flex items-center"><CreditCard className="w-4 h-4 mr-2" />Montant / Cycle</div>
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Statut</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    <div className="flex items-center"><RefreshCcw className="w-4 h-4 mr-2" />Renouvellement</div>
-                  </th>
-                  <th scope="col" className="relative px-6 py-3"><span className="sr-only">Actions</span></th>
+                  <td colSpan={6} className="px-6 py-12 text-center">
+                    <AlertCircle className="mx-auto h-12 w-12 text-gray-400" />
+                    <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">Aucun abonnement trouvé</h3>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Essayez de modifier vos filtres ou ajoutez un nouvel abonnement.</p>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {clientSideFilteredSubscriptions.map((subscription) => {
-                  const planDetails = getPlanById(subscription.planId);
-                  // const subscriptionDisplayCurrency = getSafeCurrency(subscription.currency); // Use subscription.currency directly
-                  return (
+              )}
+              {!isLoading && clientSideFilteredSubscriptions.length > 0 && clientSideFilteredSubscriptions.map((subscription) => {
+                const planDetails = getPlanById(subscription.planId);
+                return (
                   <tr key={subscription.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td className="px-6 py-4">
                       <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{subscription.customerName || 'N/A'}</div>
@@ -354,11 +369,8 @@ export function SubscriptionsPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                        {formatInCurrency(subscription.amount, subscription.currency)} / {getPlanBillingCycleLabel(subscription.billingCycle)} {/* Use formatInCurrency */}
+                        {formatInCurrency(subscription.amount, subscription.currency)} / {getPlanBillingCycleLabel(subscription.billingCycle)}
                       </div>
-                      {/* <div className="text-xs text-gray-500 mt-1">
-                        Méthode: {subscription.paymentMethodId ? `ID ${subscription.paymentMethodId}` : 'N/A'} // Display actual payment method if available
-                      </div> */}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusBadgeClass(subscription.status)}`}>
@@ -391,16 +403,16 @@ export function SubscriptionsPage() {
                       </div>
                     </td>
                   </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <AlertCircle className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">Aucun abonnement trouvé</h3>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Essayez de modifier vos filtres ou ajoutez un nouvel abonnement.</p>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        {/* Error in-table */}
+        {!isLoading && !pagination && (
+          <div className="text-center py-8 text-red-500">
+            <AlertCircle className="mx-auto h-8 w-8 mb-2" />
+            <div>Erreur de chargement des abonnements.</div>
           </div>
         )}
         {/* Pagination controls */}

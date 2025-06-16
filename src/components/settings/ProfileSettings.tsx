@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EditProfileModal } from './modals/EditProfileModal';
 import { ProfileDisplay } from './displays/ProfileDisplay';
 import { useAuth } from '../../hooks/useAuth';
 import { useToastStore } from '../common/ToastContainer';
+import type { AuthUser } from '../../types/auth';
+import type { UserRole, UserType } from '../../types/user';
 
 export function ProfileSettings() {
   const { t } = useTranslation();
@@ -11,9 +13,21 @@ export function ProfileSettings() {
   const addToast = useToastStore(state => state.addToast);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  if (!user) return null;
+  const mockUser: AuthUser = {
+    id: 'mock-id',
+    email: 'mock@wanzo.com',
+    name: 'Utilisateur Démo',
+    picture: '',
+    role: 'content_manager' as UserRole,
+    userType: 'internal' as UserType,
+    phoneNumber: '',
+    idAgent: 'IKIOTA-0001',
+    validityEnd: new Date(Date.now() + 365*24*60*60*1000).toISOString(),
+  };
 
-  const handleUpdateProfile = async (data: Partial<typeof user>) => {
+  const displayUser = user || mockUser;
+
+  const handleUpdateProfile = async (data: Partial<AuthUser>) => {
     try {
       updateUser(data);
       addToast('success', t('settings.profile.updateSuccess'));
@@ -36,10 +50,10 @@ export function ProfileSettings() {
         </button>
       </div>
 
-      <ProfileDisplay user={user} />
+      <ProfileDisplay user={displayUser} />
 
       <EditProfileModal
-        user={user}
+        user={displayUser}
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         onSubmit={handleUpdateProfile}

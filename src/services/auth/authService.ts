@@ -85,25 +85,12 @@ class AuthService {
 
   // Méthode de déconnexion complète
   logout(): void {
-    // Supprimer tous les tokens et informations d'authentification
     localStorage.removeItem(this.ACCESS_TOKEN_KEY);
     localStorage.removeItem(this.ID_TOKEN_KEY);
     localStorage.removeItem(this.REFRESH_TOKEN_KEY);
     localStorage.removeItem(this.USER_INFO_KEY);
     localStorage.removeItem(this.AUTH_STATE_KEY);
     localStorage.removeItem(this.TOKEN_EXPIRY_KEY);
-    
-    // Supprimer les autres données d'authentification stockées
-    localStorage.removeItem('auth_user_email');
-    localStorage.removeItem('auth_user_name');
-    localStorage.removeItem('auth_user_id');
-    localStorage.removeItem('auth_user_picture');
-    localStorage.removeItem('auth_user_role');
-    localStorage.removeItem('auth_user_type');
-    localStorage.removeItem('auth_user_scopes');
-    localStorage.removeItem('auth_user_customer_id');
-    
-    console.log('🔒 Déconnexion effectuée, tous les tokens ont été supprimés');
   }
 
   // Méthode pour rafraîchir le token depuis Auth0

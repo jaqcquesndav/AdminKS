@@ -1,4 +1,4 @@
-import { useState, useEffect, ElementType } from 'react';
+import { useState, useEffect, ElementType, useCallback } from 'react';
 import { useLocation, NavLink } from 'react-router-dom';
 import * as LucideIcons from 'lucide-react';
 import { ChevronLeft, ChevronRight, ChevronDown, Building2, HelpCircle } from 'lucide-react';
@@ -85,7 +85,7 @@ export function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
   }, [isMobile]);
 
   // Détermine si un élément est actif (route actuelle)
-  const isItemActive = (path: string) => {
+  const isItemActive = useCallback((path: string) => {
     if (path === '/') {
       return location.pathname === '/';
     }
@@ -94,7 +94,7 @@ export function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
     // Comparaison plus précise pour éviter les correspondances partielles incorrectes
     return location.pathname === path || 
            (path !== '/dashboard' && location.pathname.startsWith(`${path}/`));
-  };
+  }, [location.pathname]);
 
   // Ouvre automatiquement les sous-menus contenant la route active
   useEffect(() => {
