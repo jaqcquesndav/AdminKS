@@ -1,28 +1,55 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Search, Plus, Filter, Edit, Trash2, Eye } from 'lucide-react';
-import { CustomerFormModal, CustomerFormData } from '../../components/customers/CustomerFormModal';
+import { Search, Plus, Filter, Edit, Trash2, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CustomerFormModal } from '../../components/customers/CustomerFormModal';
 import { useToastContext } from '../../contexts/ToastContext';
+import { customersApi } from '../../services/customers/customersApiService';
+import type { Customer, CustomerType, CustomerStatus, CustomerFilterParams } from '../../types/customer';
+
+// Define a type for the form data that allows 'pme' type
+interface ExtendedCustomerFormData extends Omit<Customer, 'type'> {
+  type: CustomerType | 'pme' | 'financial';
+}
 
 export function PmeCustomersPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { showToast } = useToastContext();
-  const [customers, setCustomers] = useState<CustomerFormData[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      setLoading(true);
-      try {
-        // Simuler une requête API
-        await new Promise(resolve => setTimeout(resolve, 1000));
-          // Données mockées
-        const mockCustomers: CustomerFormData[] = [
+  const fetchCustomers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params: CustomerFilterParams = {
+        type: 'pme',
+        page,
+        limit: 10
+      };
+      
+      if (searchQuery) {
+        params.search = searchQuery;
+      }
+      
+      if (filterStatus !== 'all') {
+        params.status = filterStatus as CustomerStatus;
+      }
+      
+      const response = await customersApi.getCorporateCustomers(params);
+      setCustomers(response.customers);
+      setTotalPages(response.totalPages);
+    } catch (error) {
+      console.error('Erreur lors du chargement des PMEs:', error);
+      showToast('error', 'Erreur lors du chargement des PMEs. Veuillez réessayer.');
+      
+      // Données mockées en cas d'erreur
+      const mockCustomers: Customer[] = [
           {
             id: 'pme-1',
             name: 'Wanzo Tech',
@@ -99,32 +126,55 @@ export function PmeCustomersPage() {
             accountType: 'freemium' as const
           },
         ];
-        
-        setCustomers(mockCustomers);
-      } catch (error) {
-        console.error('Erreur lors du chargement des clients:', error);
-        showToast('error', 'Erreur lors du chargement des clients');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
+            setCustomers(mockCustomers);
+    } finally {
+      setLoading(false);
+    }
+  }, [showToast, page, filterStatus, searchQuery]);
+  
+  useEffect(() => {
     fetchCustomers();
-  }, [showToast]);
+  }, [fetchCustomers]);
+  
+  // Debounce pour la recherche
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      fetchCustomers();
+    }, 500);
+    
+    return () => clearTimeout(handler);
+  }, [searchQuery, fetchCustomers]);
 
-  const handleCreateCustomer = (customer: CustomerFormData) => {
-    setCustomers(prev => [...prev, { ...customer, id: Date.now().toString() }]);
-    setShowModal(false);
-    showToast('success', 'Client PME créé avec succès');
+  const handleCreateCustomer = async (customer: ExtendedCustomerFormData) => {
+    try {
+      const customerData: Customer = {
+        ...customer,
+        type: customer.type === 'financial' ? 'pme' : customer.type as CustomerType
+      };
+      
+      await customersApi.create(customerData);
+      showToast('success', 'Client PME créé avec succès');
+      fetchCustomers(); // Rafraîchir la liste après création
+      setShowModal(false);
+    } catch (error) {
+      console.error('Erreur lors de la création du client:', error);
+      showToast('error', 'Erreur lors de la création du client. Veuillez réessayer.');
+    }
   };
 
   const handleViewCustomer = (id: string) => {
     navigate(`/customers/${id}`);
-  };
-
-  const handleDeleteCustomer = (id: string) => {
-    setCustomers(prev => prev.filter(customer => customer.id !== id));
-    showToast('success', 'Client supprimé avec succès');
+  };  const handleDeleteCustomer = async (id: string) => {
+    if (window.confirm(t('customers.confirmDelete', 'Êtes-vous sûr de vouloir supprimer ce client ?'))) {
+      try {
+        await customersApi.delete(id);
+        setCustomers(prev => prev.filter(customer => customer.id !== id));
+        showToast('success', 'Client supprimé avec succès');
+      } catch (error) {
+        console.error('Erreur lors de la suppression du client:', error);
+        showToast('error', 'Erreur lors de la suppression du client. Veuillez réessayer.');
+      }
+    }
   };
 
   const filteredCustomers = customers
@@ -285,8 +335,80 @@ export function PmeCustomersPage() {
                     </td>
                   </tr>
                 ))}
-              </tbody>
-            </table>
+              </tbody>            </table>
+          </div>
+        )}
+        
+        {/* Pagination */}
+        {!loading && customers.length > 0 && (
+          <div className="px-6 py-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+            <div className="flex-1 flex justify-between sm:hidden">
+              <button
+                onClick={() => setPage(prev => Math.max(prev - 1, 1))}
+                disabled={page === 1}
+                className={`relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md 
+                  ${page === 1 
+                    ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500' 
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                {t('common.previous', 'Précédent')}
+              </button>
+              <button
+                onClick={() => setPage(prev => prev < totalPages ? prev + 1 : prev)}
+                disabled={page >= totalPages}
+                className={`ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md 
+                  ${page >= totalPages 
+                    ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500' 
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+              >
+                {t('common.next', 'Suivant')}
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </button>
+            </div>
+            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm text-gray-700 dark:text-gray-300">
+                  {t('pagination.showing', 'Affichage de')} <span className="font-medium">{customers.length}</span>{' '}
+                  {t('pagination.results', 'résultats')}
+                  {totalPages > 1 && (
+                    <>
+                      {' '}{t('pagination.page', 'Page')}{' '}
+                      <span className="font-medium">{page}</span> {t('pagination.of', 'sur')}{' '}
+                      <span className="font-medium">{totalPages}</span>
+                    </>
+                  )}
+                </p>
+              </div>
+              {totalPages > 1 && (
+                <div>
+                  <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                    <button
+                      onClick={() => setPage(prev => Math.max(prev - 1, 1))}
+                      disabled={page === 1}
+                      className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium 
+                        ${page === 1 
+                          ? 'text-gray-400 dark:text-gray-500' 
+                          : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+                    >
+                      <span className="sr-only">{t('common.previous', 'Précédent')}</span>
+                      <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+                    </button>
+                    <button
+                      onClick={() => setPage(prev => prev < totalPages ? prev + 1 : prev)}
+                      disabled={page >= totalPages}
+                      className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium 
+                        ${page >= totalPages 
+                          ? 'text-gray-400 dark:text-gray-500' 
+                          : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+                    >
+                      <span className="sr-only">{t('common.next', 'Suivant')}</span>
+                      <ChevronRight className="h-5 w-5" aria-hidden="true" />
+                    </button>
+                  </nav>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

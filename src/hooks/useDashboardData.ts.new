@@ -4,7 +4,20 @@ import { UserStatistics } from '../types/user';
 import { SystemHealthSnapshot, SystemMetrics } from '../types/system';
 import { RevenueStatistics, TokenStatistics } from '../types/subscription';
 import { useToastContext } from '../contexts/ToastContext';
-import { DashboardStats } from '../types/dashboard';
+
+interface DashboardData {
+  userStats: UserStatistics;
+  systemHealth: SystemHealthSnapshot;
+  revenueStats: RevenueStatistics;
+  tokenStats: TokenStatistics;
+  recentAlerts: number;
+  pendingAccounts: number;
+  pendingPayments: number;
+  isLoading: boolean;
+  error: string | null;
+  retry: () => void; // Ajout d'une fonction pour réessayer
+  isRetrying: boolean; // Indicateur si une nouvelle tentative est en cours
+}
 
 // Initial empty states for complex data structures
 const initialUserStats: UserStatistics = {
@@ -95,14 +108,15 @@ const initialTokenStats: TokenStatistics = {
 export const useDashboardData = (userRole: string) => {
   const adminApi = useAdminApi();
   const { showToast } = useToastContext();
+  const [retryCount, setRetryCount] = useState(0);
   const [isRetrying, setIsRetrying] = useState(false);
   const [userStats, setUserStats] = useState<UserStatistics>(initialUserStats);
   const [systemHealth, setSystemHealth] = useState<SystemHealthSnapshot>(initialSystemHealth);
   const [revenueStats, setRevenueStats] = useState<RevenueStatistics>(initialRevenueStats);
   const [tokenStats, setTokenStats] = useState<TokenStatistics>(initialTokenStats);
-  const [recentAlerts] = useState(0);
-  const [pendingAccounts] = useState(0);
-  const [pendingPayments] = useState(0);
+  const [recentAlerts, setRecentAlerts] = useState(0);
+  const [pendingAccounts, setPendingAccounts] = useState(0);
+  const [pendingPayments, setPendingPayments] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -116,15 +130,15 @@ export const useDashboardData = (userRole: string) => {
 
     try {
       // Tenter de se connecter au backend, avec un timeout
-      let dashboardStatsResponse: { data: DashboardStats };
+      let dashboardStatsResponse;
       try {
         dashboardStatsResponse = await Promise.race([
           adminApi.getDashboardStats(),
-          new Promise<never>((_, reject) => 
+          new Promise((_, reject) => 
             setTimeout(() => reject(new Error('La connexion a expiré. Veuillez vérifier votre connexion Internet.')), 30000)
           )
         ]);
-      } catch {
+      } catch (timeoutErr) {
         throw new Error('Problème de connexion au serveur. Veuillez vérifier votre connexion Internet.');
       }
       
@@ -155,8 +169,9 @@ export const useDashboardData = (userRole: string) => {
           totalTokensUsed: backendStats.tokenUsage?.total || 0,
         });
 
-        // Réinitialiser les erreurs
+        // Réinitialiser les erreurs et compteurs de tentatives
         setError(null);
+        setRetryCount(0);
 
         // Indiquer que les données ont été chargées avec succès
         if (isRetry) {
@@ -180,6 +195,7 @@ export const useDashboardData = (userRole: string) => {
 
   // Fonction pour réessayer de charger les données
   const retry = useCallback(() => {
+    setRetryCount(prev => prev + 1);
     fetchData(true);
   }, [fetchData]);
 

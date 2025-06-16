@@ -1,15 +1,36 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTheme } from '../../hooks/useTheme';
+import { useToastContext } from '../../contexts/ToastContext';
 
 const DisplaySettings: React.FC = () => {
   const { theme, setTheme, layout, setLayout } = useTheme();
+  const { showToast } = useToastContext();
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const handleThemeChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    setTheme(event.target.value as 'light' | 'dark' | 'system');
+    try {
+      setIsUpdating(true);
+      setTheme(event.target.value as 'light' | 'dark' | 'system');
+      showToast('success', 'Theme updated successfully');
+    } catch (error) {
+      showToast('error', 'Failed to update theme');
+      console.error('Error updating theme:', error);
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const handleLayoutChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    setLayout(event.target.value as 'compact' | 'comfortable');
+    try {
+      setIsUpdating(true);
+      setLayout(event.target.value as 'compact' | 'comfortable');
+      showToast('success', 'Layout updated successfully');
+    } catch (error) {
+      showToast('error', 'Failed to update layout');
+      console.error('Error updating layout:', error);
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   return (
@@ -25,6 +46,7 @@ const DisplaySettings: React.FC = () => {
             value={theme}
             onChange={handleThemeChange}
             className="mt-1 block w-[180px] pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+            disabled={isUpdating}
           >
             <option value="light">Light</option>
             <option value="dark">Dark</option>
@@ -38,6 +60,7 @@ const DisplaySettings: React.FC = () => {
             value={layout}
             onChange={handleLayoutChange}
             className="mt-1 block w-[180px] pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+            disabled={isUpdating}
           >
             <option value="compact">Compact</option>
             <option value="comfortable">Comfortable</option>
