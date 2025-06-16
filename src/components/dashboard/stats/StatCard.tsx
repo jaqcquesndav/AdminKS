@@ -10,6 +10,7 @@ interface StatCardProps {
     isPositive: boolean;
     text?: string;
   };
+  trend?: number; // Ajout de la propriété trend pour afficher une tendance en pourcentage
   color?: 'primary' | 'success' | 'warning' | 'danger' | 'info';
   loading?: boolean;
 }
@@ -19,9 +20,10 @@ export const StatCard = ({
   value,
   icon,
   change,
+  trend,
   color = 'primary',
   loading = false
-}: StatCardProps) => {  const iconColorClasses = {
+}: StatCardProps) => {const iconColorClasses = {
     primary: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
     success: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
     warning: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
@@ -42,8 +44,7 @@ export const StatCard = ({
             <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">{title}</h3>
             <div className={`rounded-full p-2 ${iconColorClasses[color]}`}>
               {icon}
-            </div>
-          </div>
+            </div>          </div>
           <div className="text-2xl font-bold mb-1 dark:text-white">{value}</div>
           {change && (
             <div className="flex items-center mt-auto">
@@ -61,6 +62,23 @@ export const StatCard = ({
               </span>              {change.text && (
                 <span className="text-gray-500 dark:text-gray-400 text-xs ml-1">{change.text}</span>
               )}
+            </div>
+          )}
+          {trend !== undefined && !change && (
+            <div className="flex items-center mt-auto">
+              <span
+                className={`flex items-center text-sm ${
+                  trend >= 0 ? 'text-green-600' : 'text-red-600'
+                }`}
+              >
+                {trend >= 0 ? (
+                  <ArrowUpIcon className="w-4 h-4 mr-1" />
+                ) : (
+                  <ArrowDownIcon className="w-4 h-4 mr-1" />
+                )}
+                {Math.abs(trend).toFixed(1)}%
+              </span>
+              <span className="text-gray-500 dark:text-gray-400 text-xs ml-1">vs précédent</span>
             </div>
           )}
         </>

@@ -8,6 +8,8 @@ export interface AuthUser {
   role: UserRole; // Updated to use UserRole
   userType: UserType; // Added userType
   customerAccountId?: string; // Added customerAccountId
+  phoneNumber?: string; // Added phoneNumber
+  kyc?: KYCInfo; // Added kyc
 }
 
 export interface AuthState {
@@ -43,6 +45,7 @@ export interface AuthResponseBase {
     role?: string;
     picture?: string;
   };
+  message?: string; // Added optional message property
   // Pour la réponse avec 2FA
   requiresTwoFactor?: boolean;
   twoFactorMethods?: ('email' | 'sms')[];
@@ -61,4 +64,22 @@ export interface AuthResponseExtended {
 export interface TwoFactorVerification {
   code: string;
   method: 'email' | 'sms';
+}
+
+export interface KYCIdCard {
+  type: string;
+  number: string;
+  expiryDate: Date;
+  fileUrl: string;
+  verified: boolean;
+}
+
+export interface KYCSignature {
+  fileUrl: string;
+  timestamp: Date;
+}
+
+export interface KYCInfo {
+  idCard?: KYCIdCard;
+  signature?: KYCSignature;
 }

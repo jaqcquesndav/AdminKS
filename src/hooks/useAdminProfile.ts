@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useApi } from '../services/api/apiService';
 import { useToast } from './useToast';
 import type { UserProfile } from '../types/user'; // Assuming UserProfile type exists
@@ -21,23 +21,93 @@ export const useAdminProfile = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  // Refs to manage connection errors and prevent excessive retries
+  const retryCount = useRef(0);
+  const hasConnectionError = useRef(false);
+  const lastErrorTime = useRef<number>(0);
+  const isMounted = useRef(true);
+  
+  // Time constants
+  const ERROR_COOLDOWN_MS = 30000; // 30 seconds
+  const MAX_RETRY_COUNT = 3;
 
   const fetchAdminProfile = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      // Assume API endpoint /admin/profile or /users/me or similar
-      const response = await api.get<UserProfile>('/admin/profile');
-      setProfile(response.data);
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch admin profile.';
-      setError(errorMessage);
-      showToast('error', errorMessage);
-      console.error('Failed to fetch admin profile:', err);
-    } finally {
-      setIsLoading(false);
+    // Don't fetch if component is unmounted
+    if (!isMounted.current) return;
+    
+    // Check if we're in error cooldown period
+    const now = Date.now();
+    if (hasConnectionError.current && (now - lastErrorTime.current < ERROR_COOLDOWN_MS)) {
+      console.log(`Skipping profile fetch - in cooldown period (${Math.round((now - lastErrorTime.current) / 1000)}s elapsed)`);
+      return;
     }
-  }, [api, showToast]);
+    
+    // Skip if we've reached maximum retry attempts
+    if (hasConnectionError.current && retryCount.current >= MAX_RETRY_COUNT) {
+      console.log(`Skipping profile fetch - reached maximum retry attempts (${MAX_RETRY_COUNT})`);
+      return;
+    }
+
+    // Only set loading on initial fetch, not retries
+    if (!hasConnectionError.current) {
+      setIsLoading(true);
+    }
+    
+    setError(null);
+    
+    try {
+      // Attempt to fetch the profile
+      const response = await api.get<UserProfile>('/admin/profile');
+      
+      // Only update state if component is still mounted
+      if (isMounted.current) {
+        setProfile(response.data);
+        // Reset error tracking on success
+        hasConnectionError.current = false;
+        retryCount.current = 0;
+      }
+    } catch (err: unknown) {
+      // Only handle errors if component is still mounted
+      if (!isMounted.current) return;
+      
+      // Check if it's a network connection error
+      const isConnectionError =
+        err instanceof Error &&
+        (err.message.includes('Network Error') ||
+         err.message.includes('ERR_CONNECTION_REFUSED') ||
+         err.message.includes('timeout') ||
+         err.message.includes('ECONNREFUSED'));
+
+      if (isConnectionError) {
+        hasConnectionError.current = true;
+        retryCount.current += 1;
+        lastErrorTime.current = Date.now();
+
+        // Only show toast for the first connection error
+        if (retryCount.current === 1) {
+          showToast('error', 'Cannot connect to server. Check your network connection.');
+        }
+
+        // Log detailed error info but limit noise in console
+        if (retryCount.current <= MAX_RETRY_COUNT) {
+          console.error(`Connection error (attempt ${retryCount.current}):`, err instanceof Error ? err.message : 'Unknown error');
+        } else if (retryCount.current === MAX_RETRY_COUNT + 1) {
+          console.error('Multiple connection errors. Suppressing further logs.');
+        }
+      } else {
+        // For other errors, show normally
+        const errorMessage = err instanceof Error ? err.message : 'Failed to fetch admin profile.';
+        setError(errorMessage);
+        showToast('error', errorMessage);
+        console.error('Failed to fetch admin profile:', err instanceof Error ? err.message : err);
+      }
+    } finally {
+      // Only update state if component is still mounted
+      if (isMounted.current) {
+        setIsLoading(false);
+      }
+    }
+  }, [api, showToast, ERROR_COOLDOWN_MS, MAX_RETRY_COUNT]);
 
   const updateAdminProfile = useCallback(async (data: Partial<UserProfile>) => {
     if (!profile) {
@@ -87,12 +157,36 @@ export const useAdminProfile = () => {
       return null;
     } finally {
       setIsUpdating(false);
-    }
-  }, [api, showToast, profile]);
-
+    }  }, [api, showToast, profile]);
+  // Modified useEffect to limit connection attempts and handle component lifecycle
   useEffect(() => {
+    isMounted.current = true;
+    
+    // Initial fetch
     fetchAdminProfile();
-  }, [fetchAdminProfile]);
+
+    // Set up a refresh interval with progressive backoff
+    let refreshDelay = 5 * 60 * 1000; // Start with 5 minutes
+    
+    // If we're in error state, use progressive backoff timing
+    if (hasConnectionError.current) {
+      // 30s, 2m, 5m based on retry count
+      refreshDelay = Math.min(30 * 1000 * Math.pow(4, retryCount.current - 1), 5 * 60 * 1000);
+    }
+    
+    const intervalId = setInterval(() => {
+      // Only attempt refresh if not in error state or if error cooldown has passed
+      if (!hasConnectionError.current || (Date.now() - lastErrorTime.current > ERROR_COOLDOWN_MS)) {
+        fetchAdminProfile();
+      }
+    }, refreshDelay);
+
+    // Cleanup function
+    return () => {
+      isMounted.current = false;
+      clearInterval(intervalId);
+    };
+  }, [fetchAdminProfile, ERROR_COOLDOWN_MS]);
 
   return {
     profile,

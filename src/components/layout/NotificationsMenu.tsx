@@ -31,6 +31,7 @@ export function NotificationsMenu() {
         return <CreditCard className="w-5 h-5 text-blue-500" />;
       case 'document':
         return <FileText className="w-5 h-5 text-green-500" />;
+      // Add cases for 'subscription', 'success', 'error' if specific icons are desired
       default:
         return <Info className="w-5 h-5 text-gray-500" />;
     }
@@ -73,9 +74,13 @@ export function NotificationsMenu() {
                 {t('notifications.title')}
               </h3>
               {isRealTime ? (
-                <Wifi className="w-4 h-4 text-green-500" />
+                <span title={t('notifications.realtime.connected')}>
+                  <Wifi className="w-4 h-4 text-green-500" />
+                </span>
               ) : (
-                <WifiOff className="w-4 h-4 text-yellow-500" />
+                <span title={t('notifications.realtime.disconnected')}>
+                  <WifiOff className="w-4 h-4 text-yellow-500" />
+                </span>
               )}
             </div>
             {notifications.length > 0 && (
@@ -92,6 +97,7 @@ export function NotificationsMenu() {
             {isLoading ? (
               <div className="p-4 text-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                <p className="text-sm text-gray-500 mt-2">{t('common.loading')}</p>
               </div>
             ) : notifications.length === 0 ? (
               <div className="p-8 text-center">
@@ -114,13 +120,13 @@ export function NotificationsMenu() {
                       </div>
                       <div className="ml-3 flex-1">
                         <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                          {notification.title}
+                          {t(`notifications.types.${notification.type}`, notification.title)}
                         </p>
                         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                          {notification.message}
+                          {notification.message} {/* Assuming notification.message is already potentially translated or is dynamic content not needing direct t() call here */}
                         </p>
                         <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                          {new Date(notification.timestamp).toLocaleString()}
+                          {new Date(notification.timestamp).toLocaleString(t('common.locale'))}
                         </p>
                       </div>
                       <button
@@ -129,6 +135,7 @@ export function NotificationsMenu() {
                           deleteNotification(notification.id);
                         }}
                         className="ml-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                        title={t('common.delete')}
                       >
                         <X className="w-4 h-4" />
                       </button>

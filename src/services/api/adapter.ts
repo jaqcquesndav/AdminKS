@@ -8,14 +8,28 @@ import { USE_MOCK_AUTH } from '../../utils/mockAuth';
  * @param apiCall - Fonction qui effectue l'appel API réel
  * @param mockData - Fonction ou données qui simulent la réponse pour les utilisateurs de démo
  */
-export async function apiAdapter<T, P extends any[]>(
+export async function apiAdapter<T, P extends unknown[]>(
   apiCall: (...args: P) => Promise<T>,
   mockData: ((...args: P) => T) | T,
   ...args: P
 ): Promise<T> {
   // Si le mode démo est désactivé, utiliser toujours l'API réelle
   if (!USE_MOCK_AUTH) {
-    return apiCall(...args);
+    try {
+      return await apiCall(...args);
+    } catch (error) {
+      // Journaliser l'erreur et la propager pour que les composants puissent la gérer
+      console.error('[API Adapter] Erreur lors de l\'appel API:', error);
+      
+      // Formater le message d'erreur avant de le propager
+      if (error instanceof Error) {
+        // Conserver le type d'erreur original pour les détections spécifiques dans les composants
+        throw error;
+      } else {
+        // Pour les erreurs qui ne sont pas des instances d'Error, les convertir en Error
+        throw new Error(typeof error === 'string' ? error : 'Erreur de connexion au serveur');
+      }
+    }
   }
 
   // Si nous utilisons un compte de démonstration, retourner les données simulées

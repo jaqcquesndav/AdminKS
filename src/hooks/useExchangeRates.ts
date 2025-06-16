@@ -1,12 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   SupportedCurrency, 
   ExchangeRate,
   DEFAULT_EXCHANGE_RATES
 } from '../types/currency';
-import { updateExchangeRates, getCurrentExchangeRates } from '../utils/currency';
+import { getCurrentExchangeRates } from '../utils/currency';
 
-interface ExchangeRatesHistory {
+export interface ExchangeRatesHistory { // Added export
   rates: ExchangeRate[];
   loading: boolean;
   error: string | null;
@@ -14,6 +14,8 @@ interface ExchangeRatesHistory {
   getRate: (from: SupportedCurrency, to: SupportedCurrency) => number;
   getRateHistory: (from: SupportedCurrency, to: SupportedCurrency, days?: number) => ExchangeRate[];
   refreshRates: () => Promise<void>;
+  // Added currentRates and baseCurrency to align with what CurrencyContext expects from the hook
+  currentRates: { rates: Record<SupportedCurrency, number>, base: SupportedCurrency } | null; 
 }
 
 // Intervalle de rafraîchissement des taux de change en ms (1 heure par défaut)
@@ -34,12 +36,25 @@ export function useExchangeRates(
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string>(getCurrentExchangeRates().lastUpdated);
+  const [currentApiRates, setCurrentApiRates] = useState<{ rates: Record<SupportedCurrency, number>, base: SupportedCurrency } | null>(null);
+  // Ajoutons une référence pour suivre si nous avons déjà un fetch en cours
+  const fetchInProgress = useRef(false);
+  const lastFetchTime = useRef(0);
+  const MIN_FETCH_INTERVAL = 5000; // 5 secondes minimum entre les fetch
 
   /**
    * Récupère les taux de change depuis l'API et met à jour le système
    */
   const fetchRates = useCallback(async () => {
+    // Éviter les appels simultanés ou trop rapprochés
+    const now = Date.now();
+    if (fetchInProgress.current || (now - lastFetchTime.current < MIN_FETCH_INTERVAL)) {
+      console.log('Skipping exchange rate fetch: operation already in progress or too soon');
+      return;
+    }
+
     try {
+      fetchInProgress.current = true;
       setLoading(true);
       
       // Dans une application réelle, vous feriez un appel API ici pour les taux actuels
@@ -117,15 +132,18 @@ export function useExchangeRates(
           const latestRates = generatedRates.filter(r => r.date === generatedRates[0]?.date);
           
           const systemRates: Record<SupportedCurrency, number> = {
-            USD: 1,
+            USD: 1, // Assuming USD is the API base for this simulation
             CDF: latestRates.find(r => r.from === 'USD' && r.to === 'CDF')?.rate || DEFAULT_EXCHANGE_RATES.rates.CDF,
             FCFA: latestRates.find(r => r.from === 'USD' && r.to === 'FCFA')?.rate || DEFAULT_EXCHANGE_RATES.rates.FCFA
           };
           
           const timestamp = new Date().toISOString();
+          const apiBaseCurrency = 'USD'; // Simulate API base currency
           
           // Mettre à jour les taux de change dans le système global
-          updateExchangeRates(systemRates, timestamp);
+          // updateExchangeRates(systemRates, timestamp); // This was updating based on USD as base
+          // Instead, we now store what the API would return (rates + its base)
+          setCurrentApiRates({ rates: systemRates, base: apiBaseCurrency });
           setLastUpdated(timestamp);
           
           setLoading(false);
@@ -258,6 +276,7 @@ export function useExchangeRates(
     lastUpdated,
     getRate,
     getRateHistory,
-    refreshRates: fetchRates
+    refreshRates: fetchRates,
+    currentRates: currentApiRates // Expose the fetched rates and their base
   };
 }

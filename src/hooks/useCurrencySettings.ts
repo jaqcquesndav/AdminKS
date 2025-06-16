@@ -1,18 +1,17 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useCurrency } from './useCurrency'; 
 import { useLanguage } from './useLanguage';
 import { formatCurrency as utilFormatCurrency } from '../utils/currency';
-import { useExchangeRates } from './useExchangeRates'; 
 import { 
   SupportedCurrency, 
   DEFAULT_CURRENCY_INFO, 
   CurrencyInfo, 
   CurrencyPreferences,
   MultiCurrencyPrice,
-  ManualExchangeRate as ManualRate // Aliasing for consistency with previous usage
+  ManualExchangeRate as ManualRate
 } from '../types/currency';
 import { SUPPORTED_CURRENCIES } from '../constants/currencyConstants';
-import { useTranslation } from 'react-i18next'; // Standard way to get t function
+import { useTranslation } from 'react-i18next';
 
 interface CurrencySettings {
   currency: SupportedCurrency;
@@ -48,7 +47,7 @@ const DEFAULT_LANGUAGE_CURRENCY_MAP: Record<string, SupportedCurrency> = {
 };
 
 export function useCurrencySettings(): CurrencySettings {
-  const { t } = useTranslation(); // Get t function via hook
+  const { t } = useTranslation();
   const currencyContext = useCurrency();
   const {
     currency: contextCurrency,
@@ -58,11 +57,14 @@ export function useCurrencySettings(): CurrencySettings {
     baseCurrency,
     convert: contextConvert,
     exchangeRates: contextExchangeRates,
-    lastRatesUpdate: contextLastRateUpdate
+    lastRatesUpdate: contextLastRateUpdate, // Renamed for clarity from contextLastUpdate
+    loading: contextRatesLoading,      // Get loading state from context
+    refreshRates: contextRefreshRates  // Get refresh function from context
   } = currencyContext;
 
   const { currentLanguage } = useLanguage();
-  const { loading: externalRatesLoading, refreshRates: refreshExternalRates } = useExchangeRates(undefined, true, 30); 
+
+  const manualUpdateInProgress = useRef(false);
 
   const [currencyInfo, setCurrencyInfo] = useState<CurrencyInfo>(() => {
     if (contextCurrency && SUPPORTED_CURRENCIES.includes(contextCurrency)) {
@@ -83,6 +85,13 @@ export function useCurrencySettings(): CurrencySettings {
   });
 
   useEffect(() => {
+    // If a manual update just set the currency, don't override it.
+    // The manualUpdateInProgress ref helps bridge the async state update of preferences.currencySetManually.
+    if (manualUpdateInProgress.current) {
+      manualUpdateInProgress.current = false; // Reset the flag for subsequent runs
+      return; // Skip this effect run to allow manual update to fully apply
+    }
+
     const preferredCurrency = DEFAULT_LANGUAGE_CURRENCY_MAP[currentLanguage] || DEFAULT_LANGUAGE_CURRENCY_MAP.default;
     if (!preferences.currencySetManually && preferredCurrency !== contextCurrency) {
       setContextCurrency(preferredCurrency);
@@ -98,11 +107,18 @@ export function useCurrencySettings(): CurrencySettings {
     setCurrencyInfo(DEFAULT_CURRENCY_INFO[validCurrencyToSet]);
   }, [contextCurrency]);
 
-  const updatePreferences = useCallback((prefs: Partial<CurrencyPreferences>) => {
-    setPreferences(prev => ({ ...prev, ...prefs }));
-    if (prefs.defaultCurrency) {
-      setContextCurrency(prefs.defaultCurrency);
-      setPreferences(prev => ({ ...prev, currencySetManually: true }));
+  const updatePreferences = useCallback((newPrefs: Partial<CurrencyPreferences>) => {
+    if (newPrefs.defaultCurrency) {
+      manualUpdateInProgress.current = true;
+      setContextCurrency(newPrefs.defaultCurrency);
+      setPreferences(prev => ({
+        ...prev,
+        ...newPrefs,
+        defaultCurrency: newPrefs.defaultCurrency as SupportedCurrency, // Type assertion
+        currencySetManually: true
+      }));
+    } else {
+      setPreferences(prev => ({ ...prev, ...newPrefs }));
     }
   }, [setContextCurrency]);
 
@@ -166,7 +182,7 @@ export function useCurrencySettings(): CurrencySettings {
 
   const updateManualRate = useCallback((currency: SupportedCurrency, rate: number) => {
     setUserExchangeRate(currency, rate); 
-  }, [setUserExchangeRate]);
+  }, [setUserExchangeRate]); 
 
   const removeManualRate = useCallback((currency: SupportedCurrency) => {
     removeUserExchangeRate(currency);
@@ -191,9 +207,9 @@ export function useCurrencySettings(): CurrencySettings {
     preferences,
     updatePreferences,
     formatMultiCurrencyPrice,
-    loading: externalRatesLoading, 
-    lastUpdated: contextLastRateUpdate || new Date().toISOString(),
-    refreshRates: refreshExternalRates,
+    loading: contextRatesLoading, // Use loading state from context
+    lastUpdated: contextLastRateUpdate || new Date().toISOString(), // Use last update from context
+    refreshRates: contextRefreshRates, // Use refresh function from context
     formatCurrency: utilFormatCurrency, 
     getCurrencySymbol,
     exchangeRates: contextExchangeRates,

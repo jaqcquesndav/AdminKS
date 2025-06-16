@@ -3,11 +3,13 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth0 } from '@auth0/auth0-react';
 import { PageLoader } from '../../components/common/PageLoader';
 import { authService } from '../../services/auth/authService';
+import { useTranslation } from 'react-i18next'; // Import useTranslation
 
 export function AuthCallbackPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation(); // Initialize t function
   const { 
     isAuthenticated: isAuth0Authenticated, 
     isLoading, 
@@ -18,25 +20,25 @@ export function AuthCallbackPage() {
   
   // Log au montage du composant pour confirmer que la route fonctionne
   useEffect(() => {
-    console.log('🎯 Page de callback Auth0 montée');
-    console.log('📍 URL actuelle:', window.location.href);
-    console.log('🧩 Paramètres de recherche:', location.search);
+    console.log(t('auth.authCallbackPage.logAuth0Mounted', 'Auth0 callback page mounted'));
+    console.log(t('auth.authCallbackPage.logCurrentURL', 'Current URL:'), window.location.href);
+    console.log(t('auth.authCallbackPage.logSearchParams', 'Search parameters:'), location.search);
     
     // Vérifier le localStorage pour voir si des informations sont déjà stockées
-    console.log('🗃️ Données localStorage:', {
-      accessToken: authService.getAccessToken() ? 'présent' : 'absent',
-      idToken: authService.getIdToken() ? 'présent' : 'absent',
-      refreshToken: authService.getRefreshToken() ? 'présent' : 'absent',
-      userInfo: authService.getUserInfo() ? 'présent' : 'absent',
+    console.log(t('auth.authCallbackPage.logLocalStorage', 'LocalStorage data:'), {
+      accessToken: authService.getAccessToken() ? t('auth.authCallbackPage.logAccessTokenPresent', 'present') : t('auth.authCallbackPage.logAccessTokenAbsent', 'absent'),
+      idToken: authService.getIdToken() ? t('auth.authCallbackPage.logIdTokenPresent', 'present') : t('auth.authCallbackPage.logIdTokenAbsent', 'absent'),
+      refreshToken: authService.getRefreshToken() ? t('auth.authCallbackPage.logRefreshTokenPresent', 'present') : t('auth.authCallbackPage.logRefreshTokenAbsent', 'absent'),
+      userInfo: authService.getUserInfo() ? t('auth.authCallbackPage.logUserInfoPresent', 'present') : t('auth.authCallbackPage.logUserInfoAbsent', 'absent'),
       tokenExpiry: authService.getTokenExpiry()
     });
-  }, [location.search]);
+  }, [location.search, t]);
 
   useEffect(() => {
-    // Fonction pour traiter l'authentification
+    // Fonction pour traiter l\'authentification
     const processAuthentication = async () => {
       try {
-        // Vérifier si le code est présent dans l'URL (paramètre de requête)
+        // Vérifier si le code est présent dans l\'URL (paramètre de requête)
         const params = new URLSearchParams(location.search);
         const hasAuthCode = params.has('code');
         const authCode = params.get('code');
@@ -45,56 +47,54 @@ export function AuthCallbackPage() {
         
         // Vérifier s'il y a une erreur dans les paramètres
         if (errorParam) {
-          console.error(`❌ Erreur Auth0: ${errorParam} - ${errorDescription}`);
-          setError(`Erreur d'authentification: ${errorDescription || errorParam}`);
+          console.error(t('auth.authCallbackPage.logAuth0Error', 'Auth0 Error: {error} - {description}', { error: errorParam, description: errorDescription }));
+          setError(t('auth.authCallbackPage.errorMessage', 'An error occurred during authentication: {error}', { error: errorDescription || errorParam }));
           navigate('/login', { replace: true });
           return;
         }
         
-        console.log('🔍 Traitement du callback Auth0:', { 
+        console.log(t('auth.authCallbackPage.logProcessingCallback', 'Processing Auth0 callback:'), { 
           hasAuthCode, 
-          authCode: authCode ? `${authCode.substring(0, 10)}...` : 'absent',
+          authCode: authCode ? `${authCode.substring(0, 10)}...` : t('auth.authCallbackPage.logAuthCodeAbsent', 'absent'),
           isAuth0Authenticated, 
           isLoading,
-          user: user ? 'présent' : 'absent',
+          user: user ? t('auth.authCallbackPage.logUserInfoPresent', 'present') : t('auth.authCallbackPage.logUserInfoAbsent', 'absent'),
           url: location.pathname + location.search,
           state: params.get('state')
         });
         
         // Si le SDK est toujours en cours de chargement, on attend
         if (isLoading) {
-          console.log('⏳ SDK Auth0 en cours de chargement, attente...');
+          console.log(t('auth.authCallbackPage.logAuth0SDKLoading', 'Auth0 SDK loading, please wait...'));
           return;
         }
-          // Si l'utilisateur est authentifié et que l'utilisateur est présent
+          // Si l\'utilisateur est authentifié et que l\'utilisateur est présent
         if (isAuth0Authenticated && user) {
-          console.log('✅ Utilisateur authentifié via Auth0, récupération des tokens...');
-          console.log('👤 Informations utilisateur:', {
+          console.log(t('auth.authCallbackPage.logUserAuthenticated', 'User authenticated via Auth0, fetching tokens...'));
+          console.log(t('auth.authCallbackPage.logUserInfo', 'User information:'), {
             sub: user.sub,
             email: user.email,
             name: user.name,
-            role: user['https://api.wanzo.com/role'] || 'non défini',
-            scopes: user['https://api.wanzo.com/scopes'] || 'non défini'
+            role: user['https://api.wanzo.com/role'] || t('auth.authCallbackPage.logRoleUndefined', 'undefined'),
+            scopes: user['https://api.wanzo.com/scopes'] || t('auth.authCallbackPage.logScopesUndefined', 'undefined')
           });
           
           try {
-            // 1. Récupérer le token d'accès
+            // 1. Récupérer le token d\'accès
             const accessTokenResponse = await getAccessTokenSilently({
               detailedResponse: true,
               timeoutInSeconds: 60 // Augmenter le timeout pour éviter les problèmes
             });
             
-            console.log('🎫 Tokens récupérés:', {
-              accessToken: accessTokenResponse.access_token ? accessTokenResponse.access_token.substring(0, 15) + '...' : 'absent',
-              idToken: accessTokenResponse.id_token ? 'présent' : 'absent',
-              // Note: Auth0 SDK pour React ne retourne pas directement le refresh token ici.
-              // Il est géré en interne par le SDK pour le renouvellement silencieux.
+            console.log(t('auth.authCallbackPage.logTokensFetched', 'Tokens fetched:'), {
+              accessToken: accessTokenResponse.access_token ? accessTokenResponse.access_token.substring(0, 15) + '...' : t('auth.authCallbackPage.logAccessTokenAbsent', 'absent'),
+              idToken: accessTokenResponse.id_token ? t('auth.authCallbackPage.logIdTokenPresent', 'present') : t('auth.authCallbackPage.logIdTokenAbsent', 'absent'),
               expiresIn: accessTokenResponse.expires_in,
             });
             
-            // 2. Récupérer les claims du token d'ID pour des informations supplémentaires
+            // 2. Récupérer les claims du token d\'ID pour des informations supplémentaires
             const idTokenClaims = await getIdTokenClaims();
-            console.log('🔐 ID Token Claims:', idTokenClaims ? 'présent' : 'absent');
+            console.log(t('auth.authCallbackPage.logIdTokenClaimsPresent', 'ID Token Claims:'), idTokenClaims ? t('auth.authCallbackPage.logIdTokenPresent', 'present') : t('auth.authCallbackPage.logIdTokenAbsent', 'absent'));
             
             // 3. Stocker tous les tokens et les infos utilisateur
             // Le refresh token n'est pas directement exposé par getAccessTokenSilently avec detailedResponse.
@@ -119,7 +119,7 @@ export function AuthCallbackPage() {
             });
             
             // 5. Rediriger vers le dashboard
-            console.log('🚀 Authentification complète, redirection vers le dashboard');
+            console.log(t('auth.authCallbackPage.logTokensStoredRedirecting', 'Tokens stored. Redirecting to dashboard...'));
             navigate('/dashboard', { replace: true });
           } catch (tokenError) {
             console.error('❌ Erreur lors de la récupération des tokens:', tokenError);
@@ -149,33 +149,25 @@ export function AuthCallbackPage() {
     };
     
     processAuthentication();
-  }, [navigate, isAuth0Authenticated, isLoading, location.search, location.pathname, getAccessTokenSilently, user, getIdTokenClaims]);
+  }, [navigate, isAuth0Authenticated, isLoading, location.search, location.pathname, getAccessTokenSilently, user, getIdTokenClaims, t]);
 
   if (error) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-6 py-4 rounded-lg max-w-md w-full">
-          <h2 className="text-xl font-semibold mb-2">Erreur d'authentification</h2>
-          <p className="mb-4">{error}</p>
+      <div className="min-h-screen bg-gray-100 flex flex-col justify-center items-center p-4 text-center">
+        <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">{t('auth.authCallbackPage.errorTitle', 'Authentication Error')}</h1>
+          <p className="text-gray-700 mb-2">{error}</p>
+          <p className="text-gray-600 text-sm mb-6">{t('auth.authCallbackPage.contactSupport', 'If the problem persists, please contact support.')}</p>
           <button 
-            onClick={() => navigate('/login')} 
-            className="w-full bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition-colors"
+            onClick={() => navigate('/login', { replace: true })}
+            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
           >
-            Retour à la page de connexion
+            {t('auth.authCallbackPage.backToLogin', 'Back to Login')}
           </button>
         </div>
       </div>
     );
   }
-  
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4">
-      <div className="bg-white border border-gray-200 rounded-lg shadow-md p-6 max-w-md w-full text-center">
-        <PageLoader />
-        <h2 className="text-xl font-semibold mt-4 mb-2">Authentification en cours</h2>
-        <p className="text-gray-600 mb-2">Traitement de votre connexion...</p>
-        <p className="text-sm text-gray-500">Vous allez être redirigé vers le tableau de bord.</p>
-      </div>
-    </div>
-  );
+
+  return <PageLoader message={t('auth.authCallbackPage.processing', 'Processing authentication...')} />;
 }

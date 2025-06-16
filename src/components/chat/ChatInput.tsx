@@ -51,10 +51,10 @@ export function ChatInput({ onSend, onFileSelect }: ChatInputProps) {
             className="hidden"
             id="chat-file"
             accept="image/*,.pdf,.doc,.docx"
-          />
-          <label
+          />          <label
             htmlFor="chat-file"
             className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 cursor-pointer"
+            aria-label={t('chat.attachFile', 'Joindre un fichier')}
           >
             <Paperclip className="w-5 h-5" />
           </label>
@@ -62,6 +62,7 @@ export function ChatInput({ onSend, onFileSelect }: ChatInputProps) {
             type="submit"
             disabled={!message.trim()}
             className="p-2 bg-primary hover:bg-primary-light text-white rounded-lg disabled:opacity-50"
+            aria-label={t('chat.sendMessage', 'Envoyer un message')}
           >
             <Send className="w-5 h-5" />
           </button>

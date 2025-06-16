@@ -5,12 +5,9 @@ import { Search, Plus, Filter, Edit, Trash2, Eye, ChevronLeft, ChevronRight } fr
 import { CustomerFormModal } from '../../components/customers/CustomerFormModal';
 import { useToastContext } from '../../contexts/ToastContext';
 import { customersApi } from '../../services/customers/customersApiService';
-import type { Customer, CustomerType, CustomerStatus, CustomerFilterParams } from '../../types/customer';
-
-// Define a type for the form data that allows 'pme' type
-interface ExtendedCustomerFormData extends Omit<Customer, 'type'> {
-  type: CustomerType | 'pme' | 'financial';
-}
+import type { Customer, CustomerStatus, CustomerFilterParams, CustomerFormData } from '../../types/customer';
+import { ConnectionError, BackendError } from '../../components/common/ConnectionError';
+import { isNetworkError, isServerError } from '../../utils/errorUtils';
 
 export function PmeCustomersPage() {
   const { t } = useTranslation();
@@ -18,6 +15,7 @@ export function PmeCustomersPage() {
   const { showToast } = useToastContext();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -26,6 +24,7 @@ export function PmeCustomersPage() {
 
   const fetchCustomers = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const params: CustomerFilterParams = {
         type: 'pme',
@@ -45,92 +44,13 @@ export function PmeCustomersPage() {
       setCustomers(response.customers);
       setTotalPages(response.totalPages);
     } catch (error) {
-      console.error('Erreur lors du chargement des PMEs:', error);
-      showToast('error', 'Erreur lors du chargement des PMEs. Veuillez réessayer.');
-      
-      // Données mockées en cas d'erreur
-      const mockCustomers: Customer[] = [
-          {
-            id: 'pme-1',
-            name: 'Wanzo Tech',
-            type: 'pme' as const,
-            email: 'info@wanzotech.com',
-            phone: '+243 812 345 678',
-            address: '123 Avenue de l\'Innovation',
-            city: 'Kinshasa',
-            country: 'RDC',
-            status: 'active' as const,
-            billingContactName: 'Marie Mutombo',
-            billingContactEmail: 'm.mutombo@wanzotech.com',
-            tokenAllocation: 1000000,
-            accountType: 'premium' as const
-          },
-          {
-            id: 'pme-2',
-            name: 'Solar Solutions SARL',
-            type: 'pme' as const,
-            email: 'contact@solarsolutions.cd',
-            phone: '+243 998 765 432',
-            address: '456 Avenue du Soleil',
-            city: 'Lubumbashi',
-            country: 'RDC',
-            status: 'active' as const,
-            billingContactName: 'Papy Kabongo',
-            billingContactEmail: 'p.kabongo@solarsolutions.cd',
-            tokenAllocation: 1000000,
-            accountType: 'standard' as const
-          },
-          {
-            id: 'pme-3',
-            name: 'EcoPro Services',
-            type: 'pme' as const,
-            email: 'info@ecoproservices.cd',
-            phone: '+243 853 951 753',
-            address: '789 Boulevard Écologique',
-            city: 'Goma',
-            country: 'RDC',
-            status: 'pending' as const,
-            billingContactName: 'Alice Tambwe',
-            billingContactEmail: 'a.tambwe@ecoproservices.cd',
-            tokenAllocation: 0,
-            accountType: 'freemium' as const
-          },
-          {
-            id: 'pme-4',
-            name: 'AgriTech Innovations',
-            type: 'pme' as const,
-            email: 'hello@agritech.cd',
-            phone: '+243 899 123 456',
-            address: '321 Rue des Fermiers',
-            city: 'Bukavu',
-            country: 'RDC',
-            status: 'suspended' as const,
-            billingContactName: 'Jean Kalala',
-            billingContactEmail: 'j.kalala@agritech.cd',
-            tokenAllocation: 500000,
-            accountType: 'standard' as const
-          },
-          {
-            id: 'pme-5',
-            name: 'DigitalKin Agency',
-            type: 'pme' as const,
-            email: 'contact@digitalkin.cd',
-            phone: '+243 976 543 210',
-            address: '555 Avenue Numérique',
-            city: 'Kinshasa',
-            country: 'RDC',
-            status: 'inactive' as const,
-            billingContactName: 'Sophie Mutumbo',
-            billingContactEmail: 's.mutumbo@digitalkin.cd',
-            tokenAllocation: 0,
-            accountType: 'freemium' as const
-          },
-        ];
-            setCustomers(mockCustomers);
+      console.error(t('customers.errors.loadFailed'), error);
+      showToast('error', t('customers.pme.errors.loadFailed', 'Échec du chargement des clients PME. Veuillez réessayer.'));
+      setError(error as Error);
     } finally {
       setLoading(false);
     }
-  }, [showToast, page, filterStatus, searchQuery]);
+  }, [showToast, page, filterStatus, searchQuery, t]);
   
   useEffect(() => {
     fetchCustomers();
@@ -145,34 +65,31 @@ export function PmeCustomersPage() {
     return () => clearTimeout(handler);
   }, [searchQuery, fetchCustomers]);
 
-  const handleCreateCustomer = async (customer: ExtendedCustomerFormData) => {
+  const handleCreateCustomer = async (customerData: CustomerFormData) => {
     try {
-      const customerData: Customer = {
-        ...customer,
-        type: customer.type === 'financial' ? 'pme' : customer.type as CustomerType
-      };
-      
       await customersApi.create(customerData);
-      showToast('success', 'Client PME créé avec succès');
+      showToast('success', t('customers.notifications.created', 'Client créé avec succès'));
       fetchCustomers(); // Rafraîchir la liste après création
       setShowModal(false);
     } catch (error) {
-      console.error('Erreur lors de la création du client:', error);
-      showToast('error', 'Erreur lors de la création du client. Veuillez réessayer.');
+      console.error(t('customers.errors.createFailed'), error);
+      showToast('error', t('customers.errors.createFailed', 'Échec de la création du client. Veuillez réessayer.'));
     }
   };
 
   const handleViewCustomer = (id: string) => {
     navigate(`/customers/${id}`);
-  };  const handleDeleteCustomer = async (id: string) => {
+  };
+  
+  const handleDeleteCustomer = async (id: string) => {
     if (window.confirm(t('customers.confirmDelete', 'Êtes-vous sûr de vouloir supprimer ce client ?'))) {
       try {
         await customersApi.delete(id);
         setCustomers(prev => prev.filter(customer => customer.id !== id));
-        showToast('success', 'Client supprimé avec succès');
+        showToast('success', t('customers.notifications.deleted', 'Client supprimé avec succès'));
       } catch (error) {
-        console.error('Erreur lors de la suppression du client:', error);
-        showToast('error', 'Erreur lors de la suppression du client. Veuillez réessayer.');
+        console.error(t('customers.errors.deleteFailed'), error);
+        showToast('error', t('customers.errors.deleteFailed', 'Échec de la suppression du client. Veuillez réessayer.'));
       }
     }
   };
@@ -181,7 +98,7 @@ export function PmeCustomersPage() {
     .filter(customer => customer.type === 'pme')
     .filter(customer => 
       customer.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      customer.email.toLowerCase().includes(searchQuery.toLowerCase())
+      (customer.email && customer.email.toLowerCase().includes(searchQuery.toLowerCase()))
     )
     .filter(customer => filterStatus === 'all' ? true : customer.status === filterStatus);
 
@@ -200,6 +117,21 @@ export function PmeCustomersPage() {
     }
   };
 
+  const initialPmeCustomerData: CustomerFormData = {
+    name: '',
+    type: 'pme',
+    email: '',
+    phone: '',
+    address: '',
+    city: '',
+    country: 'RDC',
+    status: 'pending',
+    billingContactName: '',
+    billingContactEmail: '',
+    tokenAllocation: 0,
+    accountType: 'standard',
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -213,174 +145,188 @@ export function PmeCustomersPage() {
         </button>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
-        <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex flex-col md:flex-row justify-between gap-4">
-          <div className="relative flex-1">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-gray-400" />
-            </div>
-            <input
-              type="text"
-              className="block w-full pl-10 pr-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 placeholder-gray-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-              placeholder={t('common.search', 'Rechercher...') as string}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-
-          <div className="flex items-center">
-            <div className="relative inline-block text-left">
-              <div className="flex items-center gap-2">
-                <Filter className="h-5 w-5 text-gray-400" />
-                <select
-                  className="block w-full py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                >
-                  <option value="all">{t('customers.status.all', 'Tous les statuts')}</option>
-                  <option value="active">{t('customers.status.active', 'Actif')}</option>
-                  <option value="pending">{t('customers.status.pending', 'En attente')}</option>
-                  <option value="suspended">{t('customers.status.suspended', 'Suspendu')}</option>
-                  <option value="inactive">{t('customers.status.inactive', 'Inactif')}</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {loading ? (
-          <div className="px-6 py-12 text-center">
-            <div className="inline-block mx-auto animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      {loading && !error && (
+        <div className="p-6 flex justify-center">
+          <div className="flex flex-col items-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
             <p className="mt-4 text-gray-500">{t('common.loading', 'Chargement...')}</p>
           </div>
-        ) : filteredCustomers.length === 0 ? (
-          <div className="px-6 py-12 text-center">
-            <p className="text-gray-500">{t('customers.noCustomersFound', 'Aucun client PME trouvé')}</p>
-            <button
-              onClick={() => setShowModal(true)}
-              className="mt-4 px-4 py-2 bg-primary text-white rounded-md inline-flex items-center hover:bg-primary-dark"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              {t('customers.addCustomer', 'Ajouter un client')}
-            </button>
+        </div>
+      )}
+
+      {error && isNetworkError(error) ? (
+        <ConnectionError 
+          message={t('customers.errors.networkError', 'Impossible de charger la liste des clients PME. Vérifiez votre connexion réseau.')}
+          retry={fetchCustomers}
+          className="mt-4"
+        />
+      ) : error && isServerError(error) ? (
+        <BackendError
+          message={t('customers.errors.serverError', 'Le serveur a rencontré une erreur lors du chargement des clients PME.')}
+          retry={fetchCustomers}
+          className="mt-4"
+        />
+      ) : (
+        <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
+          <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex flex-col md:flex-row justify-between gap-4">
+            <div className="relative flex-1">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                className="block w-full pl-10 pr-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 placeholder-gray-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                placeholder={t('common.search', 'Rechercher...') as string}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+
+            <div className="flex items-center">
+              <div className="relative inline-block text-left">
+                <div className="flex items-center gap-2">
+                  <Filter className="h-5 w-5 text-gray-400" />
+                  <select
+                    className="block w-full py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                  >
+                    <option value="all">{t('common.allStatuses', 'Tous les statuts')}</option>
+                    <option value="active">{t('customers.status.active', 'Actif')}</option>
+                    <option value="pending">{t('customers.status.pending', 'En attente')}</option>
+                    <option value="suspended">{t('customers.status.suspended', 'Suspendu')}</option>
+                    <option value="inactive">{t('customers.status.inactive', 'Inactif')}</option>
+                  </select>
+                </div>
+              </div>
+            </div>
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-700">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    {t('customers.columns.name', 'Nom')}
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    {t('customers.columns.email', 'Email')}
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    {t('customers.columns.location', 'Localisation')}
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    {t('customers.columns.status', 'Statut')}
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    {t('customers.columns.actions', 'Actions')}
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {filteredCustomers.map((customer) => (
-                  <tr key={customer.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                      {customer.name}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                      {customer.email}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                      {customer.city ? `${customer.city}, ${customer.country}` : customer.country}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(customer.status)}`}>
-                        {customer.status === 'active' ? 'Actif' :
-                         customer.status === 'pending' ? 'En attente' :
-                         customer.status === 'suspended' ? 'Suspendu' : 'Inactif'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex justify-end space-x-3">
-                        <button
-                          onClick={() => handleViewCustomer(customer.id!)}
-                          className="text-blue-600 hover:text-blue-800"
-                          title={t('customers.actions.view', 'Voir') as string}
-                        >
-                          <Eye className="h-5 w-5" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            // Dans une vraie application, vous implémenteriez l'édition ici
-                            showToast('info', 'Fonctionnalité d\'édition à implémenter');
-                          }}
-                          className="text-yellow-600 hover:text-yellow-800"
-                          title={t('customers.actions.edit', 'Modifier') as string}
-                        >
-                          <Edit className="h-5 w-5" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteCustomer(customer.id!)}
-                          className="text-red-600 hover:text-red-800"
-                          title={t('customers.actions.delete', 'Supprimer') as string}
-                        >
-                          <Trash2 className="h-5 w-5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>            </table>
-          </div>
-        )}
-        
-        {/* Pagination */}
-        {!loading && customers.length > 0 && (
-          <div className="px-6 py-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
-            <div className="flex-1 flex justify-between sm:hidden">
+
+          {!loading && filteredCustomers.length === 0 ? (
+            <div className="px-6 py-12 text-center">
+              <p className="text-gray-500">{t('customers.pme.noCustomersFound', 'Aucun client PME trouvé')}</p>
               <button
-                onClick={() => setPage(prev => Math.max(prev - 1, 1))}
-                disabled={page === 1}
-                className={`relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md 
-                  ${page === 1 
-                    ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500' 
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+                onClick={() => setShowModal(true)}
+                className="mt-4 px-4 py-2 bg-primary text-white rounded-md inline-flex items-center hover:bg-primary-dark"
               >
-                <ChevronLeft className="h-4 w-4 mr-1" />
-                {t('common.previous', 'Précédent')}
-              </button>
-              <button
-                onClick={() => setPage(prev => prev < totalPages ? prev + 1 : prev)}
-                disabled={page >= totalPages}
-                className={`ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md 
-                  ${page >= totalPages 
-                    ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500' 
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
-              >
-                {t('common.next', 'Suivant')}
-                <ChevronRight className="h-4 w-4 ml-1" />
+                <Plus className="mr-2 h-4 w-4" />
+                {t('customers.addCustomer', 'Ajouter un client')}
               </button>
             </div>
-            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm text-gray-700 dark:text-gray-300">
-                  {t('pagination.showing', 'Affichage de')} <span className="font-medium">{customers.length}</span>{' '}
-                  {t('pagination.results', 'résultats')}
-                  {totalPages > 1 && (
-                    <>
-                      {' '}{t('pagination.page', 'Page')}{' '}
-                      <span className="font-medium">{page}</span> {t('pagination.of', 'sur')}{' '}
-                      <span className="font-medium">{totalPages}</span>
-                    </>
-                  )}
-                </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gamma-700">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      {t('customers.columns.name', 'Nom')}
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      {t('customers.columns.email', 'Email')}
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      {t('customers.columns.location', 'Localisation')}
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      {t('customers.columns.status', 'Statut')}
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      {t('customers.columns.actions', 'Actions')}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  {filteredCustomers.map((customer) => (
+                    <tr key={customer.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                        {customer.name}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                        {customer.email}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                        {customer.city ? `${customer.city}, ${customer.country}` : customer.country}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(customer.status)}`}>
+                          {t(`customers.status.${customer.status}`, customer.status)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex justify-end space-x-3">
+                          <button
+                            onClick={() => handleViewCustomer(customer.id!)}
+                            className="text-blue-600 hover:text-blue-800"
+                            title={t('customers.actions.view', 'Voir') as string}
+                          >
+                            <Eye className="h-5 w-5" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              // Dans une vraie application, vous implémenteriez l'édition ici
+                              showToast('info', t('customers.actions.editNotImplemented', 'Fonctionnalité d\'édition à implémenter'));
+                            }}
+                            className="text-yellow-600 hover:text-yellow-800"
+                            title={t('customers.actions.edit', 'Modifier') as string}
+                          >
+                            <Edit className="h-5 w-5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCustomer(customer.id!)}
+                            className="text-red-600 hover:text-red-800"
+                            title={t('customers.actions.delete', 'Supprimer') as string}
+                          >
+                            <Trash2 className="h-5 w-5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          
+          {!loading && totalPages > 1 && (
+            <div className="px-6 py-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <div className="flex-1 flex justify-between sm:hidden">
+                <button
+                  onClick={() => setPage(prev => Math.max(prev - 1, 1))}
+                  disabled={page === 1}
+                  className={`relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md 
+                    ${page === 1 
+                      ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500' 
+                      : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  {t('common.previous', 'Précédent')}
+                </button>
+                <button
+                  onClick={() => setPage(prev => prev < totalPages ? prev + 1 : prev)}
+                  disabled={page >= totalPages}
+                  className={`ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md 
+                    ${page >= totalPages 
+                      ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500' 
+                      : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+                >
+                  {t('common.next', 'Suivant')}
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </button>
               </div>
-              {totalPages > 1 && (
+              <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm text-gray-700 dark:text-gray-300">
+                    {t('common.paginationShowing', 'Affichage de')} <span className="font-medium">{filteredCustomers.length}</span>{' '}
+                    {t('common.results', 'résultats')}
+                    {totalPages > 1 && (
+                      <>
+                        {' '}{t('common.page', 'Page')}{' '}
+                        <span className="font-medium">{page}</span> {t('common.of', 'sur')}{' '}
+                        <span className="font-medium">{totalPages}</span>
+                      </>
+                    )}
+                  </p>
+                </div>
                 <div>
                   <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
                     <button
@@ -407,33 +353,18 @@ export function PmeCustomersPage() {
                     </button>
                   </nav>
                 </div>
-              )}
+              </div>
             </div>
-          </div>
-        )}
-      </div>
-
-      {/* Create Customer Modal */}
-      <CustomerFormModal
-        isOpen={showModal}
-        onClose={() => setShowModal(false)}
-        onSubmit={handleCreateCustomer}
-        title={t('customers.create.title', 'Créer un client PME')}
-        customer={{
-          name: '',
-          type: 'pme', // Predefined type as 'pme'
-          email: '',
-          phone: '',
-          address: '',
-          city: '',
-          country: 'France',
-          status: 'pending',
-          billingContactName: '',
-          billingContactEmail: '',
-          tokenAllocation: 1000000, // Default for PME
-          accountType: 'freemium' as const // Start with freemium
-        }}
-      />
+          )}
+        </div>
+      )}      {showModal && (
+        <CustomerFormModal
+          isOpen={showModal}
+          onClose={() => setShowModal(false)}
+          onSubmit={handleCreateCustomer}
+          initialData={initialPmeCustomerData}
+        />
+      )}
     </div>
   );
 }

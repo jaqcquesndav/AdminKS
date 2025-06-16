@@ -4,6 +4,7 @@ export interface ChatMessage {
   sender: 'user' | 'support';
   timestamp: Date;
   read: boolean;
+  status?: 'sending' | 'sent' | 'delivered' | 'read' | 'failed'; // Added status property
   attachments?: ChatAttachment[];
 }
 
@@ -17,7 +18,7 @@ export interface ChatAttachment {
     width?: number;
     height?: number;
     duration?: number;
-    [key: string]: any;
+    [key: string]: unknown; // Changed from any to unknown
   };
 }
 

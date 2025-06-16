@@ -101,36 +101,34 @@ export function UserForm({ user, onSubmit, onCancel, currentUser }: UserFormProp
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.email || !formData.role || !formData.status) {
-      showToast('error', t('users.form.errors.missingRequiredFields', 'Please fill in all required fields.'));
+      showToast('error', t('users.userForm.errors.missingRequiredFields', 'Please fill in all required fields.'));
       return;
     }
 
-    if (!user && formData.password !== formData.confirmPassword) {
-      showToast('error', t('users.form.errors.passwordsDontMatch', 'Les mots de passe ne correspondent pas.'));
+    if (formData.password !== formData.confirmPassword) { // Check password only if it is being set (new user or password change)
+      showToast('error', t('users.userForm.passwordsDontMatch', 'Passwords do not match.'));
       return;
     }
-    if (!user && (!formData.password || formData.password.length < 8)) {
-        showToast('error', t('users.form.errors.passwordTooShort', 'Le mot de passe doit contenir au moins 8 caractères.'));
+    if ((!user || formData.password) && (!formData.password || formData.password.length < 8)) { // Check password length only if it is being set
+        showToast('error', t('users.userForm.errors.passwordTooShort', 'Password must be at least 8 characters long.'));
         return;
     }
     // Add validation for email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
-      showToast('error', t('users.form.errors.invalidEmail', 'Please enter a valid email address.'));
+      showToast('error', t('users.userForm.errors.invalidEmail', 'Please enter a valid email address.'));
       return;
     }
 
     if (formData.userType === 'external' && !formData.customerAccountId) {
-        showToast('error', t('users.form.errors.missingCustomerAccountId', 'Veuillez fournir un ID de compte client pour les utilisateurs externes.'));
+        showToast('error', t('users.userForm.errors.missingCustomerAccountId', 'Please provide a customer account ID for external users.'));
         return;
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { confirmPassword, ...submissionData } = formData;
-    if (user) { 
-        if (!submissionData.password) {
-            delete submissionData.password;
-        }
+    if (user && !submissionData.password) { // If editing and password is not changed, remove it from submission
+        delete submissionData.password;
     }
     await onSubmit(submissionData);
   };
@@ -140,7 +138,7 @@ export function UserForm({ user, onSubmit, onCancel, currentUser }: UserFormProp
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full m-4">
         <div className="flex items-center justify-between p-4 border-b dark:border-gray-700">
           <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-            {user ? t('users.form.edit.title') : t('users.form.create.title')}
+            {user ? t('users.userForm.titleEdit') : t('users.userForm.titleCreate')}
           </h3>
           <button onClick={onCancel} aria-label={t('common.close') || 'Close'}>
             <X className="w-5 h-5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" />
@@ -151,12 +149,13 @@ export function UserForm({ user, onSubmit, onCancel, currentUser }: UserFormProp
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                {t('users.form.name')}
+                {t('users.userForm.nameLabel')}
               </label>
               <input
                 id="name"
                 name="name"
                 type="text"
+                placeholder={t('users.userForm.namePlaceholder')}
                 value={formData.name}
                 onChange={handleInputChange}
                 className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
@@ -167,12 +166,13 @@ export function UserForm({ user, onSubmit, onCancel, currentUser }: UserFormProp
 
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                {t('users.form.email')}
+                {t('users.userForm.emailLabel')}
               </label>
               <input
                 id="email"
                 name="email"
                 type="email"
+                placeholder={t('users.userForm.emailPlaceholder')}
                 value={formData.email}
                 onChange={handleInputChange}
                 className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
@@ -181,17 +181,18 @@ export function UserForm({ user, onSubmit, onCancel, currentUser }: UserFormProp
               />
             </div>
 
-            {/* Password and Confirm Password fields - only for user creation */}
-            {!user && (
+            {/* Password and Confirm Password fields - only for user creation or if password is being changed */}
+            {!user || formData.password ? (
               <>
                 <div>
                   <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {t('users.form.password')}
+                    {t('users.userForm.passwordLabel')}
                   </label>
                   <input
                     id="password"
                     name="password"
                     type="password"
+                    placeholder={t('users.userForm.passwordPlaceholder')}
                     value={formData.password}
                     onChange={handleInputChange}
                     className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
@@ -202,26 +203,38 @@ export function UserForm({ user, onSubmit, onCancel, currentUser }: UserFormProp
                 </div>
                 <div>
                   <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {t('users.form.confirmPassword')}
+                    {t('users.userForm.confirmPasswordLabel')}
                   </label>
                   <input
                     id="confirmPassword"
                     name="confirmPassword"
                     type="password"
+                    placeholder={t('users.userForm.confirmPasswordPlaceholder')}
                     value={formData.confirmPassword}
                     onChange={handleInputChange}
                     className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                    required={!user} // Only required for new user
+                    required={!user || !!formData.password} // Required for new user or if password is being changed
                     minLength={8}
-                    aria-required={!user}
+                    aria-required={!user || !!formData.password}
                   />
                 </div>
               </>
+            ) : (
+              // Optionally, show a button to reveal password fields for editing existing user
+              <div className="md:col-span-2">
+                <button 
+                  type="button" 
+                  onClick={() => setFormData(prev => ({...prev, password: ''}))} // Set to empty to trigger display of password fields
+                  className="text-sm text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
+                >
+                  {t('users.userForm.changePasswordButton', 'Change Password')}
+                </button>
+              </div>
             )}
 
             <div>
               <label htmlFor="role" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                {t('users.form.role')}
+                {t('users.userForm.roleLabel')}
               </label>
               <select
                 id="role"
@@ -233,14 +246,14 @@ export function UserForm({ user, onSubmit, onCancel, currentUser }: UserFormProp
                 aria-required="true"
               >
                 {availableRoles.map((roleValue) => (
-                  <option key={roleValue} value={roleValue}>{t(`users.roles.${roleValue}`, roleValue.replace(/_/g, ' ').replace(/\\b\\w/g, l => l.toUpperCase()))}</option>
+                  <option key={roleValue} value={roleValue}>{t(`users.roles.${roleValue}`, roleValue.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()))}</option>
                 ))}
               </select>
             </div>
 
             <div>
               <label htmlFor="status" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                {t('users.form.status')}
+                {t('users.userForm.statusLabel')}
               </label>
               <select
                 id="status"
@@ -251,10 +264,10 @@ export function UserForm({ user, onSubmit, onCancel, currentUser }: UserFormProp
                 required
                 aria-required="true"
               >
-                <option value="active">{t('users.status.active', 'Actif')}</option>
-                <option value="inactive">{t('users.status.inactive', 'Inactif')}</option>
-                <option value="pending">{t('users.status.pending', 'En attente')}</option>
-                <option value="suspended">{t('users.status.suspended', 'Suspendu')}</option>
+                <option value="active">{t('users.statusValues.active')}</option>
+                <option value="inactive">{t('users.statusValues.inactive')}</option>
+                <option value="pending">{t('users.statusValues.pending')}</option>
+                <option value="suspended">{t('users.statusValues.suspended')}</option>
               </select>
             </div>
             
@@ -263,7 +276,7 @@ export function UserForm({ user, onSubmit, onCancel, currentUser }: UserFormProp
                 <>
                     <div>
                         <label htmlFor="userType" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                            {t('users.form.userType', 'Type d\'utilisateur')}
+                            {t('users.userForm.userTypeLabel', 'User Type')}
                         </label>
                         <select
                             id="userType"
@@ -274,20 +287,21 @@ export function UserForm({ user, onSubmit, onCancel, currentUser }: UserFormProp
                             required={currentUser?.role === 'super_admin'}
                             aria-required={currentUser?.role === 'super_admin'}
                         >
-                            <option value="internal">{t('users.userTypes.internal', 'Interne')}</option>
-                            <option value="external">{t('users.userTypes.external', 'Externe (Client)')}</option>
+                            <option value="internal">{t('users.userType.internal')}</option>
+                            <option value="external">{t('users.userType.external')}</option>
                         </select>
                     </div>
 
                     {formData.userType === 'external' && (
                         <div>
                             <label htmlFor="customerAccountId" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                {t('users.form.customerAccountId', 'ID Compte Client')}
+                                {t('users.userForm.customerAccountLabel')}
                             </label>
                             <input
                                 id="customerAccountId"
                                 name="customerAccountId"
                                 type="text"
+                                placeholder={t('users.userForm.customerAccountPlaceholder')}
                                 value={formData.customerAccountId}
                                 onChange={handleInputChange}
                                 className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
@@ -320,7 +334,7 @@ export function UserForm({ user, onSubmit, onCancel, currentUser }: UserFormProp
               type="submit"
               className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
             >
-              {user ? t('common.save') : t('users.form.create.submit')}
+              {user ? t('users.userForm.updateUserButton') : t('users.userForm.createUserButton')}
             </button>
           </div>
         </form>

@@ -1,40 +1,12 @@
-import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { ResetPasswordForm } from '../../components/auth/ResetPasswordForm';
-import { authService } from '../../services/auth/authService';
-import { useToastStore } from '../../components/common/ToastContainer';
+import React from 'react';
 
-export function ResetPasswordPage() {
-  const { token } = useParams<{ token: string }>();
-  const navigate = useNavigate();
-  const [error, setError] = useState<string>();
-  const addToast = useToastStore(state => state.addToast);
-
-  const handleSubmit = async (data: { password: string; token: string }) => {
-    try {
-      await authService.resetPassword(data.token, data.password);
-      addToast('success', 'Mot de passe réinitialisé avec succès');
-      navigate('/login');
-    } catch (err) {
-      console.error("Password reset failed:", err);
-      setError('Une erreur est survenue lors de la réinitialisation du mot de passe');
-    }
-  };
-
-  if (!token) {
-    navigate('/login');
-    return null;
-  }
-
+export const ResetPasswordPage: React.FC = () => {
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-      <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
-        <ResetPasswordForm
-          onSubmit={handleSubmit}
-          token={token}
-          error={error}
-        />
+    <div className="flex items-center justify-center h-screen bg-gray-100 dark:bg-gray-900">
+      <div className="p-8 bg-white dark:bg-gray-800 rounded-lg shadow-md max-w-md w-full">
+        <h2 className="text-2xl font-bold text-center text-gray-800 dark:text-white mb-6">Reset Password</h2>
+        <p className="text-center text-gray-600 dark:text-gray-400">This feature is not yet implemented.</p>
       </div>
     </div>
   );
-}
+};

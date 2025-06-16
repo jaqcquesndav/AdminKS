@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { useCallback, useMemo, memo } from 'react';
 import { SupportedCurrency } from '../../types/currency';
 import { useCurrencySettings } from '../../hooks/useCurrencySettings';
 
@@ -8,7 +9,8 @@ interface CurrencySelectorProps {
   variant?: 'dropdown' | 'buttons' | 'icons';
 }
 
-export function CurrencySelector({ 
+// Using memo to prevent unnecessary re-renders
+export const CurrencySelector = memo(function CurrencySelectorComponent({ 
   onSelectCurrency, 
   className = '', 
   variant = 'dropdown' 
@@ -16,8 +18,21 @@ export function CurrencySelector({
   const { t } = useTranslation();
   const { currency, setCurrency, supportedCurrencies } = useCurrencySettings();
 
-  const handleChange = (newCurrency: SupportedCurrency) => {
-    console.log(`CurrencySelector: Selected ${newCurrency}`);
+  // Memoize labels and flags to prevent re-creation on each render
+  const currencyLabels = useMemo<Record<SupportedCurrency, string>>(() => ({
+    'USD': 'Dollar américain',
+    'CDF': 'Franc congolais',
+    'FCFA': 'Franc CFA'
+  }), []);
+
+  const currencyFlags = useMemo<Record<SupportedCurrency, string>>(() => ({
+    'USD': '🇺🇸',
+    'CDF': '🇨🇩',
+    'FCFA': '🇨🇮'
+  }), []);
+
+  // Memoize handlers to prevent re-creation on each render
+  const handleChange = useCallback((newCurrency: SupportedCurrency) => {
     try {
       setCurrency(newCurrency); // Update context/global state
       if (onSelectCurrency) {
@@ -26,19 +41,7 @@ export function CurrencySelector({
     } catch (error) {
       console.error('Erreur lors du changement de devise:', error);
     }
-  };
-
-  const currencyLabels: Record<SupportedCurrency, string> = {
-    'USD': 'Dollar américain',
-    'CDF': 'Franc congolais',
-    'FCFA': 'Franc CFA'
-  };
-
-  const currencyFlags: Record<SupportedCurrency, string> = {
-    'USD': '🇺🇸',
-    'CDF': '🇨🇩',
-    'FCFA': '🇨🇮' 
-  };
+  }, [setCurrency, onSelectCurrency]);
 
   if (variant === 'dropdown') {
     return (
@@ -104,4 +107,4 @@ export function CurrencySelector({
   }
 
   return null;
-}
+});

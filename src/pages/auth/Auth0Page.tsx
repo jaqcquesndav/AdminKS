@@ -2,10 +2,12 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth0 } from '@auth0/auth0-react';
 import Auth0Status from '../../components/auth/Auth0Status';
+import { useTranslation } from 'react-i18next'; // Import useTranslation
 
 export const Auth0Page = () => {
   const { isAuthenticated } = useAuth0();
   const navigate = useNavigate();
+  const { t } = useTranslation(); // Initialize t function
 
   // Rediriger vers le tableau de bord si déjà authentifié
   useEffect(() => {
@@ -22,10 +24,10 @@ export const Auth0Page = () => {
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          Authentification avec Auth0
+          {t('auth.auth0Page.title', 'Authentication with Auth0')}
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
-          Connectez-vous avec votre compte pour accéder au tableau de bord d'administration
+          {t('auth.auth0Page.description', 'Log in with your account to access the admin dashboard')}
         </p>
       </div>
 
@@ -43,14 +45,14 @@ export const Auth0Page = () => {
                 </div>
                 <div className="ml-3 flex-1 md:flex md:justify-between">
                   <p className="text-sm text-blue-700">
-                    Vous êtes authentifié ! Redirection vers le tableau de bord...
+                    {t('auth.auth0Page.authenticatedMessage', 'You are authenticated! Redirecting to dashboard...')}
                   </p>
                   <p className="mt-3 text-sm md:mt-0 md:ml-6">
                     <button
                       onClick={() => navigate('/dashboard')}
                       className="whitespace-nowrap font-medium text-blue-700 hover:text-blue-600"
                     >
-                      Accéder maintenant <span aria-hidden="true">&rarr;</span>
+                      {t('auth.auth0Page.accessNow', 'Access now')} <span aria-hidden="true">&rarr;</span>
                     </button>
                   </p>
                 </div>
@@ -65,7 +67,7 @@ export const Auth0Page = () => {
               </div>
               <div className="relative flex justify-center text-sm">
                 <span className="px-2 bg-white text-gray-500">
-                  Intégration sécurisée avec l'API Gateway
+                  {t('auth.auth0Page.secureIntegration', 'Secure integration with API Gateway')}
                 </span>
               </div>
             </div>
@@ -76,4 +78,7 @@ export const Auth0Page = () => {
   );
 };
 
+// Make sure to export Auth0Page correctly if it's not already
+// export default Auth0Page; // Or adjust based on your export strategy
+// Keeping the original export style for now:
 export default { Auth0Page };

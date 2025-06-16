@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { User, Shield, Bell, Globe, UploadCloud, HelpCircle, Palette, Edit3, LogOut, AlertTriangle, CheckCircle, XCircle } from 'lucide-react'; // Removed ChevronRight, SettingsIcon, Info
 import { useCurrencySettings } from '../../hooks/useCurrencySettings';
@@ -248,56 +248,86 @@ const AdminProfileSettings = () => {
   
 const CurrencySettings = () => {
     const { t } = useTranslation();
-    // Correctly destructure from useCurrencySettings: use 'loading', remove 'error'
-    const { currency, manualRates, setCurrency, updateManualRate, addManualRate, removeManualRate, loading } = useCurrencySettings(); 
+    const { 
+      currency, 
+      manualRates, 
+      setCurrency, 
+      updateManualRate, 
+      addManualRate, 
+      removeManualRate, 
+      loading 
+    } = useCurrencySettings();
     const { showToast } = useToast();
-    const [newRate, setNewRate] = useState({ currency: '', rate: '' });
-    const [editingRate, setEditingRate] = useState<{ currency: string; rate: string } | null>(null);
+    
+    // Use refs to prevent re-renders caused by state updates
+    const newRateRef = useRef({ currency: '', rate: '' });
+    const editingRateRef = useRef<{ currency: string; rate: string } | null>(null);
+    
+    // Only use state for UI rendering, not for input values
+    const [, forceUpdate] = useState({});
+    
+    // Memoize the state update function to prevent unnecessary re-renders
+    const updateEditingRate = useCallback((currency: string, rate: string) => {
+      editingRateRef.current = { currency, rate };
+      forceUpdate({}); // Trigger re-render with same empty object to minimize changes
+    }, []);
+    
+    const clearEditingRate = useCallback(() => {
+      editingRateRef.current = null;
+      forceUpdate({});
+    }, []);
+    
+    const updateNewRate = useCallback((field: 'currency' | 'rate', value: string) => {
+      newRateRef.current = { ...newRateRef.current, [field]: value };
+      // Don't force update here, as we don't need to re-render for input changes
+    }, []);
   
-    const handleCurrencyChange = (newSelectedCurrency: SupportedCurrency) => {
+    const handleCurrencyChange = useCallback((newSelectedCurrency: SupportedCurrency) => {
       setCurrency(newSelectedCurrency);
       showToast('success', t('settings.currency.currencyChanged', { currency: newSelectedCurrency }));
-    };
+    }, [setCurrency, showToast, t]);
   
-    const handleAddRate = () => {
-      if (newRate.currency && newRate.rate) {
-        const rateValue = parseFloat(newRate.rate);
+    const handleAddRate = useCallback(() => {
+      const { currency: newCurrency, rate: newRateValue } = newRateRef.current;
+      if (newCurrency && newRateValue) {
+        const rateValue = parseFloat(newRateValue);
         if (isNaN(rateValue) || rateValue <= 0) {
           showToast('error', t('settings.currency.invalidRate'));
           return;
         }
-        if (manualRates.find(r => r.currency === newRate.currency)) {
-          showToast('error', t('settings.currency.rateExists', { currency: newRate.currency }));
+        if (manualRates.find(r => r.currency === newCurrency)) {
+          showToast('error', t('settings.currency.rateExists', { currency: newCurrency }));
           return;
         }
-        addManualRate(newRate.currency as SupportedCurrency, rateValue);
-        showToast('success', t('settings.currency.rateAdded', { currency: newRate.currency }));
-        setNewRate({ currency: '', rate: '' });
+        addManualRate(newCurrency as SupportedCurrency, rateValue);
+        showToast('success', t('settings.currency.rateAdded', { currency: newCurrency }));
+        // Clear the form
+        newRateRef.current = { currency: '', rate: '' };
+        forceUpdate({}); // Need to update UI to show cleared form
       } else {
         showToast('error', t('settings.currency.fillAllFields'));
       }
-    };
+    }, [addManualRate, manualRates, showToast, t]);
   
-    const handleUpdateRate = () => {
-      if (editingRate && editingRate.currency && editingRate.rate) {
-        const rateValue = parseFloat(editingRate.rate);
+    const handleUpdateRate = useCallback(() => {
+      if (editingRateRef.current && editingRateRef.current.currency && editingRateRef.current.rate) {
+        const { currency: editCurrency, rate: editRateValue } = editingRateRef.current;
+        const rateValue = parseFloat(editRateValue);
         if (isNaN(rateValue) || rateValue <= 0) {
           showToast('error', t('settings.currency.invalidRate'));
           return;
         }
-        updateManualRate(editingRate.currency as SupportedCurrency, rateValue);
-        showToast('success', t('settings.currency.rateUpdated', { currency: editingRate.currency }));
-        setEditingRate(null);
+        updateManualRate(editCurrency as SupportedCurrency, rateValue);
+        showToast('success', t('settings.currency.rateUpdated', { currency: editCurrency }));
+        clearEditingRate();
       } else {
         showToast('error', t('settings.currency.fillAllFields'));
       }
-    };
+    }, [clearEditingRate, showToast, t, updateManualRate]);
   
-    const startEditRate = (currency: SupportedCurrency, rate: number) => {
-      setEditingRate({ currency, rate: rate.toString() });
-    };
-
-    if (loading) { // Use 'loading' here
+    const startEditRate = useCallback((currency: SupportedCurrency, rate: number) => {
+      updateEditingRate(currency, rate.toString());
+    }, [updateEditingRate]);    if (loading) {
         return <div className="flex justify-center items-center h-32"><div className="loader"></div></div>;
     }
   
@@ -324,21 +354,21 @@ const CurrencySettings = () => {
                   <span className="font-medium text-gray-800 dark:text-gray-200">{rate.currency}</span>
                   <span className="text-gray-600 dark:text-gray-400 mx-2">-&gt;</span>
                   <span className="font-medium text-gray-800 dark:text-gray-200">{currency}</span>
-                </div>
-                {editingRate && editingRate.currency === rate.currency ? (
+                </div>                {editingRateRef.current && editingRateRef.current.currency === rate.currency ? (
                   <div className="flex items-center space-x-2">
                     <input 
                       type="number"
-                      value={editingRate.rate}
-                      onChange={(e) => setEditingRate({...editingRate, rate: e.target.value})}
+                      value={editingRateRef.current.rate}
+                      onChange={(e) => updateEditingRate(editingRateRef.current!.currency, e.target.value)}
                       className="w-24 p-1 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                       placeholder={t('settings.currency.ratePlaceholder')}
                       step="any"
+                      aria-label={t('settings.currency.rateLabel', { selectedCurrency: editingRateRef.current.currency, activeCurrency: currency })}
                     />
                     <button onClick={handleUpdateRate} className="px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600">
                       {t('common.save')}
                     </button>
-                    <button onClick={() => setEditingRate(null)} className="px-2 py-1 bg-gray-300 text-gray-700 text-xs rounded hover:bg-gray-400">
+                    <button onClick={clearEditingRate} className="px-2 py-1 bg-gray-300 text-gray-700 text-xs rounded hover:bg-gray-400">
                       {t('common.cancel')}
                     </button>
                   </div>
@@ -364,11 +394,10 @@ const CurrencySettings = () => {
             <h4 className="text-md font-medium mb-2 text-gray-900 dark:text-gray-100">{t('settings.currency.addRateTitle')}</h4>
             <div className="flex items-end space-x-2">
               <div className="flex-grow">
-                <label htmlFor="new-currency" className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{t('settings.currency.currencyLabel')}</label>
-                <select 
+                <label htmlFor="new-currency" className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{t('settings.currency.currencyLabel')}</label>                <select 
                   id="new-currency"
-                  value={newRate.currency}
-                  onChange={(e) => setNewRate({...newRate, currency: e.target.value})}
+                  value={newRateRef.current.currency}
+                  onChange={(e) => updateNewRate('currency', e.target.value)}
                   className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                 >
                   <option value="">{t('settings.currency.selectCurrency')}</option>
@@ -376,14 +405,17 @@ const CurrencySettings = () => {
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
-              </div>
-              <div className="flex-grow">
-                <label htmlFor="new-rate" className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{t('settings.currency.rateLabel', { activeCurrency: currency })}</label>
+              </div>              <div className="flex-grow">                <label htmlFor="new-rate" className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {t('settings.currency.rateLabel', { 
+                    selectedCurrency: newRateRef.current.currency || "", 
+                    activeCurrency: currency 
+                  })}
+                </label>
                 <input 
                   id="new-rate"
                   type="number"
-                  value={newRate.rate}
-                  onChange={(e) => setNewRate({...newRate, rate: e.target.value})}
+                  value={newRateRef.current.rate}
+                  onChange={(e) => updateNewRate('rate', e.target.value)}
                   className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   placeholder={t('settings.currency.ratePlaceholder')}
                   step="any"

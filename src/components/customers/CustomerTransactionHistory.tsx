@@ -2,13 +2,13 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CreditCard, ArrowDownCircle, ArrowUpCircle, Calendar, ChevronsUpDown, Search, Filter } from 'lucide-react';
 import { useCurrencySettings } from '../../hooks/useCurrencySettings';
-import type { SupportedCurrency } from '../../types/currency'; // Import SupportedCurrency
+import type { SupportedCurrency } from '../../types/currency';
 
 export interface CustomerTransaction {
   id: string;
   customerId: string;
-  amount: number; // This amount is assumed to be in baseCurrency (e.g., USD) or the currency specified in `currency` field.
-  currency: SupportedCurrency; // Changed type from string to SupportedCurrency
+  amount: number;
+  currency: SupportedCurrency;
   type: 'payment' | 'refund' | 'subscription' | 'credit';
   description: string;
   status: 'completed' | 'pending' | 'failed' | 'refunded';
@@ -52,9 +52,9 @@ export function CustomerTransactionHistory({
             id: 'txn-001',
             customerId,
             amount: 299.99,
-            currency: 'USD', // Assuming mock data amounts are in USD (baseCurrency)
+            currency: 'USD',
             type: 'payment',
-            description: 'Abonnement Premium - Janvier 2023',
+            description: t('transaction.descriptions.premiumSubscription', 'Abonnement Premium - Janvier 2023'),
             status: 'completed',
             transactionDate: '2023-01-05',
             paymentMethod: 'card',
@@ -64,9 +64,9 @@ export function CustomerTransactionHistory({
             id: 'txn-002',
             customerId,
             amount: 299.99,
-            currency: 'USD', // Assuming mock data amounts are in USD (baseCurrency)
+            currency: 'USD',
             type: 'payment',
-            description: 'Abonnement Premium - Février 2023',
+            description: t('transaction.descriptions.premiumSubscription', 'Abonnement Premium - Février 2023'),
             status: 'completed',
             transactionDate: '2023-02-05',
             paymentMethod: 'card',
@@ -76,9 +76,9 @@ export function CustomerTransactionHistory({
             id: 'txn-003',
             customerId,
             amount: 299.99,
-            currency: 'USD', // Assuming mock data amounts are in USD (baseCurrency)
+            currency: 'USD',
             type: 'payment',
-            description: 'Abonnement Premium - Mars 2023',
+            description: t('transaction.descriptions.premiumSubscription', 'Abonnement Premium - Mars 2023'),
             status: 'completed',
             transactionDate: '2023-03-05',
             paymentMethod: 'card',
@@ -88,9 +88,9 @@ export function CustomerTransactionHistory({
             id: 'txn-004',
             customerId,
             amount: 150.00,
-            currency: 'USD', // Assuming mock data amounts are in USD (baseCurrency)
+            currency: 'USD',
             type: 'refund',
-            description: 'Remboursement partiel - Service indisponible',
+            description: t('transaction.descriptions.partialRefund', 'Remboursement partiel - Service indisponible'),
             status: 'refunded',
             transactionDate: '2023-03-20',
             paymentMethod: 'manual',
@@ -100,9 +100,9 @@ export function CustomerTransactionHistory({
             id: 'txn-005',
             customerId,
             amount: 299.99,
-            currency: 'USD', // Assuming mock data amounts are in USD (baseCurrency)
+            currency: 'USD',
             type: 'payment',
-            description: 'Abonnement Premium - Avril 2023',
+            description: t('transaction.descriptions.premiumSubscription', 'Abonnement Premium - Avril 2023'),
             status: 'pending',
             transactionDate: '2023-04-05',
             paymentMethod: 'bank_transfer'
@@ -111,9 +111,9 @@ export function CustomerTransactionHistory({
             id: 'txn-006',
             customerId,
             amount: 500.00,
-            currency: 'USD', // Assuming mock data amounts are in USD (baseCurrency)
+            currency: 'USD',
             type: 'credit',
-            description: 'Crédit pour période de test prolongée',
+            description: t('transaction.descriptions.extendedTestCredit', 'Crédit pour période de test prolongée'),
             status: 'completed',
             transactionDate: '2023-04-10',
             paymentMethod: 'manual'
@@ -122,9 +122,9 @@ export function CustomerTransactionHistory({
             id: 'txn-007',
             customerId,
             amount: 299.99,
-            currency: 'USD', // Assuming mock data amounts are in USD (baseCurrency)
+            currency: 'USD',
             type: 'payment',
-            description: 'Abonnement Premium - Mai 2023',
+            description: t('transaction.descriptions.premiumSubscription', 'Abonnement Premium - Mai 2023'),
             status: 'failed',
             transactionDate: '2023-05-05',
             paymentMethod: 'card'
@@ -133,19 +133,19 @@ export function CustomerTransactionHistory({
         
         setTransactions(mockTransactions);
       } catch (error) {
-        console.error('Erreur lors du chargement des transactions:', error);
+        console.error(t('customers.transactions.errors.load', 'Erreur lors du chargement des transactions:'), error);
       } finally {
         setLoading(false);
       }
     };
     
     fetchTransactions();
-  }, [customerId]);
+  }, [customerId, t]);
 
-  // Formatter les dates
+  // Formatter les dates en utilisant la locale active
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return new Intl.DateTimeFormat('fr-FR').format(date);
+    return new Intl.DateTimeFormat(t('common.locale', 'fr-FR')).format(date);
   };
 
   // Fonction pour trier les transactions

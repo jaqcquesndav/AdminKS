@@ -1,10 +1,11 @@
-import React from 'react';
+// No need for React import in modern React with automatic JSX transform
 
 interface PageLoaderProps {
   fullScreen?: boolean;
+  message?: string;
 }
 
-export function PageLoader({ fullScreen = false }: PageLoaderProps) {
+export function PageLoader({ fullScreen = false, message }: PageLoaderProps) {
   const containerClasses = fullScreen
     ? 'fixed inset-0 z-50 bg-white/80 dark:bg-gray-900/80'
     : 'w-full h-full min-h-[400px]';
@@ -18,7 +19,9 @@ export function PageLoader({ fullScreen = false }: PageLoaderProps) {
             <div className="w-6 h-6 rounded-full border-4 border-primary/40 border-b-primary animate-spin" />
           </div>
         </div>
-        <p className="text-sm text-gray-500 dark:text-gray-400">Chargement...</p>
+        {message && (
+          <p className="text-gray-700 dark:text-gray-300 text-lg font-medium">{message}</p>
+        )}
       </div>
     </div>
   );

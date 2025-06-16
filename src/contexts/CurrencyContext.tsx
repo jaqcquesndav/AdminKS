@@ -1,7 +1,8 @@
-import React, { createContext, useState, useEffect, useMemo, useCallback } from 'react';
+import React, { createContext, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { SupportedCurrency, ExchangeRateConfig } from '../types/currency';
-import { formatCurrency, convertCurrency, getCurrentExchangeRates, updateExchangeRates, DEFAULT_EXCHANGE_RATES } from '../utils/currency'; // Added DEFAULT_EXCHANGE_RATES
+import { formatCurrency, convertCurrency, getCurrentExchangeRates, updateExchangeRates, DEFAULT_EXCHANGE_RATES } from '../utils/currency';
 import { CURRENCY_STORAGE_KEY, SUPPORTED_CURRENCIES } from '../constants/currencyConstants';
+import { useExchangeRates, ExchangeRatesHistory } from '../hooks/useExchangeRates';
 
 type FormatOptions = Intl.NumberFormatOptions & {
   notation?: 'standard' | 'scientific' | 'engineering' | 'compact';
@@ -17,8 +18,10 @@ export type CurrencyContextType = {
   exchangeRates: Record<SupportedCurrency, number>;
   lastRatesUpdate: string;
   setUserExchangeRate: (targetCurrency: SupportedCurrency, rate: number) => void;
-  removeUserExchangeRate: (targetCurrency: SupportedCurrency) => void; // Added
-  baseCurrency: SupportedCurrency; // Added
+  removeUserExchangeRate: (targetCurrency: SupportedCurrency) => void;
+  baseCurrency: SupportedCurrency;
+  loading: boolean; // Added: for exchange rate loading status
+  refreshRates: () => Promise<void>; // Added: to trigger refresh of exchange rates
 };
 
 // Création du contexte
@@ -38,6 +41,38 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   const [exchangeRatesConfig, setExchangeRatesConfig] = useState<ExchangeRateConfig>(
     getCurrentExchangeRates() // This will load from localStorage or defaults
   );
+
+  // Instantiate useExchangeRates to fetch external rates
+  // It uses the baseCurrency from our localStorage-managed config
+  // Auto-refreshes every 5 minutes (300 seconds)
+  const {
+    loading: externalRatesLoading,
+    currentRates: externalApiRateData, // This is { rates: Record<SupportedCurrency, number>, base: SupportedCurrency } | null
+    refreshRates: refreshExternalRatesFunc,
+    lastUpdated: externalApiLastUpdated // This is string from ExchangeRatesHistory (already string, not string | null)
+  }: ExchangeRatesHistory = useExchangeRates(undefined, true, 300);
+
+  const isUpdatingFromFetch = useRef(false);
+  useEffect(() => {
+    // Ensure externalApiLastUpdated is not null or empty before proceeding
+    if (externalApiRateData && !externalRatesLoading && externalApiLastUpdated) {
+      // Check if the rates or timestamp have changed
+      if (
+        JSON.stringify(exchangeRatesConfig.rates) !== JSON.stringify(externalApiRateData.rates) ||
+        exchangeRatesConfig.lastUpdated !== externalApiLastUpdated
+      ) {
+        console.log('New external rates data from API hook. Updating local exchange rate config.', externalApiRateData);
+        isUpdatingFromFetch.current = true;
+        
+        // updateExchangeRates only accepts rates and timestamp (not baseCurrency)
+        // Note: updateExchangeRates will preserve the current baseCurrency in CURRENT_EXCHANGE_RATES
+        updateExchangeRates(externalApiRateData.rates, externalApiLastUpdated);
+        
+        setExchangeRatesConfig(getCurrentExchangeRates());
+        setTimeout(() => { isUpdatingFromFetch.current = false; }, 100);
+      }
+    }
+  }, [externalApiRateData, externalApiLastUpdated, externalRatesLoading, exchangeRatesConfig]);
 
   // Fonction pour mettre à jour la devise avec gestion d'erreur et logging
   const setCurrency = useCallback((newCurrency: SupportedCurrency) => {
@@ -94,15 +129,15 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     // This ensures persistence and state update through the same mechanism
     setUserExchangeRate(targetCurrency, defaultTargetRateInCurrentBase);
     console.log(`User exchange rate for ${targetCurrency} removed, reset to default value: ${defaultTargetRateInCurrentBase}`);
-
   }, [exchangeRatesConfig, setUserExchangeRate]);
-
 
   // Surveiller les changements dans les taux de change globaux (e.g., from an API or localStorage)
   useEffect(() => {
     const handleStorageChange = (event: StorageEvent) => {
+      if (isUpdatingFromFetch.current) return; // Avoid processing storage event triggered by this context instance
+
       if (event.key === 'exchange_rates') {
-        console.log('Exchange rates updated in localStorage, reloading in context.');
+        console.log('Exchange rates updated in localStorage (externally), reloading in context.');
         setExchangeRatesConfig(getCurrentExchangeRates());
       }
       if (event.key === CURRENCY_STORAGE_KEY) {
@@ -116,13 +151,10 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
 
     window.addEventListener('storage', handleStorageChange);
 
-    // Initial load
-    setExchangeRatesConfig(getCurrentExchangeRates());
-
     return () => {
       window.removeEventListener('storage', handleStorageChange);
     };
-  }, [currency]); // Added currency to dependency array to re-run if it changes programmatically elsewhere
+  }, [currency]);
 
   // Extraire les taux de change pour plus de facilité d'utilisation
   const exchangeRates = useMemo(() => exchangeRatesConfig.rates, [exchangeRatesConfig]);
@@ -169,10 +201,12 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     convert,
     formatInCurrency,
     exchangeRates,
-    lastRatesUpdate: exchangeRatesConfig.lastUpdated,
+    lastRatesUpdate: exchangeRatesConfig.lastUpdated, // Reflects the latest update, including from API
     setUserExchangeRate,
-    removeUserExchangeRate, // Added
-    baseCurrency
+    removeUserExchangeRate,
+    baseCurrency,
+    loading: externalRatesLoading, // Loading state from useExchangeRates
+    refreshRates: refreshExternalRatesFunc, // Refresh function from useExchangeRates
   }), [
     currency, 
     setCurrency, 
@@ -182,8 +216,10 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     exchangeRates, 
     exchangeRatesConfig.lastUpdated, 
     setUserExchangeRate,
-    removeUserExchangeRate, // Added
-    baseCurrency
+    removeUserExchangeRate,
+    baseCurrency,
+    externalRatesLoading, // Dependency for loading state
+    refreshExternalRatesFunc // Dependency for refresh function
   ]);
 
   return (

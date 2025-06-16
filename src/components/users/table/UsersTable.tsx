@@ -44,7 +44,7 @@ export function UsersTable({ users, onEdit, onDelete, onSelect, currentUser }: U
       // Si le client n'existe pas, créer un nouveau groupe
       customerGroups.push({
         id: user.customerAccountId,
-        name: user.customerName || `Customer ${user.customerAccountId}`, // Utiliser le nom du client s'il est disponible
+        name: user.customerName || t('users.table.customerAccount', { accountId: user.customerAccountId }), // Utiliser le nom du client s'il est disponible
         type: user.customerType as 'pme' | 'financial_institution' || 'pme', // Utiliser le type de client s'il est disponible
         users: [user]
       });
@@ -128,7 +128,7 @@ export function UsersTable({ users, onEdit, onDelete, onSelect, currentUser }: U
                             {group.name} {/* Affiche le nom du client */}
                           </span>
                           <span className="ml-2 text-xs text-gray-500">
-                            {t(`customer.types.${group.type}`, group.type)}
+                            {t(`customer.type.${group.type}`, group.type)}
                           </span>
                         </div>
                       </td>
@@ -243,7 +243,7 @@ export function UsersTable({ users, onEdit, onDelete, onSelect, currentUser }: U
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        <span className="text-gray-400">{t('users.table.internal', 'Wanzo (Internal)')}</span>
+                        <span className="text-gray-400">{t('users.userType.internal', 'Wanzo (Internal)')}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                         {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : t('common.never')}
@@ -322,7 +322,7 @@ export function UsersTable({ users, onEdit, onDelete, onSelect, currentUser }: U
                         ) : (
                           <span className="flex items-center">
                             <Building className="w-4 h-4 mr-1" />
-                            {user.customerAccountId || t('users.table.unknown', 'Unknown')}
+                            {user.customerAccountId || t('common.unknown', 'Unknown')}
                           </span>
                         )}
                       </td>

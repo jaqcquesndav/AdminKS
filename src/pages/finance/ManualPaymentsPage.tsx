@@ -1,17 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { 
   Search, Filter, Download, Check, X, Clock, FileText, 
   ChevronDown, Image, User 
 } from 'lucide-react';
-import { useToastContext } from '../../contexts/ToastContext';
+import { useToast } from '../../hooks/useToast';
 import { useCurrencySettings } from '../../hooks/useCurrencySettings';
 import { usePayments } from '../../hooks/usePayments'; 
-import type { Payment as ManualPaymentType, TransactionFilterParams, TransactionStatus, VerifyPaymentPayload } from '../../types/finance';
+import type { Payment as ManualPaymentType, TransactionFilterParams, VerifyPaymentPayload } from '../../types/finance';
 import type { SupportedCurrency } from '../../types/currency';
+import { ConnectionError, BackendError } from '../../components/common/ConnectionError';
+import { getErrorMessage, isNetworkError } from '../../utils/errorUtils';
 
 // Statut du paiement avec les couleurs correspondantes
-const statusConfig: Record<TransactionStatus, { labelKey: string; defaultLabel: string; color: string; icon: JSX.Element; }> = {
+// Keep existing statusConfig, but ensure its keys match ManualPaymentType['status']
+const statusConfig: Record<ManualPaymentType['status'], { labelKey: string; defaultLabel: string; color: string; icon: JSX.Element; }> = {
   pending: { 
     labelKey: 'finance.manualPayments.status.pending', 
     defaultLabel: 'En attente', 
@@ -30,19 +33,19 @@ const statusConfig: Record<TransactionStatus, { labelKey: string; defaultLabel: 
     color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
     icon: <X className="h-4 w-4" />
   },
-  completed: { 
+  completed: { // Assuming 'completed' can be a status for manual payments after verification
     labelKey: 'finance.manualPayments.status.completed', 
     defaultLabel: 'Complété', 
     color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
     icon: <Check className="h-4 w-4" />
   },
-  failed: { 
+  failed: { // Assuming 'failed' can be a status
     labelKey: 'finance.manualPayments.status.failed', 
     defaultLabel: 'Échoué', 
     color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
     icon: <X className="h-4 w-4" />
   },
-  canceled: { 
+  canceled: { // Assuming 'canceled' can be a status
     labelKey: 'finance.manualPayments.status.canceled', 
     defaultLabel: 'Annulé', 
     color: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200',
@@ -58,11 +61,11 @@ const proofTypeLabels: Record<string, string> = {
 
 export function ManualPaymentsPage() {
   const { t } = useTranslation();
-  const { showToast } = useToastContext();
-  const { activeCurrency, format, convert } = useCurrencySettings(); 
+  const { showToast } = useToast();
+  const { activeCurrency, formatCurrency: format, convert } = useCurrencySettings(); // Renamed formatCurrency to format
   
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedStatusFilter, setSelectedStatusFilter] = useState<TransactionStatus | 'all'>('all');
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<ManualPaymentType['status'] | 'all'>('all'); // Use ManualPaymentType['status']
   const [selectedPayment, setSelectedPayment] = useState<ManualPaymentType | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [verificationNote, setVerificationNote] = useState('');
@@ -75,7 +78,7 @@ export function ManualPaymentsPage() {
   const {
     payments: allPaymentsFromHook,
     isLoading,
-    error,
+    error: paymentsHookError, 
     pagination,
     fetchPayments: fetchHookPayments,
     verifyManualPayment,
@@ -84,18 +87,29 @@ export function ManualPaymentsPage() {
   const [clientSideManualPayments, setClientSideManualPayments] = useState<ManualPaymentType[]>([]);
   const [filteredDisplayPayments, setFilteredDisplayPayments] = useState<ManualPaymentType[]>([]);
 
+  const fetchManualPayments = useCallback((params: TransactionFilterParams) => {
+    fetchHookPayments(params);
+  }, [fetchHookPayments]);
+
   useEffect(() => {
     const params: TransactionFilterParams = {
       page: currentPage,
       limit: itemsPerPage,
       status: selectedStatusFilter === 'all' ? undefined : selectedStatusFilter,
     };
-    fetchHookPayments(params);
-  }, [currentPage, selectedStatusFilter, itemsPerPage, fetchHookPayments]);
+    fetchManualPayments(params);
+  }, [currentPage, selectedStatusFilter, itemsPerPage, fetchManualPayments]);
 
   useEffect(() => {
     if (allPaymentsFromHook) {
-      const manualOnly = allPaymentsFromHook.filter(p => !!p.proofUrl || p.method === 'check' || p.method === 'bank_transfer');
+      const manualOnly = allPaymentsFromHook.filter(p => 
+        p.proofUrl || 
+        p.method === 'bank_transfer' || 
+        p.method === 'check' ||
+        p.status === 'pending' || 
+        p.status === 'verified' || 
+        p.status === 'rejected'
+      );
       setClientSideManualPayments(manualOnly);
     } else {
       setClientSideManualPayments([]);
@@ -103,24 +117,19 @@ export function ManualPaymentsPage() {
   }, [allPaymentsFromHook]);
 
   useEffect(() => {
-    let results = clientSideManualPayments;
+    let currentResults = clientSideManualPayments; // Renamed to avoid conflict
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
-      results = results.filter(payment => 
+      currentResults = currentResults.filter(payment => 
         payment.customerName?.toLowerCase().includes(term) ||
         payment.transactionReference.toLowerCase().includes(term) ||
         payment.amount.toString().includes(term)
       );
     }
-    setFilteredDisplayPayments(results);
+    setFilteredDisplayPayments(currentResults); // Use the renamed variable
   }, [searchTerm, clientSideManualPayments]);
 
-  useEffect(() => {
-    if (error) {
-      showToast('error', t('finance.manualPayments.errors.loadError', 'Erreur lors du chargement des paiements manuels'));
-      console.error(t('finance.manualPayments.errors.loadErrorDefault', 'Erreur lors du chargement des paiements:'), error);
-    }
-  }, [error, showToast, t]);
+  // Removed the useEffect for error handling as it will be handled by the main return block
 
   const handleVerifyPayment = async (newStatus: 'verified' | 'rejected') => {
     if (!selectedPayment) return;
@@ -149,11 +158,12 @@ export function ManualPaymentsPage() {
         limit: itemsPerPage,
         status: selectedStatusFilter === 'all' ? undefined : selectedStatusFilter,
       };
-      fetchHookPayments(currentParams);
-    } catch (err) {
-      const verificationError = err as Error;
+      fetchManualPayments(currentParams); // Use the new callback
+    } catch (err) {      const verificationError = err as Error;
       console.error(t('finance.manualPayments.errors.verificationErrorDefault', 'Erreur lors de la vérification du paiement:'), verificationError);
-      showToast('error', verificationError.message || t('finance.manualPayments.errors.verificationError', 'Erreur lors de la vérification du paiement'));
+      // Use getErrorMessage for consistent error message display
+      const errorMessage = getErrorMessage(verificationError);
+      showToast('error', `${t('finance.manualPayments.errors.verificationError', 'Erreur lors de la vérification du paiement')}: ${errorMessage}`);
     }
   };
 
@@ -191,7 +201,7 @@ export function ManualPaymentsPage() {
   };
 
   const handleStatusFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedStatusFilter(e.target.value as TransactionStatus | 'all');
+    setSelectedStatusFilter(e.target.value as ManualPaymentType['status'] | 'all');
     setCurrentPage(1); 
   };
 
@@ -223,6 +233,7 @@ export function ManualPaymentsPage() {
       {/* Search and Filter Bar */}
       <div className="mb-6 p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+          {/* Search Input */}
           <div className="col-span-1 md:col-span-1">
             <label htmlFor="search" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               {t('common.search', 'Rechercher')}
@@ -239,6 +250,7 @@ export function ManualPaymentsPage() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-500" />
             </div>
           </div>
+          {/* Status Filter */}
           <div className="col-span-1 md:col-span-1">
             <label htmlFor="statusFilter" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               {t('common.status', 'Statut')}
@@ -251,13 +263,15 @@ export function ManualPaymentsPage() {
                 className="w-full pl-3 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white appearance-none"
               >
                 <option value="all">{t('common.allStatuses', 'Tous les statuts')}</option>
-                {Object.entries(statusConfig).map(([status, config]) => (
-                  <option key={status} value={status}>{t(config.labelKey, config.defaultLabel)}</option>
+                {/* Filter available statuses based on ManualPaymentType['status'] */}
+                {(Object.keys(statusConfig) as Array<ManualPaymentType['status']>).map((status) => (
+                  <option key={status} value={status}>{t(statusConfig[status].labelKey, statusConfig[status].defaultLabel)}</option>
                 ))}
               </select>
               <Filter className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-500 pointer-events-none" />
             </div>
           </div>
+          {/* Download Button */}
           <div className="col-span-1 md:col-span-1 flex justify-end">
             <button
               onClick={handleDownloadPayments}
@@ -270,32 +284,31 @@ export function ManualPaymentsPage() {
         </div>
       </div>
 
-      {/* Payments Table */}
-      {isLoading && !filteredDisplayPayments.length ? (
+      {/* Payments Table */}      {/* Centralized Error Handling */}
+      {paymentsHookError && !isLoading && filteredDisplayPayments.length === 0 && (
+        isNetworkError(paymentsHookError) ? (
+          <ConnectionError 
+            message={`${t('errors.networkError', 'Erreur de connexion')}: ${getErrorMessage(paymentsHookError)}`}
+            retry={() => fetchManualPayments({ page: currentPage, limit: itemsPerPage, status: selectedStatusFilter === 'all' ? undefined : selectedStatusFilter })}
+          />
+        ) : (
+          <BackendError 
+            message={`${t('errors.backendError', 'Erreur du serveur')}: ${getErrorMessage(paymentsHookError)}`}
+            retry={() => fetchManualPayments({ page: currentPage, limit: itemsPerPage, status: selectedStatusFilter === 'all' ? undefined : selectedStatusFilter })}
+          />
+        )
+      )}
+
+      {/* Loading State - keep this before the error check if you want loading to take precedence */}
+      {isLoading && filteredDisplayPayments.length === 0 && !paymentsHookError && (
         <div className="flex justify-center items-center h-64">
           <div className="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12 mb-4"></div>
           <p className="text-gray-600 dark:text-gray-400">{t('common.loading', 'Chargement...')}</p>
         </div>
-      ) : error && !filteredDisplayPayments.length ? (
-         <div className="text-center py-10 px-4 bg-white dark:bg-gray-800 rounded-lg shadow">
-            <FileText className="mx-auto h-12 w-12 text-red-500" />
-            <h3 className="mt-2 text-lg font-medium text-gray-900 dark:text-white">
-              {t('finance.manualPayments.errors.loadErrorTitle', 'Erreur de chargement')}
-            </h3>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              {error.message || t('finance.manualPayments.errors.loadErrorDetails', 'Impossible de charger les données des paiements manuels. Veuillez réessayer plus tard.')}
-            </p>
-            <div className="mt-6">
-              <button
-                type="button"
-                onClick={() => fetchHookPayments({ page: currentPage, limit: itemsPerPage, status: selectedStatusFilter === 'all' ? undefined : selectedStatusFilter})}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800"
-              >
-                {t('common.retry', 'Réessayer')}
-              </button>
-            </div>
-          </div>
-      ) : filteredDisplayPayments.length === 0 ? (
+      )}
+      
+      {/* No Data State - This should only show if not loading and no error */}
+      {!isLoading && !paymentsHookError && filteredDisplayPayments.length === 0 && (
         <div className="text-center py-10 px-4 bg-white dark:bg-gray-800 rounded-lg shadow">
           <FileText className="mx-auto h-12 w-12 text-gray-400" />
           <h3 className="mt-2 text-lg font-medium text-gray-900 dark:text-white">
@@ -303,12 +316,15 @@ export function ManualPaymentsPage() {
           </h3>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             {selectedStatusFilter === 'all' && !searchTerm 
-              ? t('finance.manualPayments.noPaymentsYet', 'Il n\'y a pas encore de paiements manuels enregistrés.')
+              ? t('finance.manualPayments.noPaymentsYet', 'Il n\\\'y a pas encore de paiements manuels enregistrés.')
               : t('finance.manualPayments.noMatchingPayments', 'Aucun paiement ne correspond à vos critères de recherche ou de filtre.')
             }
           </p>
         </div>
-      ) : (
+      )}
+
+      {/* Table Display - This should only show if not loading, no error, and data exists */}
+      {!isLoading && !paymentsHookError && filteredDisplayPayments.length > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-700">
@@ -363,8 +379,8 @@ export function ManualPaymentsPage() {
         </div>
       )}
 
-      {/* Pagination */}
-      {totalPages > 1 && (
+      {/* Pagination - ensure this is also conditional on data existing */}
+      {!isLoading && !paymentsHookError && totalPages > 1 && filteredDisplayPayments.length > 0 && (
         <div className="mt-6 py-3 flex items-center justify-between bg-white dark:bg-gray-800 px-4 rounded-lg shadow">
           <div className="flex-1 flex justify-between sm:hidden">
             <button

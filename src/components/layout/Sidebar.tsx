@@ -7,6 +7,7 @@ import { getNavigationByRole, navigationConfig } from '../../config/navigation';
 import { useUserInfo } from '../../hooks/useAuth';
 import { UserRole } from '../../types/user';
 import { NavigationItem } from '../../config/navigation';
+import { useTranslation } from 'react-i18next'; // Add i18next import
 
 interface SidebarProps {
   isOpen: boolean;
@@ -54,6 +55,7 @@ const getLucideIcon = (iconName: string): ElementType => {
 };
 
 export function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
+  const { t } = useTranslation(); // Initialize the translation hook
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);  const userInfo = useUserInfo();
@@ -178,7 +180,7 @@ export function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
             className="absolute -right-3 top-6 bg-[#197ca8] dark:bg-gray-800 rounded-full p-1 text-white hover:bg-[#156d93] dark:hover:bg-gray-700 transition-colors duration-200"
-            aria-label={isCollapsed ? 'Développer' : 'Réduire'}
+            aria-label={isCollapsed ? t('common.expand', 'Développer') : t('common.collapse', 'Réduire')}
           >
             {isCollapsed ? (
               <ChevronRight className="w-4 h-4" />
@@ -211,11 +213,11 @@ export function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
                         ? 'bg-white/10 dark:bg-gray-700 text-white'
                         : 'text-white/80 hover:bg-white/5 dark:hover:bg-gray-700 hover:text-white'}
                     `}
-                    title={isCollapsed && !isMobile ? item.label : undefined}
+                    title={isCollapsed && !isMobile ? t(`navigation.${item.id}`, item.label) : undefined}
                   >
                     <div className="flex items-center">
                       <IconComponent className="w-5 h-5 flex-shrink-0" />
-                      {(!isCollapsed || isMobile) && <span className="ml-3">{item.label}</span>}
+                      {(!isCollapsed || isMobile) && <span className="ml-3">{t(`navigation.${item.id}`, item.label)}</span>}
                     </div>
                     {(!isCollapsed || isMobile) && (
                       <ChevronDown 
@@ -233,10 +235,10 @@ export function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
                         ? 'bg-white/10 dark:bg-gray-700 text-white'
                         : 'text-white/80 hover:bg-white/5 dark:hover:bg-gray-700 hover:text-white'}
                     `}
-                    title={isCollapsed && !isMobile ? item.label : undefined}
+                    title={isCollapsed && !isMobile ? t(`navigation.${item.id}`, item.label) : undefined}
                   >
                     <IconComponent className="w-5 h-5 flex-shrink-0" />
-                    {(!isCollapsed || isMobile) && <span className="ml-3">{item.label}</span>}
+                    {(!isCollapsed || isMobile) && <span className="ml-3">{t(`navigation.${item.id}`, item.label)}</span>}
                   </NavLink>
                 )}
 
@@ -259,7 +261,7 @@ export function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
                           `}
                         >
                           <SubIconComponent className="w-4 h-4 flex-shrink-0" />
-                          <span className="ml-3">{subItem.label}</span>
+                          <span className="ml-3">{t(`navigation.${subItem.id}`, subItem.label)}</span>
                         </NavLink>
                       );
                     })}

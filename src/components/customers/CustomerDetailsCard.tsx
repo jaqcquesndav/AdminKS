@@ -1,4 +1,3 @@
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Building, Mail, Phone, Calendar, MapPin, Globe, User, FileText, CreditCard } from 'lucide-react';
 
@@ -24,7 +23,7 @@ interface CustomerDetailsCardProps {
 }
 
 export function CustomerDetailsCard({ customer, onEdit }: CustomerDetailsCardProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const getStatusBadgeClass = (status: string) => {
     switch (status) {
@@ -43,7 +42,7 @@ export function CustomerDetailsCard({ customer, onEdit }: CustomerDetailsCardPro
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return new Intl.DateTimeFormat('fr-FR').format(date);
+    return new Intl.DateTimeFormat(i18n.language).format(date);
   };
 
   return (

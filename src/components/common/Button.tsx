@@ -1,8 +1,8 @@
 import React from 'react';
-import { DivideIcon as LucideIcon } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react'; // Changed import to type import
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline';
+  variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'dangerOutline';
   size?: 'sm' | 'md' | 'lg';
   icon?: LucideIcon;
   isLoading?: boolean;
@@ -22,7 +22,9 @@ const baseStyles = [
 const variants = {
   primary: 'bg-primary hover:bg-primary-light text-white',
   secondary: 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-600',
-  outline: 'border border-primary text-primary hover:bg-primary hover:text-white'
+  outline: 'border border-primary text-primary hover:bg-primary hover:text-white',
+  danger: 'bg-red-600 hover:bg-red-700 text-white',
+  dangerOutline: 'border border-red-500 text-red-500 hover:bg-red-500 hover:text-white'
 };
 
 const sizes = {

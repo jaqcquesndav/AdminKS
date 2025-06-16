@@ -187,6 +187,78 @@ class AuthService {
     }
   }
   
+  // Placeholder for password reset functionality
+  async requestPasswordReset(email: string): Promise<AuthResponseBase> {
+    console.log(`Password reset requested for ${email}`);
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    // In a real application, this would call the backend API
+    // and return a success or error response.
+    return { 
+      message: 'Password reset email sent successfully.',
+      token: 'mock-token', // Added placeholder
+      user: { id: 'mock-user-id', name: 'Mock User' } // Added placeholder
+    };
+  }
+
+  // Placeholder for resetting the password
+  async resetPassword(password: string, token: string): Promise<AuthResponseBase> {
+    console.log(`Password reset attempt with token ${token} and new password ${password}`);
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    // In a real application, this would call the backend API
+    // to verify the token and update the password.
+    return { 
+      message: 'Password reset successfully.',
+      token: 'mock-token', // Added placeholder
+      user: { id: 'mock-user-id', name: 'Mock User' } // Added placeholder
+    };
+  }
+
+  // Placeholder for two-factor verification
+  async verifyTwoFactor(code: string): Promise<AuthResponseBase & { user?: AuthUser }> {
+    console.log(`Two-factor verification attempt with code ${code}`);
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    // In a real application, this would call the backend API
+    // to verify the two-factor code.
+    // If successful, it might return user information.
+    // For now, we'll assume success and return mock user data.
+    const user: AuthUser = {
+      id: 'mock-user-id',
+      email: 'user@example.com',
+      name: 'Mock User',
+      role: 'customer_support' as UserRole, // Cast to UserRole
+      userType: 'internal' as UserType, // Cast to UserType
+      // Add other necessary AuthUser fields
+    };
+    return { 
+      message: 'Two-factor verification successful.',
+      token: 'mock-token', // Added placeholder
+      user: user 
+    };
+  }
+
+  // Méthode pour rafraîchir le token d'accès (exemple)
+  async refreshAccessToken(): Promise<void> {
+    // Vérifier si le token est expiré
+    if (!this.isTokenExpired()) {
+      console.log('Le token est toujours valide, pas besoin de rafraîchir');
+      return;
+    }
+    
+    console.log('Rafraîchissement du token d\'accès');
+    
+    // Ici, vous appelleriez votre API pour obtenir un nouveau token
+    // En attendant, nous allons simuler cela par un délai
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Supposons que nous avons reçu un nouveau token
+    const newAccessToken = 'nouveau_token_d_acces';
+    this.saveAccessToken(newAccessToken);
+    console.log('Nouveau token d\'accès sauvegardé');
+  }
+
   // Pour la rétrocompatibilité avec l'ancien système
   convertAuthResponseToUser(response: AuthResponseBase): AuthUser {
     return {

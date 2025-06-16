@@ -7,8 +7,8 @@ export function NotificationSettings() {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium">{t('settings.notifications.email.title')}</h3>
-        <p className="text-sm text-gray-500">{t('settings.notifications.email.description')}</p>
+        <h3 className="text-lg font-medium">{t('settings.notifications.emailNotifications.title')}</h3>
+        <p className="text-sm text-gray-500">{t('settings.notifications.emailNotifications.description')}</p>
         <div className="mt-4 space-y-4">
           <div className="flex items-start">
             <div className="flex items-center h-5">
@@ -20,10 +20,10 @@ export function NotificationSettings() {
             </div>
             <div className="ml-3">
               <label htmlFor="security" className="text-sm font-medium text-gray-700">
-                {t('settings.notifications.security.title')}
+                {t('settings.notifications.securityAlerts.title')}
               </label>
               <p className="text-sm text-gray-500">
-                {t('settings.notifications.security.description')}
+                {t('settings.notifications.securityAlerts.description')}
               </p>
             </div>
           </div>
@@ -38,10 +38,10 @@ export function NotificationSettings() {
             </div>
             <div className="ml-3">
               <label htmlFor="updates" className="text-sm font-medium text-gray-700">
-                {t('settings.notifications.updates.title')}
+                {t('settings.notifications.productUpdates.title')}
               </label>
               <p className="text-sm text-gray-500">
-                {t('settings.notifications.updates.description')}
+                {t('settings.notifications.productUpdates.description')}
               </p>
             </div>
           </div>

@@ -2,19 +2,21 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ForgotPasswordForm } from '../../components/auth/ForgotPasswordForm';
 import { authService } from '../../services/auth/authService';
-import { useToastStore } from '../../components/common/ToastContainer';
+import { useToastContext } from '../../contexts/ToastContext';
+import { useTranslation } from 'react-i18next';
 
 export function ForgotPasswordPage() {
   const navigate = useNavigate();
   const [error, setError] = useState<string>();
-  const addToast = useToastStore(state => state.addToast);
+  const { showToast } = useToastContext();
+  const { t } = useTranslation();
 
   const handleSubmit = async (email: string) => {
     try {
       await authService.requestPasswordReset(email);
-      addToast('success', 'Email de réinitialisation envoyé');
+      showToast('success', t('auth.forgotPasswordPage.resetEmailSent', 'Reset email sent'));
     } catch {
-      setError('Une erreur est survenue lors de l\'envoi de l\'email');
+      setError(t('auth.forgotPasswordPage.errorSendingEmail', 'An error occurred while sending the email'));
     }
   };
 

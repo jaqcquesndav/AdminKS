@@ -1,5 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useCustomers } from './useCustomers';
+import { usePayments } from './usePayments';
+import { useSubscriptions } from './useSubscriptions';
+import { useTokens } from './useTokens';
+import { Customer, CustomerStatus } from '../types/customer';
+import { Payment, Subscription, TokenTransaction, TransactionStatus, SubscriptionStatus } from '../types/finance';
 
 // Types
 type ItemType = 'customer' | 'payment' | 'subscription' | 'token';
@@ -51,207 +57,224 @@ export function useUnifiedDashboardTable(): UseUnifiedDashboardTableResult {
     page: 1,
     pageSize: 10
   });
+  // Utiliser les hooks sources pour obtenir les données
+  const { 
+    customers, 
+    isLoading: isCustomersLoading, 
+    loadCustomers
+  } = useCustomers();
 
-  // Cette fonction sera remplacée par un appel API
-  const fetchData = async () => {
+  const {
+    payments,
+    isLoading: isPaymentsLoading,
+    error: paymentsError,
+    fetchPayments
+  } = usePayments();
+
+  const {
+    subscriptions,
+    isLoading: isSubscriptionsLoading,
+    error: subscriptionsError,
+    fetchSubscriptions
+  } = useSubscriptions();
+
+  const {
+    tokenTransactions,
+    isLoading: isTokensLoading,
+    error: tokensError,
+    fetchTokenTransactions
+  } = useTokens();
+  // Fonction pour convertir les données sources en format DashboardItem
+  const mapCustomerToDashboardItem = useCallback((customer: Customer): DashboardItem => {
+    return {
+      id: customer.id || `customer-${Math.random().toString(36).substr(2, 9)}`,
+      type: 'customer',
+      date: customer.createdAt || new Date().toISOString(),
+      customerName: customer.name || 'Unknown Company',
+      customerId: customer.id || '',
+      customerType: customer.type || 'pme',
+      status: customer.status,
+      details: `${customer.type === 'financial' ? 'Institution financière' : 'PME'} - ${customer.phone || 'Pas de contact'}`,
+      actionUrl: `/customers/${customer.id}`
+    };
+  }, []);
+  const mapPaymentToDashboardItem = useCallback((payment: Payment): DashboardItem => {
+    return {
+      id: payment.id,
+      type: 'payment',
+      date: payment.paidAt || payment.createdAt || new Date().toISOString(),
+      customerName: payment.customerName || 'Client inconnu',
+      customerId: payment.customerId || '',
+      customerType: 'pme', // Valeur par défaut car non présente dans le type Payment
+      status: payment.status,
+      amount: payment.amount,
+      details: payment.description || `Paiement ${payment.method ? `via ${payment.method}` : ''}`,
+      actionUrl: `/finance/payments/${payment.id}`
+    };
+  }, []);
+
+  const mapSubscriptionToDashboardItem = useCallback((subscription: Subscription): DashboardItem => {
+    return {
+      id: subscription.id,
+      type: 'subscription',
+      date: subscription.startDate || subscription.createdAt || new Date().toISOString(),
+      customerName: subscription.customerName || 'Client inconnu',
+      customerId: subscription.customerId || '',
+      customerType: 'pme', // Valeur par défaut car non présente dans le type Subscription
+      status: subscription.status,
+      amount: subscription.amount,
+      details: `${subscription.planName || 'Abonnement'} - ${subscription.billingCycle || 'Mensuel'}`,
+      actionUrl: `/finance/subscriptions/${subscription.id}`
+    };
+  }, []);
+
+  const mapTokenTransactionToDashboardItem = useCallback((transaction: TokenTransaction): DashboardItem => {
+    return {
+      id: transaction.id,
+      type: 'token',
+      date: transaction.transactionDate || new Date().toISOString(),
+      customerName: transaction.customerName || 'Client inconnu',
+      customerId: transaction.customerId || '',
+      customerType: 'pme', // Valeur par défaut car non présente dans le type TokenTransaction
+      status: 'active', // Valeur par défaut car non présente dans le type TokenTransaction
+      amount: transaction.amount, // Utilise amount au lieu de quantity
+      details: transaction.description || `Transaction de ${transaction.amount} tokens`,
+      actionUrl: `/finance/tokens/${transaction.id}`
+    };
+  }, []);
+  // Fonction pour charger toutes les données
+  const fetchAllData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // Simulation d'un délai de chargement pour imiter un appel API
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Données simulées - à remplacer par un appel API
-      const mockData: DashboardItem[] = [
-        {
-          id: 'cust-001',
-          type: 'customer',
-          date: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-          customerName: 'Acme Corporation',
-          customerId: 'C12345',
-          customerType: 'pme',
-          status: 'pending',
-          details: 'Nouveau client en attente de validation',
-          actionUrl: '/customers/cust-001'
-        },
-        {
-          id: 'pay-001',
-          type: 'payment',
-          date: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
-          customerName: 'Global Finance Ltd',
-          customerId: 'C12346',
-          customerType: 'financial',
-          status: 'approved',
-          amount: 2500.00,
-          details: 'Paiement trimestriel',
-          actionUrl: '/finance/payments/pay-001'
-        },
-        {
-          id: 'sub-001',
-          type: 'subscription',
-          date: new Date(Date.now() - 1000 * 60 * 60 * 12).toISOString(),
-          customerName: 'Tech Innovators',
-          customerId: 'C12347',
-          customerType: 'pme',
-          status: 'active',
-          amount: 199.99,
-          details: 'Abonnement Premium - Renouvellement mensuel',
-          actionUrl: '/subscription/sub-001'
-        },
-        {
-          id: 'tok-001',
-          type: 'token',
-          date: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-          customerName: 'DataAnalytics SA',
-          customerId: 'C12348',
-          customerType: 'pme',
-          status: 'pending',
-          amount: 500,
-          details: 'Demande de 500 tokens supplémentaires',
-          actionUrl: '/finance/tokens/tok-001'
-        },
-        {
-          id: 'cust-002',
-          type: 'customer',
-          date: new Date(Date.now() - 1000 * 60 * 60 * 36).toISOString(),
-          customerName: 'XYZ Industries',
-          customerId: 'C12349',
-          customerType: 'pme',
-          status: 'active',
-          details: 'Client activé',
-          actionUrl: '/customers/cust-002'
-        },
-        {
-          id: 'pay-002',
-          type: 'payment',
-          date: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
-          customerName: 'French Investment Bank',
-          customerId: 'C12350',
-          customerType: 'financial',
-          status: 'rejected',
-          amount: 5000.00,
-          details: 'Paiement rejeté - solde insuffisant',
-          actionUrl: '/finance/payments/pay-002'
-        },
-        {
-          id: 'sub-002',
-          type: 'subscription',
-          date: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(),
-          customerName: 'SmartSolutions',
-          customerId: 'C12351',
-          customerType: 'pme',
-          status: 'inactive',
-          amount: 49.99,
-          details: 'Abonnement Standard - Expiré',
-          actionUrl: '/subscription/sub-002'
-        },
-        {
-          id: 'tok-002',
-          type: 'token',
-          date: new Date(Date.now() - 1000 * 60 * 60 * 96).toISOString(),
-          customerName: 'CyberSec Partners',
-          customerId: 'C12352',
-          customerType: 'pme',
-          status: 'approved',
-          amount: 1000,
-          details: 'Allocation de 1000 tokens approuvée',
-          actionUrl: '/finance/tokens/tok-002'
-        },
-        {
-          id: 'cust-003',
-          type: 'customer',
-          date: new Date(Date.now() - 1000 * 60 * 60 * 120).toISOString(),
-          customerName: 'GreenEnergy Co',
-          customerId: 'C12353',
-          customerType: 'pme',
-          status: 'pending',
-          details: 'En attente de documents KYC',
-          actionUrl: '/customers/cust-003'
-        },
-        {
-          id: 'pay-003',
-          type: 'payment',
-          date: new Date(Date.now() - 1000 * 60 * 60 * 144).toISOString(),
-          customerName: 'Banque Centrale de Paris',
-          customerId: 'C12354',
-          customerType: 'financial',
-          status: 'approved',
-          amount: 10000.00,
-          details: 'Paiement annuel',
-          actionUrl: '/finance/payments/pay-003'
-        },
-        {
-          id: 'sub-003',
-          type: 'subscription',
-          date: new Date(Date.now() - 1000 * 60 * 60 * 168).toISOString(),
-          customerName: 'Digital Marketing Agency',
-          customerId: 'C12355',
-          customerType: 'pme',
-          status: 'active',
-          amount: 299.99,
-          details: 'Abonnement Enterprise - Mensuel',
-          actionUrl: '/subscription/sub-003'
-        }
-      ];
-
-      // Filtrage et tri des données
-      let filteredData = [...mockData];
-      
-      // Filtre par recherche
-      if (filters.search && filters.search.trim() !== '') {
-        const searchTerm = filters.search.toLowerCase();
-        filteredData = filteredData.filter(item => 
-          item.customerName.toLowerCase().includes(searchTerm) ||
-          item.customerId.toLowerCase().includes(searchTerm) ||
-          item.details.toLowerCase().includes(searchTerm)
-        );
-      }
-      
-      // Filtre par type
-      if (filters.type && filters.type !== 'all') {
-        filteredData = filteredData.filter(item => item.type === filters.type);
-      }
-      
-      // Filtre par statut
-      if (filters.status && filters.status !== 'all') {
-        filteredData = filteredData.filter(item => item.status === filters.status);
-      }
-      
-      // Tri
-      if (filters.sortBy) {
-        const sortKey = filters.sortBy as keyof DashboardItem;
-        filteredData.sort((a, b) => {
-          if (a[sortKey] < b[sortKey]) {
-            return filters.sortDirection === 'asc' ? -1 : 1;
-          }
-          if (a[sortKey] > b[sortKey]) {
-            return filters.sortDirection === 'asc' ? 1 : -1;
-          }
-          return 0;
-        });
-      }
-
-      // Enregistrer le nombre total avant la pagination
-      setTotalItems(filteredData.length);
-
-      // Pagination
-      const startIndex = ((filters.page || 1) - 1) * (filters.pageSize || 10);
-      const endIndex = startIndex + (filters.pageSize || 10);
-      filteredData = filteredData.slice(startIndex, endIndex);
-
-      setItems(filteredData);
+      // Chargement des données de chaque source
+      await Promise.all([
+        loadCustomers({ page: 1, limit: 10, status: filters.status !== 'all' ? filters.status as CustomerStatus : undefined }),
+        fetchPayments({ page: 1, limit: 10, status: filters.status !== 'all' ? filters.status as TransactionStatus : undefined }),
+        fetchSubscriptions({ page: 1, limit: 10, status: filters.status !== 'all' ? filters.status as SubscriptionStatus : undefined }),
+        fetchTokenTransactions({ page: 1, limit: 10 }) // Note: status n'existe pas pour TokenTransactionFilterParams
+      ]);
     } catch (err) {
       setError(err instanceof Error ? err : new Error(String(err)));
-    } finally {
-      setIsLoading(false);
     }
-  };
+  }, [
+    loadCustomers, 
+    fetchPayments, 
+    fetchSubscriptions, 
+    fetchTokenTransactions, 
+    filters.status
+  ]);
 
+  // Convertir et combiner les données dès qu'elles sont disponibles
   useEffect(() => {
-    fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters, i18n.language]);
+    // Vérifier si toutes les données sont chargées
+    if (isCustomersLoading || isPaymentsLoading || isSubscriptionsLoading || isTokensLoading) {
+      setIsLoading(true);
+      return;
+    }    // Vérifier s'il y a des erreurs
+    if (paymentsError || subscriptionsError || tokensError) {
+      const errorMessage = [
+        paymentsError?.message, 
+        subscriptionsError?.message, 
+        tokensError?.message
+      ].filter(Boolean).join(', ');
+      
+      setError(new Error(`Erreur lors du chargement des données: ${errorMessage}`));
+      setIsLoading(false);
+      return;
+    }
 
+    // Mapper les données en items de tableau de bord
+    let combinedItems: DashboardItem[] = [];
+
+    // Ajouter les clients si le filtre le permet
+    if (filters.type === 'all' || filters.type === 'customer') {
+      combinedItems = [...combinedItems, ...customers.map(mapCustomerToDashboardItem)];
+    }
+
+    // Ajouter les paiements si le filtre le permet
+    if (filters.type === 'all' || filters.type === 'payment') {
+      combinedItems = [...combinedItems, ...payments.map(mapPaymentToDashboardItem)];
+    }
+
+    // Ajouter les abonnements si le filtre le permet
+    if (filters.type === 'all' || filters.type === 'subscription') {
+      combinedItems = [...combinedItems, ...subscriptions.map(mapSubscriptionToDashboardItem)];
+    }
+
+    // Ajouter les transactions de tokens si le filtre le permet
+    if (filters.type === 'all' || filters.type === 'token') {
+      combinedItems = [...combinedItems, ...tokenTransactions.map(mapTokenTransactionToDashboardItem)];
+    }
+
+    // Filtrage par recherche
+    if (filters.search && filters.search.trim() !== '') {
+      const searchTerm = filters.search.toLowerCase();
+      combinedItems = combinedItems.filter(item => 
+        item.customerName.toLowerCase().includes(searchTerm) ||
+        item.customerId.toLowerCase().includes(searchTerm) ||
+        item.details.toLowerCase().includes(searchTerm)
+      );
+    }
+
+    // Tri
+    if (filters.sortBy) {
+      const sortKey = filters.sortBy as keyof DashboardItem;
+      combinedItems.sort((a, b) => {
+        const aValue = a[sortKey];
+        const bValue = b[sortKey];
+        
+        // Handle undefined values
+        if (aValue === undefined && bValue === undefined) return 0;
+        if (aValue === undefined) return filters.sortDirection === 'asc' ? -1 : 1;
+        if (bValue === undefined) return filters.sortDirection === 'asc' ? 1 : -1;
+        
+        // Compare values
+        if (aValue < bValue) {
+          return filters.sortDirection === 'asc' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return filters.sortDirection === 'asc' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+
+    // Enregistrer le nombre total avant la pagination
+    setTotalItems(combinedItems.length);
+
+    // Pagination
+    const startIndex = ((filters.page || 1) - 1) * (filters.pageSize || 10);
+    const endIndex = startIndex + (filters.pageSize || 10);
+    combinedItems = combinedItems.slice(startIndex, endIndex);
+
+    setItems(combinedItems);
+    setIsLoading(false);  }, [
+    customers, 
+    payments, 
+    subscriptions, 
+    tokenTransactions, 
+    isCustomersLoading, 
+    isPaymentsLoading, 
+    isSubscriptionsLoading, 
+    isTokensLoading,
+    paymentsError,
+    subscriptionsError,
+    tokensError,
+    filters,
+    mapCustomerToDashboardItem,
+    mapPaymentToDashboardItem,
+    mapSubscriptionToDashboardItem,
+    mapTokenTransactionToDashboardItem
+  ]);
+
+  // Charger les données initiales
+  useEffect(() => {
+    fetchAllData();
+  }, [fetchAllData, filters, i18n.language]);
+
+  // Mettre à jour les filtres
   const updateFilters = (newFilters: Partial<UnifiedDashboardTableFilters>) => {
     setFilters(prev => ({
       ...prev,

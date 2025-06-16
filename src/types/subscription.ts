@@ -519,6 +519,8 @@ export interface TokenStatistics {
   totalTokensAllocated: number;
   totalTokensUsed: number;
   totalTokensPurchased: number;
+  totalTokenCost?: number; // Coût total des tokens
+  tokenUsageGrowth?: number; // Croissance de l'utilisation des tokens
   tokenUsageByPeriod: Array<{
     period: string;
     tokensUsed: number;

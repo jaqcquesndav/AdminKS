@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next'; // Import useTranslation
 import { useDashboardData } from '../../hooks/useDashboardData';
 import { useAuth } from '../../hooks/useAuth';
 import { useCurrencySettings } from '../../hooks/useCurrencySettings';
@@ -7,10 +8,11 @@ import { RevenueChart } from '../../components/dashboard/charts/RevenueChart';
 import { TokenUsageChart } from '../../components/dashboard/charts/TokenUsageChart';
 import { PageLoader } from '../../components/common/PageLoader';
 import { UnifiedDashboardTable } from '../../components/dashboard/UnifiedDashboardTable';
+import BlurOverlay from '../../components/common/BlurOverlay';
+import { ConnectionError } from '../../components/common/ConnectionError';
 import {
   Users,
   CreditCard,
-  AlertTriangle,
   Activity,
   DollarSign,
   Cpu,
@@ -20,6 +22,7 @@ import {
 } from 'lucide-react';
 
 export function DashboardPage() {
+  const { t } = useTranslation(); // Initialize t function
   const { user } = useAuth();
   const { 
     userStats, 
@@ -102,18 +105,21 @@ export function DashboardPage() {
   }, [tokenStats]);
 
 
-  if (isLoading) {
+  // Afficher un loader plein écran lorsque les données sont en cours de chargement
+  if (isLoading && !userStats) {
     return <PageLoader />;
   }
 
+  // Meilleure gestion des erreurs - utilisation du composant ConnectionError
   if (error) {
+    const errorMessage = typeof error === 'string' ? error : t('dashboard.loadError'); // Translate error message
     return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="text-red-500">
-          <AlertTriangle size={48} className="mx-auto mb-4" />
-          <h2 className="text-xl font-bold">Erreur lors du chargement du tableau de bord</h2>
-          <p>{error}</p>
-        </div>
+      <div className="container mx-auto px-4 py-8">
+        <ConnectionError 
+          message={errorMessage} 
+          retry={() => window.location.reload()} 
+          className="mx-auto max-w-lg"
+        />
       </div>
     );
   }
@@ -121,105 +127,102 @@ export function DashboardPage() {
   // Adapter le contenu en fonction du rôle de l'utilisateur
   const showFinancialMetrics = ['super_admin', 'growth_finance'].includes(user?.role || '');
   const showSystemMetrics = ['super_admin', 'cto'].includes(user?.role || '');
-  return (
+    return (
     <div className="container mx-auto px-4 py-6">
-      <h1 className="text-2xl font-bold mb-6">Tableau de bord Wanzo Admin</h1>
+      <h1 className="text-2xl font-bold mb-6">{t('dashboard.title')}</h1> {/* Translate title */}
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8">
-        <StatCard
-          title="Utilisateurs Totaux"
-          value={userStats.totalUsers.toLocaleString()}
-          icon={<Users size={20} />}
-          change={{
-            value: userGrowth,
-            isPositive: userGrowth > 0,
-            text: "vs mois précédent"
-          }}
-          color="primary"
-        />
-        
-        <StatCard
-          title="Utilisateurs Actifs"
-          value={`${userStats.activeUsers.toLocaleString()} (${Math.round(userStats.activeUsers / userStats.totalUsers * 100)}%)`}
-          icon={<Activity size={20} />}
-          color="success"
-        />
-        
-        {showFinancialMetrics && (
+      {/* Utilisation de BlurOverlay uniquement pour les cartes KPI et les graphiques */}
+      <BlurOverlay isLoading={isLoading} opacity={0.6}>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8">
           <StatCard
-            title="Revenu Total"
-            value={formatCurrency(revenueStats.totalRevenue.usd)} // Assuming totalRevenue.usd is in USD
-            icon={<DollarSign size={20} />}
+            title={t('dashboard.totalUsers')} // Translate card title
+            value={userStats.totalUsers.toLocaleString()}
+            icon={<Users size={20} />}
             change={{
-              value: revenueGrowth,
-              isPositive: revenueGrowth > 0,
-              text: "vs mois précédent"
+              value: userGrowth,
+              isPositive: userGrowth > 0,
+              text: t('dashboard.vsPreviousMonth') // Translate change text
             }}
-            color="info"
-          />
-        )}
-        
-        {showFinancialMetrics && (
-          <StatCard
-            title="Revenu Tokens IA"
-            value={formatCurrency(revenueStats.tokenRevenue)} // Assuming tokenRevenue is in USD
+            color="primary"
+          />          {showFinancialMetrics && (
+            <StatCard
+              title={t('dashboard.monthlyRevenue')} // Translate card title
+              value={formatCurrency(revenueStats?.totalRevenue?.usd || 0)}
+              trend={revenueGrowth}
+              icon={<DollarSign size={20} />}
+              color="success"
+            />
+          )}
+            <StatCard
+            title={t('dashboard.tokensUsed')} // Translate card title
+            value={Math.floor(tokenStats?.totalTokensUsed || 0).toLocaleString()}
             icon={<Cpu size={20} />}
+            trend={tokenStats?.tokenUsageGrowth || 0}
             color="info"
           />
-        )}
-        
-        <StatCard
-          title="Comptes Clients"
-          value={(userStats.totalUsers - (userStats.usersByRole.admin || 0)).toLocaleString()}
-          icon={<Building size={20} />}
-          color="primary"
-        />
-        
-        {showSystemMetrics && (
+          
+          {showFinancialMetrics && (
+            <StatCard
+              title={t('dashboard.tokenCost')} // Translate card title
+              value={formatCurrency(tokenStats?.totalTokenCost || 0)}
+              icon={<Activity size={20} />}
+              color="primary"
+            />
+          )}
+          
           <StatCard
-            title="Santé Système"
-            value={systemHealth.overallHealth === 'healthy' ? 'Opérationnel' : 'Attention Requise'}
-            icon={<Server size={20} />}
-            color={systemHealth.overallHealth === 'healthy' ? 'success' : 'warning'}
+            title={t('dashboard.customerAccounts')} // Translate card title
+            value={(userStats.totalUsers - (userStats.usersByRole.admin || 0)).toLocaleString()}
+            icon={<Building size={20} />}
+            color="primary"
           />
-        )}
-        
-        <StatCard
-          title="Comptes en Attente"
-          value={pendingAccounts}
-          icon={<ClipboardCheck size={20} />}
-          color="warning"
-        />
-        
-        {showFinancialMetrics && (
+          
+          {showSystemMetrics && (
+            <StatCard
+              title={t('dashboard.systemHealth')} // Translate card title
+              value={systemHealth.overallHealth === 'healthy' ? t('dashboard.operational') : t('dashboard.attentionRequired')} // Translate system health status
+              icon={<Server size={20} />}
+              color={systemHealth.overallHealth === 'healthy' ? 'success' : 'warning'}
+            />
+          )}
+          
           <StatCard
-            title="Paiements à Valider"
-            value={pendingPayments}
-            icon={<CreditCard size={20} />}
+            title={t('dashboard.pendingAccounts')} // Translate card title
+            value={pendingAccounts}
+            icon={<ClipboardCheck size={20} />}
             color="warning"
           />
-        )}
-      </div>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {showFinancialMetrics && (
-          <RevenueChart
-            data={revenueChartData}
-            title="Évolution des revenus"
-          />
-        )}
+          
+          {showFinancialMetrics && (
+            <StatCard
+              title={t('dashboard.paymentsToValidate')} // Translate card title
+              value={pendingPayments}
+              icon={<CreditCard size={20} />}
+              color="warning"
+            />
+          )}
+        </div>
         
-        <TokenUsageChart
-          timeData={tokenUsageData}
-          title="Utilisation des Tokens IA"
-          type="line"
-        />
-      </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {showFinancialMetrics && (
+            <RevenueChart
+              data={revenueChartData}
+              title={t('dashboard.revenueEvolution')} // Translate chart title
+            />
+          )}
+          
+          <TokenUsageChart
+            timeData={tokenUsageData}
+            title={t('dashboard.aiTokenUsage')} // Translate chart title
+            type="line"
+          />
+        </div>
+      </BlurOverlay>
 
-      {/* Tableau d'activité récente unifié */}
+      {/* Tableau d'activité récente unifié - en dehors du BlurOverlay pour toujours afficher les en-têtes */}
       <div className="mt-8">
         <UnifiedDashboardTable 
-          title="Activité récente" 
+          title={t('dashboard.recentActivity')} // Translate table title
           showFilters={true}
           limit={10}
         />

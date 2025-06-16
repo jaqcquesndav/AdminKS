@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { notificationsApi } from '../services/notifications/notificationsApiService';
 import { useToastContext } from '../contexts/ToastContext';
 import type { Notification, NotificationType } from '../types/notification';
@@ -26,6 +27,7 @@ const mapNotificationTypeToToastType = (type: NotificationType): 'info' | 'succe
 };
 
 export function useNotifications() {
+  const { t } = useTranslation();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -40,11 +42,11 @@ export function useNotifications() {
       setUnreadCount(unreadCountData.count);
     } catch (error) {
       console.error('Failed to load notifications:', error);
-      showToast('error', 'Erreur lors du chargement des notifications');
+      showToast('error', t('notifications.errors.load'));
     } finally {
       setIsLoading(false);
     }
-  }, [showToast]);
+  }, [showToast, t]);
 
   const markAsRead = useCallback(async (notificationIds: string[]) => {
     try {
@@ -61,9 +63,9 @@ export function useNotifications() {
       setUnreadCount(prev => Math.max(0, prev - notificationIds.length));
     } catch (error) {
       console.error('Failed to mark notifications as read:', error);
-      showToast('error', 'Erreur lors du marquage des notifications');
+      showToast('error', t('notifications.errors.markRead'));
     }
-  }, [showToast]);
+  }, [showToast, t]);
 
   const markAllAsRead = useCallback(async () => {
     try {
@@ -72,9 +74,9 @@ export function useNotifications() {
       setUnreadCount(0);
     } catch (error) {
       console.error('Failed to mark all notifications as read:', error);
-      showToast('error', 'Erreur lors du marquage des notifications');
+      showToast('error', t('notifications.errors.markAllRead'));
     }
-  }, [showToast]);
+  }, [showToast, t]);
 
   const deleteNotification = useCallback(async (notificationId: string) => {
     try {
@@ -88,9 +90,9 @@ export function useNotifications() {
       });
     } catch (error) {
       console.error('Failed to delete notification:', error);
-      showToast('error', 'Erreur lors de la suppression de la notification');
+      showToast('error', t('notifications.errors.delete'));
     }
-  }, [showToast]);
+  }, [showToast, t]);
 
   // Fonction pour gérer les nouvelles notifications
   const handleNewNotification = useCallback((notification: Notification) => {

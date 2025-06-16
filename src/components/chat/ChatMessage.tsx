@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
 import type { ChatMessage as ChatMessageType } from '../../types/chat';
 
@@ -7,6 +8,7 @@ interface ChatMessageProps {
 }
 
 export function ChatMessage({ message }: ChatMessageProps) {
+  const { t } = useTranslation();
   const isUser = message.sender === 'user';
   
   const containerClasses = [
@@ -28,13 +30,14 @@ export function ChatMessage({ message }: ChatMessageProps) {
     'mt-1',
     isUser ? 'text-white/70' : 'text-gray-500 dark:text-gray-400'
   ].join(' ');
-
   return (
     <div className={containerClasses}>
       <div className={messageClasses}>
         <p className="text-sm whitespace-pre-wrap">{message.content}</p>
         <p className={timeClasses}>
           {format(message.timestamp, 'HH:mm')}
+          {message.status === 'sending' && ` • ${t('chat.sendingMessage', 'Envoi...')}`}
+          {message.status === 'failed' && ` • ${t('chat.failedToSend', 'Échec de l\'envoi. Cliquez pour réessayer.')}`}
         </p>
       </div>
     </div>

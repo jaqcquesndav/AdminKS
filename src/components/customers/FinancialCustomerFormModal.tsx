@@ -1,22 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useUsers } from '../../hooks/useUsers';
 import type { CustomerFormData } from '../../types/customer';
 
-interface CustomerFormModalProps {
+interface FinancialCustomerFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: CustomerFormData) => void;
   initialData: CustomerFormData;
 }
 
-export function CustomerFormModal({
+export function FinancialCustomerFormModal({
   isOpen,
   onClose,
   onSubmit,
   initialData,
-}: CustomerFormModalProps) {
+}: FinancialCustomerFormModalProps) {
   const { t } = useTranslation();
+  const { users, loadUsers, isLoading: loadingUsers } = useUsers();
   const [formData, setFormData] = useState<CustomerFormData>(initialData);
 
   useEffect(() => {
@@ -24,19 +26,31 @@ export function CustomerFormModal({
   }, [initialData]);
 
   useEffect(() => {
-    // Si le type de compte change, ajuster l'allocation de tokens
-    setFormData(prev => ({
-      ...prev,
-      tokenAllocation: prev.accountType === 'freemium' ? 0 : 1000000 // 1 million tokens for paid PME
-    }));
-  }, [formData.accountType]);
+    if (isOpen) {
+      loadUsers();
+    }
+  }, [isOpen, loadUsers]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => {
+      const newFormData = { ...prev, [name]: value };
+      
+      // Si le type de compte change, ajuster l'allocation de tokens
+      if (name === 'accountType') {
+        newFormData.tokenAllocation = value === 'freemium' ? 0 : 10000000;
+      }
+      
+      // Si l'owner change, mettre à jour l'email de l'owner
+      if (name === 'ownerId') {
+        const selectedUser = users.find(user => user.id === value);
+        if (selectedUser) {
+          newFormData.ownerEmail = selectedUser.email;
+        }
+      }
+      
+      return newFormData;
+    });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -51,7 +65,7 @@ export function CustomerFormModal({
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 px-6 py-4">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            {t('customers.addPmeCustomer', 'Ajouter un client PME')}
+            {t('customers.addFinancialInstitution', 'Ajouter une institution financière')}
           </h2>
           <button
             type="button"
@@ -229,6 +243,29 @@ export function CustomerFormModal({
                   <option value="inactive">{t('customers.status.inactive', 'Inactif')}</option>
                 </select>
               </div>
+            </div>
+
+            <div>
+              <label htmlFor="ownerId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {t('customers.form.owner', 'Propriétaire (utilisateur principal)')}
+              </label>
+              <select
+                name="ownerId"
+                id="ownerId"
+                value={formData.ownerId || ''}
+                onChange={handleChange}
+                className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+              >
+                <option value="">{loadingUsers ? t('common.loading', 'Chargement...') : t('customers.form.selectOwner', 'Sélectionner un propriétaire')}</option>
+                {users.map(user => (
+                  <option key={user.id} value={user.id}>
+                    {user.name} ({user.email})
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-sm text-gray-500">
+                {t('customers.form.ownerInfo', 'Le propriétaire sera le principal administrateur de ce compte client.')}
+              </p>
             </div>
 
             <div className="flex justify-end pt-4 border-t border-gray-200 dark:border-gray-700">

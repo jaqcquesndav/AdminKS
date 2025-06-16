@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal } from '../../common/Modal';
 import { Button } from '../../common/Button';
@@ -16,7 +16,7 @@ export function AvatarEditor({ file, onSave, onCancel }: AvatarEditorProps) {
   const [crop, setCrop] = useState<Crop>({
     unit: '%',
     width: 90,
-    aspect: 1,
+    height: 90, // Added height property
     x: 5,
     y: 5,
   });
@@ -68,7 +68,7 @@ export function AvatarEditor({ file, onSave, onCancel }: AvatarEditorProps) {
     <Modal
       isOpen={true}
       onClose={onCancel}
-      title={t('settings.profile.avatar.editor.title')}
+      title={t('settings.profile.avatarDetails.editor.title')}
     >
       <div className="p-6 space-y-6">
         <ReactCrop
@@ -80,7 +80,7 @@ export function AvatarEditor({ file, onSave, onCancel }: AvatarEditorProps) {
           <img
             ref={imgRef}
             src={URL.createObjectURL(file)}
-            alt="Crop preview"
+            alt={t('settings.profile.avatarDetails.editor.cropPreviewAlt')}
             className="max-h-[400px] w-auto"
           />
         </ReactCrop>

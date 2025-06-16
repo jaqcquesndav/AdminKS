@@ -17,8 +17,7 @@ export interface InviteUserData {
   message?: string;
 }
 
-export function CustomerInviteUserModal({ 
-  isOpen, 
+export function CustomerInviteUserModal({  isOpen, 
   onClose, 
   onSubmit,
   customerName,
@@ -133,19 +132,24 @@ export function CustomerInviteUserModal({
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <AtSign className="h-4 w-4 text-gray-400" />
-                </div>
-                <select
-                  id="role"
-                  name="role"
-                  value={formData.role}
-                  onChange={handleChange}
-                  className="pl-10 w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:border-primary focus:ring-primary"
-                  required
-                >
-                  {availableRoles.map(role => (
-                    <option key={role.id} value={role.id}>{role.name}</option>
-                  ))}
-                </select>
+                </div>                  <select
+                    id="role"
+                    name="role"
+                    value={formData.role}
+                    onChange={handleChange}
+                    className="pl-10 w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:border-primary focus:ring-primary"
+                    required
+                  >
+                    {availableRoles.map(role => (
+                      <option key={role.id} value={role.id}>
+                        {role.id === 'admin' 
+                          ? t('customers.users.roles.admin', role.name)
+                          : role.id === 'user'
+                          ? t('customers.users.roles.editor', role.name)
+                          : t('customers.users.roles.viewer', role.name)}
+                      </option>
+                    ))}
+                  </select>
               </div>
             </div>
             

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { TrendingUp, TrendingDown, DollarSign, Filter, Calendar } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Filter, Calendar, BarChart2, AlertCircle } from 'lucide-react';
 import { useCurrencySettings } from '../../hooks/useCurrencySettings';
 
 interface RevenueData {
@@ -25,9 +25,10 @@ interface FinancialAnalyticsProps {
 
 export function FinancialAnalytics({ customerId, className = '' }: FinancialAnalyticsProps) {
   const { t, i18n } = useTranslation();
-  const { format, convert, activeCurrency, baseCurrency } = useCurrencySettings(); 
+  const { formatCurrency, activeCurrency } = useCurrencySettings(); 
   
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
   const [summaryStats, setSummaryStats] = useState<SummaryStats | null>(null);
   const [timeframe, setTimeframe] = useState<'daily' | 'weekly' | 'monthly'>('monthly');
@@ -36,10 +37,17 @@ export function FinancialAnalytics({ customerId, className = '' }: FinancialAnal
   useEffect(() => {
     const fetchFinancialData = async () => {
       setLoading(true);
+      setError(null); 
       try {
         // Simuler un délai de requête API
         await new Promise(resolve => setTimeout(resolve, 800));
         
+        // Replace with actual API call: e.g., financeApi.getAnalytics(customerId, period, timeframe)
+        // For now, we keep the mock data generation but add a potential error simulation
+        if (Math.random() < 0.1 && !customerId) { // Simulate an error for general analytics occasionally
+          throw new Error(t('finance.analytics.errors.generalError'));
+        }
+
         // Génération de données mockées
         const generateMockData = () => {
           const data: RevenueData[] = [];
@@ -126,9 +134,9 @@ export function FinancialAnalytics({ customerId, className = '' }: FinancialAnal
           }
           
           // Ajouter la dernière semaine
-          if (weekRevenue > 0) {
+          if (weekRevenue > 0 && currentWeekStart) {
             weeklyData.push({
-              date: currentWeekStart!.toISOString().split('T')[0],
+              date: currentWeekStart.toISOString().split('T')[0],
               revenue: weekRevenue,
               transactions: weekTransactions
             });
@@ -171,7 +179,7 @@ export function FinancialAnalytics({ customerId, className = '' }: FinancialAnal
           }
           
           // Ajouter le dernier mois
-          if (monthRevenue > 0) {
+          if (monthRevenue > 0 && monthDate) {
             monthlyData.push({
               date: monthDate,
               revenue: monthRevenue,
@@ -203,273 +211,182 @@ export function FinancialAnalytics({ customerId, className = '' }: FinancialAnal
           totalTransactions: currentTotalTransactions,
           comparisonTransactions: previousTotalTransactions,
           averageTransactionValue: currentAverageValue,
-          comparisonAverageValue: previousAverageValue
+          comparisonAverageValue: previousAverageValue,
         });
-      } catch (error) {
-        console.error('Erreur lors du chargement des données financières:', error);
+
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : t('finance.analytics.errors.unknownError');
+        console.error('Failed to fetch financial data:', err);
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }
     };
-    
-    fetchFinancialData();
-  }, [customerId, period, timeframe]);
-  
-  // Fonction pour calculer le pourcentage de changement
-  const calculateChange = (current: number, previous: number): number => {
-    if (previous === 0) return current > 0 ? 100 : 0;
-    return ((current - previous) / previous) * 100;
-  };
-  
-  // Définir l'échelle du graphique
-  const getChartScale = () => {
-    if (revenueData.length === 0) return { max: 1000, step: 250 };
-    
-    const maxRevenue = Math.max(...revenueData.map(d => d.revenue));
-    const roundedMax = Math.ceil(maxRevenue / 1000) * 1000;
-    const step = roundedMax / 4;
-    
-    return { max: roundedMax, step };
-  };
-  
-  const chartScale = getChartScale();
-  
-  // Obtenir les points du graphique
-  /*
-  const getChartPoints = () => {
-    if (revenueData.length < 2) return '';
-    
-    const height = 200;
-    const width = revenueData.length > 30 ? revenueData.length * 20 : 600;
-    const padding = 40;
-    const chartWidth = width - padding * 2;
-    const chartHeight = height - padding * 2;
-    
-    const step = chartWidth / (revenueData.length - 1);
-    
-    return revenueData.map((item, index) => {
-      const x = padding + index * step;
-      const y = height - padding - (item.revenue / chartScale.max * chartHeight);
-      return `${index === 0 ? 'M' : 'L'} ${x},${y}`;
-    }).join(' ');
-  };
-  */
-  
-  // Formater les valeurs monétaires dans le graphique en format compact pour la devise active
-  const formatCompactForChart = (amountInBase: number) => {
-    const amountInActive = convert(amountInBase, baseCurrency, activeCurrency);
-    const currentLocale = i18n.language || 'en-US';
 
-    const formatter = new Intl.NumberFormat(
-      currentLocale, 
-      {
-        notation: 'compact',
-        compactDisplay: 'short',
-        maximumFractionDigits: 1,
-      }
+    fetchFinancialData();
+  }, [customerId, timeframe, period, t, i18n.language, activeCurrency, formatCurrency]); // Added formatCurrency to dependencies
+
+  const renderPercentageChange = (current: number, previous: number) => {
+    if (previous === 0) {
+      return <span className="text-sm text-gray-500">{t('common.notAvailable')}</span>;
+    }
+    const change = ((current - previous) / previous) * 100;
+    const isPositive = change > 0;
+    return (
+      <span className={`flex items-center text-sm ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
+        {isPositive ? <TrendingUp className="w-4 h-4 mr-1" /> : <TrendingDown className="w-4 h-4 mr-1" />}
+        {change.toFixed(1)}%
+      </span>
     );
-    
-    // return `${formatter.format(amountInActive)}${activeCurrency ? ` ${activeCurrency}` : ''}`;
-    // The format function from useCurrencySettings already handles appending the currency symbol/code as per its internal logic.
-    // We just need to pass the converted amount.
-    // However, format() itself might not support 'compact' notation directly.
-    // Sticking to Intl.NumberFormat for compact notation seems correct, but we need to ensure the currency symbol is appropriate.
-    // The original line was: return `${formattedAmount}${activeCurrency ? ` ${activeCurrency}` : ''}`;
-    // Let's use the format function for consistency if it can produce a similar compact output or decide if we need a separate utility.
-    // For now, retaining the explicit currency code, as compact notation might not always include it depending on locale/settings.
-    const formattedValue = formatter.format(amountInActive);
-    return `${formattedValue} ${activeCurrency}`;
   };
-  
-  return (
-    <div className={`bg-white dark:bg-gray-800 shadow overflow-hidden rounded-lg ${className}`}>
-      <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
-        <div>
-          <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">
-            {t('finance.analytics.title', 'Analyse financière')}
-          </h3>
-          <p className="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
-            {t('finance.analytics.subtitle', 'Tendances des revenus et transactions')}
-          </p>
-        </div>
-        
-        <div className="flex flex-wrap gap-2">
-          <div className="relative">
-            <Calendar className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <select
-              value={period}
-              onChange={(e) => setPeriod(e.target.value as '30d' | '90d' | '1y' | 'all')}
-              className="pl-8 pr-4 py-1 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm"
-            >
-              <option value="30d">{t('finance.analytics.period.30d', 'Derniers 30 jours')}</option>
-              <option value="90d">{t('finance.analytics.period.90d', 'Derniers 90 jours')}</option>
-              <option value="1y">{t('finance.analytics.period.1y', 'Dernière année')}</option>
-              <option value="all">{t('finance.analytics.period.all', 'Tout l\'historique')}</option>
-            </select>
-          </div>
-          
-          <div className="relative">
-            <Filter className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <select
-              value={timeframe}
-              onChange={(e) => setTimeframe(e.target.value as 'daily' | 'weekly' | 'monthly')}
-              className="pl-8 pr-4 py-1 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm"
-            >
-              <option value="daily">{t('finance.analytics.timeframe.daily', 'Quotidien')}</option>
-              <option value="weekly">{t('finance.analytics.timeframe.weekly', 'Hebdomadaire')}</option>
-              <option value="monthly">{t('finance.analytics.timeframe.monthly', 'Mensuel')}</option>
-            </select>
+
+  if (loading) {
+    return (
+      <div className={`p-6 bg-white dark:bg-gray-800 rounded-lg shadow ${className}`}>
+        <div className="animate-pulse flex space-x-4">
+          <div className="flex-1 space-y-4 py-1">
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+            <div className="space-y-2">
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-5/6"></div>
+            </div>
           </div>
         </div>
       </div>
-      
-      {loading ? (
-        <div className="px-4 py-12 flex justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-        </div>
-      ) : (
-        <>
-          {/* Cartes des statistiques */}
-          {summaryStats && (
-            <div className="grid grid-cols-1 sm:grid-cols-3 border-t border-gray-200 dark:border-gray-700">
-              {/* Revenu total */}
-              <div className="px-6 py-5 border-b sm:border-b-0 sm:border-r border-gray-200 dark:border-gray-700">
-                <div className="flex items-center">
-                  <div className="p-2 rounded-full bg-green-50 dark:bg-green-900/20">
-                    <DollarSign className="h-6 w-6 text-green-500 dark:text-green-400" />
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {t('finance.analytics.stats.revenue', 'Revenu total')}
-                    </p>
-                    <div className="flex items-end">
-                      <p className="text-xl font-semibold text-gray-900 dark:text-white">
-                        {summaryStats.totalRevenue !== undefined ? format(convert(summaryStats.totalRevenue, baseCurrency, activeCurrency)) : '-'}
-                      </p>
-                      <div className="ml-2 mb-1 flex items-center">
-                        {calculateChange(summaryStats.totalRevenue, summaryStats.comparisonRevenue) >= 0 ? (
-                          <TrendingUp className="h-4 w-4 text-green-500" />
-                        ) : (
-                          <TrendingDown className="h-4 w-4 text-red-500" />
-                        )}
-                        <span className={`ml-1 text-xs font-medium ${
-                          calculateChange(summaryStats.totalRevenue, summaryStats.comparisonRevenue) >= 0 
-                            ? 'text-green-500' 
-                            : 'text-red-500'
-                        }`}>
-                          {Math.abs(calculateChange(summaryStats.totalRevenue, summaryStats.comparisonRevenue)).toFixed(1)}%
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Nombre de transactions */}
-              <div className="px-6 py-5 border-b sm:border-b-0 sm:border-r border-gray-200 dark:border-gray-700">
-                <div className="flex items-center">
-                  <div className="p-2 rounded-full bg-blue-50 dark:bg-blue-900/20">
-                    <svg className="h-6 w-6 text-blue-500 dark:text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {t('finance.analytics.stats.transactions', 'Transactions')}
-                    </p>
-                    <div className="flex items-end">
-                      <p className="text-xl font-semibold text-gray-900 dark:text-white">
-                        {summaryStats.totalTransactions.toLocaleString('fr-FR')}
-                      </p>
-                      <div className="ml-2 mb-1 flex items-center">
-                        {calculateChange(summaryStats.totalTransactions, summaryStats.comparisonTransactions) >= 0 ? (
-                          <TrendingUp className="h-4 w-4 text-green-500" />
-                        ) : (
-                          <TrendingDown className="h-4 w-4 text-red-500" />
-                        )}
-                        <span className={`ml-1 text-xs font-medium ${
-                          calculateChange(summaryStats.totalTransactions, summaryStats.comparisonTransactions) >= 0 
-                            ? 'text-green-500' 
-                            : 'text-red-500'
-                        }`}>
-                          {Math.abs(calculateChange(summaryStats.totalTransactions, summaryStats.comparisonTransactions)).toFixed(1)}%
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Valeur moyenne */}
-              <div className="px-6 py-5">
-                <div className="flex items-center">
-                  <div className="p-2 rounded-full bg-purple-50 dark:bg-purple-900/20">
-                    <svg className="h-6 w-6 text-purple-500 dark:text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                    </svg>
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {t('finance.analytics.stats.avgValue', 'Valeur moyenne')}
-                    </p>
-                    <div className="flex items-end">
-                      <p className="text-xl font-semibold text-gray-900 dark:text-white">
-                        {summaryStats.averageTransactionValue !== undefined ? format(convert(summaryStats.averageTransactionValue, baseCurrency, activeCurrency)) : '-'}
-                      </p>
-                      <div className="ml-2 mb-1 flex items-center">
-                        {calculateChange(summaryStats.averageTransactionValue, summaryStats.comparisonAverageValue) >= 0 ? (
-                          <TrendingUp className="h-4 w-4 text-green-500" />
-                        ) : (
-                          <TrendingDown className="h-4 w-4 text-red-500" />
-                        )}
-                        <span className={`ml-1 text-xs font-medium ${
-                          calculateChange(summaryStats.averageTransactionValue, summaryStats.comparisonAverageValue) >= 0 
-                            ? 'text-green-500' 
-                            : 'text-red-500'
-                        }`}>
-                          {Math.abs(calculateChange(summaryStats.averageTransactionValue, summaryStats.comparisonAverageValue)).toFixed(1)}%
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-          
-          {/* Graphique des revenus */}
-          <div className="px-6 pt-6 pb-2">
-            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
-              {t('finance.analytics.chart.revenue', 'Évolution des revenus')}
-            </h4>
-            
-            <div className="relative h-64">
-              {/* Échelle Y */}
-              <div className="absolute left-0 top-0 bottom-0 w-10 flex flex-col justify-between text-xs text-gray-500 dark:text-gray-400">
-                {Array.from({ length: 5 }, (_, i) => {
-                  const value = chartScale.max - i * chartScale.step;
-                  return (
-                    <div key={i} className="flex items-center">
-                      <span>{formatCompactForChart(value)}</span>
-                    </div>
-                  );
-                })}
-              </div>
-              
-              {/* Lignes horizontales */}
-              <div className="absolute left-10 right-0 top-0 bottom-0 flex flex-col justify-between">
-                {Array.from({ length: 5 }, (_, i) => (
-                  <div
-                    key={i}
-                    className="h-px bg-gray-200 dark:bg-gray-700 w-full"
-                  ></div>
-                ))}
-              </div>
-              {/* Assuming SVG path for chart line and X-axis labels would be rendered here if implemented */}
-            </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className={`p-6 bg-white dark:bg-gray-800 rounded-lg shadow ${className} flex flex-col items-center justify-center`}>
+        <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
+        <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">{t('finance.analytics.errors.title')}</h3>
+        <p className="text-sm text-gray-500 dark:text-gray-400 text-center">{error}</p>
+        <button 
+          onClick={() => { 
+            setLoading(true); // Trigger a re-fetch by changing state
+            setError(null);
+          }}
+          className="mt-4 px-4 py-2 bg-primary text-white rounded hover:bg-primary-dark transition-colors"
+        >
+          {t('common.retry')}
+        </button>
+      </div>
+    );
+  }
+
+  if (!summaryStats || revenueData.length === 0) {
+    return (
+      <div className={`p-6 bg-white dark:bg-gray-800 rounded-lg shadow ${className} flex flex-col items-center justify-center`}>
+        <BarChart2 className="w-12 h-12 text-gray-400 dark:text-gray-500 mb-4" />
+        <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">{t('finance.analytics.noData.title')}</h3>
+        <p className="text-sm text-gray-500 dark:text-gray-400 text-center">{t('finance.analytics.noData.message')}</p>
+      </div>
+    );
+  }
+
+  const timeframeOptions = [
+    { value: 'daily', label: t('finance.analytics.timeframes.daily') },
+    { value: 'weekly', label: t('finance.analytics.timeframes.weekly') },
+    { value: 'monthly', label: t('finance.analytics.timeframes.monthly') },
+  ];
+
+  const periodOptions = [
+    { value: '30d', label: t('finance.analytics.periods.last30days') },
+    { value: '90d', label: t('finance.analytics.periods.last90days') },
+    { value: '1y', label: t('finance.analytics.periods.lastYear') },
+    { value: 'all', label: t('finance.analytics.periods.allTime') },
+  ];
+
+  return (
+    <div className={`p-6 bg-white dark:bg-gray-800 rounded-lg shadow ${className}`}>
+      <div className="flex flex-wrap items-center justify-between mb-6 gap-4">
+        <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">
+          {customerId ? t('finance.analytics.customerTitle') : t('finance.analytics.generalTitle')}
+        </h2>
+        <div className="flex items-center space-x-2">
+          <div className="relative">
+            <select 
+              value={timeframe}
+              onChange={(e) => setTimeframe(e.target.value as 'daily' | 'weekly' | 'monthly')}
+              className="pl-8 pr-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:ring-primary focus:border-primary"
+              aria-label={t('finance.analytics.timeframes.label')}
+            >
+              {timeframeOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+            </select>
+            <Calendar className="w-4 h-4 absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" />
           </div>
-        </>
-      )}
+          <div className="relative">
+            <select 
+              value={period}
+              onChange={(e) => setPeriod(e.target.value as '30d' | '90d' | '1y' | 'all')}
+              className="pl-8 pr-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:ring-primary focus:border-primary"
+              aria-label={t('finance.analytics.periods.label')}
+            >
+              {periodOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+            </select>
+            <Filter className="w-4 h-4 absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+          </div>
+        </div>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+        {/* Total Revenue Card */}
+        <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+          <div className="flex items-center text-gray-500 dark:text-gray-400 mb-1">
+            <DollarSign className="w-4 h-4 mr-2" />
+            <span className="text-sm">{t('finance.analytics.cards.totalRevenue')}</span>
+          </div>
+          <p className="text-2xl font-semibold text-gray-800 dark:text-gray-200">
+            {formatCurrency(summaryStats.totalRevenue, activeCurrency)}
+          </p>
+          {renderPercentageChange(summaryStats.totalRevenue, summaryStats.comparisonRevenue)}
+        </div>
+
+        {/* Total Transactions Card */}
+        <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+          <div className="flex items-center text-gray-500 dark:text-gray-400 mb-1">
+            <BarChart2 className="w-4 h-4 mr-2" />
+            <span className="text-sm">{t('finance.analytics.cards.totalTransactions')}</span>
+          </div>
+          <p className="text-2xl font-semibold text-gray-800 dark:text-gray-200">
+            {summaryStats.totalTransactions.toLocaleString(i18n.language)}
+          </p>
+          {renderPercentageChange(summaryStats.totalTransactions, summaryStats.comparisonTransactions)}
+        </div>
+
+        {/* Average Transaction Value Card */}
+        <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+          <div className="flex items-center text-gray-500 dark:text-gray-400 mb-1">
+            <DollarSign className="w-4 h-4 mr-2" />
+            <span className="text-sm">{t('finance.analytics.cards.avgTransactionValue')}</span>
+          </div>
+          <p className="text-2xl font-semibold text-gray-800 dark:text-gray-200">
+            {formatCurrency(summaryStats.averageTransactionValue, activeCurrency)}
+          </p>
+          {renderPercentageChange(summaryStats.averageTransactionValue, summaryStats.comparisonAverageValue)}
+        </div>
+      </div>
+
+      {/* Revenue Chart (Placeholder) */}
+      <div className="mt-8">
+        <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-4">
+          {t('finance.analytics.charts.revenueTrend')}
+        </h3>
+        <div className="h-64 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+          {revenueData.length > 0 ? (
+            <p className="text-gray-500 dark:text-gray-400">
+              {t('finance.analytics.charts.placeholder')} 
+              ({revenueData.length} {t('finance.analytics.charts.dataPoints', { count: revenueData.length })})
+            </p>
+          ) : (
+            <p className="text-gray-500 dark:text-gray-400">
+              {t('finance.analytics.noData.chartMessage')}
+            </p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

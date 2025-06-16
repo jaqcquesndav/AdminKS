@@ -1,11 +1,55 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { 
   Search, Filter, ChevronDown, MoreVertical, Clock, User, Calendar, 
-  Mail, Phone, Building, CheckCircle, XCircle, AlertCircle, ArrowRight
+  Mail, Phone, Building, CheckCircle, XCircle, ArrowRight
 } from 'lucide-react';
 import { useToastContext } from '../../contexts/ToastContext';
+import { pendingCustomersApiService } from '../../services/customers/pendingCustomersApiService';
+import { ConnectionError } from '../../components/common/ConnectionError';
+
+// Status configuration for various pending states
+const statusConfigs = {
+  'pending_verification': {
+    label: 'Pending Verification',
+    color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100',
+    icon: Clock,
+    description: 'Waiting for document verification'
+  },
+  'pending_approval': {
+    label: 'Pending Approval',
+    color: 'bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100',
+    icon: User,
+    description: 'Waiting for admin approval'
+  },
+  'pending_info': {
+    label: 'Pending Information',
+    color: 'bg-purple-100 text-purple-800 dark:bg-purple-800 dark:text-purple-100',
+    icon: Mail,
+    description: 'Additional information requested'
+  },
+  'pending_payment': {
+    label: 'Pending Payment',
+    color: 'bg-orange-100 text-orange-800 dark:bg-orange-800 dark:text-orange-100',
+    icon: Calendar,
+    description: 'Waiting for payment confirmation'
+  }
+};
+
+// Customer type configuration
+const customerTypes = {
+  'pme': {
+    label: 'SME',
+    color: 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100',
+    icon: Building
+  },
+  'financial': {
+    label: 'Financial Institution',
+    color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-800 dark:text-indigo-100',
+    icon: Building
+  }
+};
 
 // Types
 interface PendingCustomer {
@@ -19,6 +63,14 @@ interface PendingCustomer {
   status: 'pending_verification' | 'pending_approval' | 'pending_info' | 'pending_payment';
   createdAt: string;
   notes?: string;
+  billingContactName?: string;
+  billingContactEmail?: string;
+  address?: string;
+  city?: string;
+  country?: string;
+  accountType?: string;
+  tokenAllocation?: number;
+  updatedAt?: string;
 }
 
 export function PendingCustomersPage() {
@@ -26,144 +78,76 @@ export function PendingCustomersPage() {
   const navigate = useNavigate();
   const { showToast } = useToastContext();
   
-  // États
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [customers, setCustomers] = useState<PendingCustomer[]>([]);
   const [filteredCustomers, setFilteredCustomers] = useState<PendingCustomer[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [typeFilter, setTypeFilter] = useState('all');
-  const [sortBy, setSortBy] = useState<keyof PendingCustomer>('createdAt');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [showActionMenu, setShowActionMenu] = useState<string | null>(null);
-  const [showConfirmation, setShowConfirmation] = useState<{ id: string, action: string } | null>(null);
-
-  // Statuts des clients en attente
-  const statusConfigs = {
-    pending_verification: {
-      label: t('customers.pending.status.verification', 'En attente de vérification'),
-      icon: <Clock className="h-4 w-4" />,
-      color: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
-      description: t('customers.pending.statusDescription.verification', 'Vérification des informations en cours')
-    },
-    pending_approval: {
-      label: t('customers.pending.status.approval', 'En attente d\'approbation'),
-      icon: <AlertCircle className="h-4 w-4" />,
-      color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-      description: t('customers.pending.statusDescription.approval', 'Nécessite une approbation manuelle')
-    },
-    pending_info: {
-      label: t('customers.pending.status.info', 'Informations manquantes'),
-      icon: <AlertCircle className="h-4 w-4" />,
-      color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-      description: t('customers.pending.statusDescription.info', 'Informations complémentaires requises')
-    },
-    pending_payment: {
-      label: t('customers.pending.status.payment', 'En attente de paiement'),
-      icon: <AlertCircle className="h-4 w-4" />,
-      color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-      description: t('customers.pending.statusDescription.payment', 'Premier paiement en attente')
+  const [showConfirmation, setShowConfirmation] = useState<{ action: string; id: string } | null>(null);
+  // Define sorting state
+  const [sortBy, setSortBy] = useState<keyof PendingCustomer>('createdAt');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  
+  // Define the fetchPendingCustomers function
+  const fetchPendingCustomers = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Utiliser le service API pour récupérer les clients en attente
+      const pendingCustomers = await pendingCustomersApiService.getPendingCustomers();
+        // Adapter les données si nécessaire pour correspondre à l'interface PendingCustomer
+      const formattedCustomers: PendingCustomer[] = pendingCustomers.map((customer: {
+        id?: string;
+        name: string;
+        email: string;
+        phone?: string;
+        type: 'pme' | 'financial';
+        status: 'pending_verification' | 'pending_approval' | 'pending_info' | 'pending_payment';
+        createdAt?: string;
+        notes?: string;
+        contactName?: string;
+        contactEmail?: string;
+        billingContactName?: string;
+        billingContactEmail?: string;
+      }) => ({
+        id: customer.id || '',
+        name: customer.name,
+        email: customer.email,
+        phone: customer.phone,
+        type: customer.type,
+        status: customer.status,
+        createdAt: customer.createdAt || new Date().toISOString(),
+        notes: customer.notes,
+        // Add contact properties explicitly
+        contactName: customer.contactName || customer.billingContactName,
+        contactEmail: customer.contactEmail || customer.billingContactEmail
+      }));
+      
+      setCustomers(formattedCustomers);
+      setFilteredCustomers(formattedCustomers);
+      setLoading(false);
+    } catch (error) {
+      console.error('Erreur lors du chargement des clients en attente:', error);
+      setError(t('customers.pending.loadError', 'Erreur lors du chargement des clients en attente'));
+      setLoading(false);
     }
-  };
-
-  // Types de clients
-  const customerTypes = {
-    pme: {
-      label: t('customers.types.pme', 'PME'),
-      color: 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200'
-    },
-    financial: {
-      label: t('customers.types.financial', 'Institution Financière'),
-      color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200'
-    }
-  };
-
-  // Chargement des données
+  }, [t]);
+  
   useEffect(() => {
-    const fetchPendingCustomers = async () => {
-      setLoading(true);
-      try {
-        // Simuler un appel API
-        await new Promise(resolve => setTimeout(resolve, 800));
-        
-        // Données mockées
-        const mockPendingCustomers: PendingCustomer[] = [
-          {
-            id: 'pend-1',
-            name: 'TechStart SAS',
-            email: 'contact@techstart.fr',
-            phone: '+33123456789',
-            type: 'pme',
-            contactName: 'Sophie Martin',
-            contactEmail: 'sophie@techstart.fr',
-            status: 'pending_verification',
-            createdAt: '2025-04-15'
-          },
-          {
-            id: 'pend-2',
-            name: 'Crédit Maritime',
-            email: 'integration@credit-maritime.fr',
-            type: 'financial',
-            contactName: 'Jean Dubois',
-            contactEmail: 'j.dubois@credit-maritime.fr',
-            status: 'pending_approval',
-            createdAt: '2025-04-18',
-            notes: 'Vérification d\'identité nécessaire'
-          },
-          {
-            id: 'pend-3',
-            name: 'InnoVert',
-            email: 'contact@innovert.com',
-            phone: '+33789012345',
-            type: 'pme',
-            status: 'pending_info',
-            createdAt: '2025-04-19',
-            notes: 'Doit fournir un KBIS'
-          },
-          {
-            id: 'pend-4',
-            name: 'MicroFinance SA',
-            email: 'operations@microfinance.fr',
-            type: 'financial',
-            contactName: 'Marie Lefevre',
-            contactEmail: 'm.lefevre@microfinance.fr',
-            status: 'pending_payment',
-            createdAt: '2025-04-10'
-          },
-          {
-            id: 'pend-5',
-            name: 'EcoSolutions',
-            email: 'contact@ecosolutions.fr',
-            phone: '+33456789012',
-            type: 'pme',
-            contactName: 'Paul Richard',
-            contactEmail: 'p.richard@ecosolutions.fr',
-            status: 'pending_verification',
-            createdAt: '2025-04-20'
-          }
-        ];
-        
-        setCustomers(mockPendingCustomers);
-        setFilteredCustomers(mockPendingCustomers);
-      } catch (error) {
-        console.error('Erreur lors du chargement des clients en attente:', error);
-        showToast('error', 'Erreur lors du chargement des clients en attente');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
     fetchPendingCustomers();
-  }, [showToast, t]);
+  }, [fetchPendingCustomers]);
 
   // Filtrage et tri des clients
   useEffect(() => {
     let filtered = [...customers];
     
     // Appliquer la recherche
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
+    if (searchQuery) {
+      const term = searchQuery.toLowerCase();
       filtered = filtered.filter(
         customer => 
           customer.name.toLowerCase().includes(term) ||
@@ -197,7 +181,7 @@ export function PendingCustomersPage() {
     });
     
     setFilteredCustomers(filtered);
-  }, [customers, searchTerm, statusFilter, typeFilter, sortBy, sortDirection]);
+  }, [customers, searchQuery, statusFilter, typeFilter, sortBy, sortDirection]);
 
   // Gestion des actions sur un client
   const handleSelectCustomer = (id: string) => {
@@ -212,12 +196,11 @@ export function PendingCustomersPage() {
   const handleApproveCustomer = async (customerId: string) => {
     setLoading(true);
     try {
-      // Simuler un appel API
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await pendingCustomersApiService.approveCustomer(customerId);
       
       const updatedCustomers = customers.filter(c => c.id !== customerId);
       setCustomers(updatedCustomers);
-      showToast('success', 'Le client a été approuvé avec succès');
+      showToast('success', t('customers.pending.approveSuccess', 'Customer has been successfully approved'));
       setShowConfirmation(null);
       
       // Rediriger vers la page de détail du client (maintenant actif)
@@ -225,36 +208,32 @@ export function PendingCustomersPage() {
         navigate(`/customers/detail/${customerId}`);
       }, 500);
     } catch (error) {
-      console.error('Erreur lors de l\'approbation du client:', error);
-      showToast('error', 'Erreur lors de l\'approbation du client');
+      console.error('Error approving customer:', error);
+      showToast('error', t('customers.pending.approveError', 'Error approving customer'));
     } finally {
       setLoading(false);
     }
   };
-
   const handleRejectCustomer = async (customerId: string) => {
     setLoading(true);
     try {
-      // Simuler un appel API
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await pendingCustomersApiService.rejectCustomer(customerId, 'Rejected by admin');
       
       const updatedCustomers = customers.filter(c => c.id !== customerId);
       setCustomers(updatedCustomers);
-      showToast('success', 'Le client a été rejeté avec succès');
+      showToast('success', t('customers.pending.rejectSuccess', 'Le client a été rejeté avec succès'));
       setShowConfirmation(null);
     } catch (error) {
       console.error('Erreur lors du rejet du client:', error);
-      showToast('error', 'Erreur lors du rejet du client');
+      showToast('error', t('customers.pending.rejectError', 'Erreur lors du rejet du client'));
     } finally {
       setLoading(false);
     }
   };
-
   const handleRequestMoreInfo = async (customerId: string) => {
     setLoading(true);
     try {
-      // Simuler un appel API
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await pendingCustomersApiService.requestMoreInfo(customerId, t('customers.pending.moreInfoMessage', 'Additional information is required'));
       
       const updatedCustomers = customers.map(c => {
         if (c.id === customerId) {
@@ -264,11 +243,11 @@ export function PendingCustomersPage() {
       });
       
       setCustomers(updatedCustomers);
-      showToast('success', 'Demande d\'informations complémentaires envoyée');
+      showToast('success', t('customers.pending.requestInfoSuccess', 'Request for additional information sent'));
       setShowConfirmation(null);
     } catch (error) {
-      console.error('Erreur lors de la demande d\'informations:', error);
-      showToast('error', 'Erreur lors de l\'envoi de la demande');
+      console.error('Error requesting more information:', error);
+      showToast('error', t('customers.pending.requestInfoError', 'Error sending information request'));
     } finally {
       setLoading(false);
     }
@@ -280,8 +259,10 @@ export function PendingCustomersPage() {
   };
 
   // Formatage des dates
+  // Format dates based on the current language
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('fr-FR', {
+    const locale = t('common.locale', 'en-US');
+    return new Date(dateString).toLocaleDateString(locale, {
       day: 'numeric',
       month: 'short',
       year: 'numeric'
@@ -431,6 +412,22 @@ export function PendingCustomersPage() {
     );
   };
 
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen py-12 px-4 sm:px-6 lg:px-8">
+        <ConnectionError 
+          title={t('common.connectionError.title', 'Erreur de connexion')}
+          message={t('common.connectionError.message', 'Impossible de charger les données. Vérifiez votre connexion et réessayez.')}
+          onRetry={() => {
+            setError(null);
+            setLoading(true);
+            fetchPendingCustomers();
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -462,8 +459,8 @@ export function PendingCustomersPage() {
               <input
                 type="text"
                 placeholder={t('common.searchPlaceholder', 'Rechercher...') as string}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 pr-3 py-2 w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:border-primary focus:ring-primary"
               />
             </div>
@@ -507,10 +504,64 @@ export function PendingCustomersPage() {
           </div>
         </div>
         
+        <div className="relative">
+          {loading && customers.length > 0 && (
+            <div className="absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-70 dark:bg-opacity-70 flex items-center justify-center z-10">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+            </div>
+          )}
         {/* Liste des clients en attente */}
         {loading && customers.length === 0 ? (
           <div className="p-8 flex justify-center">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+          </div>
+        ) : error ? (
+          <div className="p-8">
+            <ConnectionError 
+              message={error} 
+              retryAction={() => {
+                const fetchPendingCustomers = async () => {
+                  setLoading(true);
+                  setError(null);
+                  try {                    const pendingCustomers = await pendingCustomersApiService.getPendingCustomers();
+                    const formattedCustomers = pendingCustomers.map((customer: {
+                      id?: string;
+                      name: string;
+                      email: string;
+                      phone?: string;
+                      type: 'pme' | 'financial';
+                      status: 'pending_verification' | 'pending_approval' | 'pending_info' | 'pending_payment';
+                      createdAt?: string;
+                      notes?: string;
+                      contactName?: string;
+                      contactEmail?: string;
+                      billingContactName?: string;
+                      billingContactEmail?: string;
+                    }) => ({
+                      id: customer.id || '',
+                      name: customer.name,
+                      email: customer.email,
+                      phone: customer.phone,
+                      type: customer.type,
+                      status: customer.status,
+                      createdAt: customer.createdAt || new Date().toISOString(),
+                      notes: customer.notes,
+                      // Add contact properties explicitly
+                      contactName: customer.contactName || customer.billingContactName,
+                      contactEmail: customer.contactEmail || customer.billingContactEmail
+                    }));
+                    setCustomers(formattedCustomers);
+                    setFilteredCustomers(formattedCustomers);
+                  } catch (err) {
+                    console.error('Erreur lors du chargement des clients en attente:', err);
+                    setError(t('customers.pending.loadError', 'Erreur lors du chargement des clients en attente'));
+                  } finally {
+                    setLoading(false);
+                  }
+                };
+                fetchPendingCustomers();
+              }}
+            />
           </div>
         ) : filteredCustomers.length > 0 ? (
           <div className="overflow-x-auto">
@@ -620,16 +671,14 @@ export function PendingCustomersPage() {
                           )}
                         </div>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap" onClick={() => handleSelectCustomer(customer.id)}>
+                    </td>                    <td className="px-6 py-4 whitespace-nowrap" onClick={() => handleSelectCustomer(customer.id)}>
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${customerTypes[customer.type].color}`}>
-                        <Building className="h-3 w-3 mr-1" />
+                        {React.createElement(customerTypes[customer.type].icon, { className: "h-3 w-3 mr-1" })}
                         {customerTypes[customer.type].label}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap" onClick={() => handleSelectCustomer(customer.id)}>
+                    </td><td className="px-6 py-4 whitespace-nowrap" onClick={() => handleSelectCustomer(customer.id)}>
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusConfigs[customer.status].color}`}>
-                        {statusConfigs[customer.status].icon}
+                        {React.createElement(statusConfigs[customer.status].icon, { className: "h-3 w-3 mr-1" })}
                         <span className="ml-1">{statusConfigs[customer.status].label}</span>
                       </span>
                       <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -680,18 +729,19 @@ export function PendingCustomersPage() {
           <div className="text-center py-12">
             <Clock className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">
-              {searchTerm || statusFilter !== 'all' || typeFilter !== 'all'
+              {searchQuery || statusFilter !== 'all' || typeFilter !== 'all'
                 ? t('customers.pending.noResults', 'Aucun résultat trouvé')
                 : t('customers.pending.empty', 'Aucune demande en attente')}
             </h3>
             <p className="mt-1 text-sm text-gray-500">
-              {searchTerm || statusFilter !== 'all' || typeFilter !== 'all'
+              {searchQuery || statusFilter !== 'all' || typeFilter !== 'all'
                 ? t('customers.pending.tryDifferentSearch', 'Essayez une recherche différente')
                 : t('customers.pending.checkLater', 'Les nouvelles demandes apparaîtront ici.')}
             </p>
           </div>
         )}
-      </div>
+        </div> {/* This closes the div with className="relative" */}
+      </div> {/* This closes the div with className="bg-white dark:bg-gray-800 ..." */}
       
       {/* Détails du client sélectionné */}
       {selectedCustomerId && (
@@ -724,7 +774,7 @@ export function PendingCustomersPage() {
                       className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                     >
                       <CheckCircle className="mr-1.5 h-4 w-4" />
-                      {t('customers.pending.actions.approve', 'Approuver')}
+                      {t('customers.pending.actions.approuver', 'Approuver')}
                     </button>
                     
                     <button

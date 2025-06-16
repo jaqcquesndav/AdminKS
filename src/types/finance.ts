@@ -276,6 +276,8 @@ export interface TokenTransactionFilterParams {
   endDate?: string;
   page?: number;
   limit?: number;
+  sortBy?: string;
+  sortDirection?: 'asc' | 'desc';
 }
 
 export interface PurchaseTokensPayload {

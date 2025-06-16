@@ -24,7 +24,8 @@ export function UsersPage() {
     userSessions,
     loadUserActivities,
     loadUserSessions
-  } = useUsers();  const { user: currentUser } = useAuth();
+  } = useUsers();
+  const { user: currentUser } = useAuth();
   const { showToast } = useToast();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -32,7 +33,7 @@ export function UsersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUserForDetails, setSelectedUserForDetails] = useState<User | null>(null);
 
-  // Fonction pour convertir AuthUser en User (pour corriger l'erreur de type)
+  // Function to convert AuthUser to User (to fix type error)
   const convertAuthToUser = (authUser: typeof currentUser): User | null => {
     if (!authUser) return null;
     
@@ -44,9 +45,9 @@ export function UsersPage() {
       userType: authUser.userType,
       customerAccountId: authUser.customerAccountId,
       avatar: authUser.picture,
-      status: 'active', // Valeur par défaut
-      createdAt: new Date().toISOString(), // Valeur par défaut
-      permissions: [], // Valeur par défaut
+      status: 'active', // Default value
+      createdAt: new Date().toISOString(), // Default value
+      permissions: [], // Default value
     };
   };
 
@@ -70,6 +71,7 @@ export function UsersPage() {
     try {
       if (selectedUser) {
         await updateUser(selectedUser.id, data);
+        showToast('success', t('users.notifications.updated'));
       } else {
         if (!data.name || !data.email || !data.password || !data.role || !data.userType) {
           showToast('error', t('users.errors.missingFields'));
@@ -83,11 +85,13 @@ export function UsersPage() {
           userType: data.userType,
           customerAccountId: data.userType === 'external' ? data.customerAccountId : undefined,
         });
+        showToast('success', t('users.notifications.created'));
       }
       setIsFormOpen(false);
-    } catch (error) {
+    } catch {
       // Error is already handled in useUsers hook with toasts
-      console.error("Error in user form submission:", error);
+      // console.error("Error in user form submission:", error);
+      // No need to show a generic toast here as useUsers hook handles specific error toasts
     }
   };
 
@@ -99,9 +103,11 @@ export function UsersPage() {
         if (selectedUserForDetails?.id === userToDelete.id) {
           setSelectedUserForDetails(null);
         }
-      } catch (error) {
+        showToast('success', t('users.notifications.deleted'));
+      } catch {
         // Error is already handled in useUsers hook with toasts
-        console.error("Error deleting user:", error);
+        // console.error("Error deleting user:", error);
+        // No need to show a generic toast here as useUsers hook handles specific error toasts
       }
     }
   };
@@ -112,19 +118,23 @@ export function UsersPage() {
         await terminateUserSession(selectedUserForDetails.id, sessionId);
         showToast('success', t('users.notifications.sessionTerminated'));
         // Optionally, refresh sessions data for the user
-      } catch (error) {
+        loadUserSessions(selectedUserForDetails.id); // Refresh sessions
+      } catch {
         // Error already handled in terminateUserSession with toast
-        console.error("Error terminating session:", error);
+        // console.error("Error terminating session:", error);
+        // No need to show a generic toast here as useUsers hook handles specific error toasts
       }
     }
-  };  // Handler for viewing user details
+  };
+  
+  // Handler for viewing user details
   const handleViewUserDetails = async (user: User) => {
     setSelectedUserForDetails(user);
     
     try {
       await loadUserActivities(user.id);
       await loadUserSessions(user.id);
-    } catch (error) {
+    } catch (error: unknown) { // Changed to (error: unknown)
       console.error('Error loading user details:', error);
       showToast('error', t('users.errors.loadDetailsFailed'));
     }
@@ -164,20 +174,22 @@ export function UsersPage() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder={t('users.search.placeholder')}
+              placeholder={t('users.search.placeholder') as string}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm focus:border-primary focus:ring-primary dark:focus:border-primary dark:focus:ring-primary-light"
             />
           </div>
-        </div>        <UsersTable
+        </div>
+        <UsersTable
           users={filteredUsers}
           onEdit={handleEditUser}
-          onDelete={setUserToDelete}
+          onDelete={setUserToDelete} // Changed from handleDeleteUser to setUserToDelete to open modal
           onSelect={handleViewUserDetails}
           currentUser={currentUser}
         />
-      </div>      {selectedUserForDetails && (
+      </div>
+      {selectedUserForDetails && (
         <UserDetailsModal
           user={selectedUserForDetails}
           isOpen={true}
@@ -186,7 +198,8 @@ export function UsersPage() {
           sessions={userSessions}
           onTerminateSession={handleTerminateSession}
         />
-      )}      {isFormOpen && (
+      )}
+      {isFormOpen && (
         <UserForm
           user={selectedUser || undefined}
           onSubmit={handleSubmit}

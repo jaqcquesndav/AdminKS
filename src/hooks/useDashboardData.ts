@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAdminApi } from '../services/api/adminApiService';
 import { UserStatistics } from '../types/user';
 import { SystemHealthSnapshot, SystemMetrics } from '../types/system';
@@ -82,6 +82,8 @@ const initialTokenStats: TokenStatistics = {
   totalTokensAllocated: 0,
   totalTokensUsed: 0,
   totalTokensPurchased: 0,
+  totalTokenCost: 0, // Ajout du coût total des tokens
+  tokenUsageGrowth: 0, // Ajout de la croissance d'utilisation des tokens
   tokenUsageByPeriod: [],
   tokenUsageByCustomerType: {
     pme: 0,
@@ -96,6 +98,7 @@ export const useDashboardData = (userRole: string) => {
   const adminApi = useAdminApi();
   const { showToast } = useToastContext();
   const [isRetrying, setIsRetrying] = useState(false);
+  const initialLoadPending = useRef(true); // Nouveau ref
   const [userStats, setUserStats] = useState<UserStatistics>(initialUserStats);
   const [systemHealth, setSystemHealth] = useState<SystemHealthSnapshot>(initialSystemHealth);
   const [revenueStats, setRevenueStats] = useState<RevenueStatistics>(initialRevenueStats);
@@ -105,8 +108,13 @@ export const useDashboardData = (userRole: string) => {
   const [pendingPayments] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
   const fetchData = useCallback(async (isRetry = false) => {
+    // Vérifier si un chargement initial est déjà en cours et que ce n'est pas un retry
+    if (initialLoadPending.current && !isRetry && isLoading) {
+      console.log('Dashboard data fetch skipped: initial load already in progress.');
+      return;
+    }
+
     if (isRetry) {
       setIsRetrying(true);
     } else {
@@ -115,6 +123,10 @@ export const useDashboardData = (userRole: string) => {
     }
 
     try {
+      // Si c'est le premier chargement (pas un retry), marquer que le chargement initial n'est plus en attente
+      if (!isRetry) {
+        initialLoadPending.current = false;
+      }
       // Tenter de se connecter au backend, avec un timeout
       let dashboardStatsResponse: { data: DashboardStats };
       try {
@@ -166,8 +178,7 @@ export const useDashboardData = (userRole: string) => {
         throw new Error('Aucune donnée reçue du serveur.');
       }
     } catch (err) {
-      console.error('Erreur lors du chargement des données du tableau de bord:', err);
-      setError(err instanceof Error ? err.message : 'Une erreur inconnue s\'est produite');
+      console.error('Erreur lors du chargement des données du tableau de bord:', err);      setError(err instanceof Error ? err.message : 'Une erreur inconnue s\'est produite');
       
       if (!isRetry) {
         showToast('error', `Erreur lors du chargement des données: ${err instanceof Error ? err.message : 'Erreur inconnue'}`);
@@ -176,7 +187,7 @@ export const useDashboardData = (userRole: string) => {
       setIsLoading(false);
       setIsRetrying(false);
     }
-  }, [adminApi, showToast]);
+  }, [adminApi, showToast, isLoading]);
 
   // Fonction pour réessayer de charger les données
   const retry = useCallback(() => {
@@ -185,8 +196,11 @@ export const useDashboardData = (userRole: string) => {
 
   // Effet pour charger les données au montage du composant
   useEffect(() => {
-    fetchData();
-  }, [fetchData, userRole]);
+    // Ne lance le fetch que si le chargement initial est en attente
+    if (initialLoadPending.current) {
+      fetchData();
+    }
+  }, [fetchData, userRole]); // userRole est conservé car les données peuvent dépendre du rôle
 
   // Retourner les données et fonctions d'accès
   return {

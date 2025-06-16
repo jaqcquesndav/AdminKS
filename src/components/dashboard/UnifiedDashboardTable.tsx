@@ -26,11 +26,11 @@ export function UnifiedDashboardTable({
   showFilters = true,
   limit
 }: UnifiedDashboardTableProps) {
-  const { t } = useTranslation();
-  const { 
+  const { t } = useTranslation();  const { 
     items, 
     totalItems, 
     isLoading, 
+    error,
     filters, 
     setFilters 
   } = useUnifiedDashboardTable();
@@ -292,8 +292,8 @@ export function UnifiedDashboardTable({
                 {t('common.actions', 'Actions')}
               </th>
             </tr>
-          </thead>
-          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+          </thead>          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+            {/* État de chargement */}
             {isLoading ? (
               // État de chargement
               Array.from({ length: 5 }).map((_, index) => (
@@ -321,6 +321,25 @@ export function UnifiedDashboardTable({
                   </td>
                 </tr>
               ))
+            ) : error ? (
+              // État d'erreur
+              <tr>
+                <td colSpan={7} className="px-6 py-4 text-center">
+                  <div className="flex flex-col items-center justify-center text-red-500 dark:text-red-400">
+                    <svg className="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p className="text-base font-medium">{t('common.errorOccurred', 'Une erreur est survenue')}</p>
+                    <p className="text-sm mt-1">{error instanceof Error ? error.message : String(error)}</p>
+                    <button 
+                      onClick={() => window.location.reload()} 
+                      className="mt-4 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark transition-colors"
+                    >
+                      {t('common.retry', 'Réessayer')}
+                    </button>
+                  </div>
+                </td>
+              </tr>
             ) : items.length === 0 ? (
               // État vide
               <tr>

@@ -60,10 +60,10 @@ export function AvatarUpload({ currentAvatar, onAvatarChange }: AvatarUploadProp
             size="sm"
             onClick={() => fileInputRef.current?.click()}
           >
-            {t('settings.profile.avatar.change')}
+            {t('settings.profile.avatarDetails.change')}
           </Button>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            {t('settings.profile.avatar.requirements')}
+            {t('settings.profile.avatarDetails.requirements')}
           </p>
         </div>
       </div>
