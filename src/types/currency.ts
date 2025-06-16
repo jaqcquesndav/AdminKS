@@ -65,6 +65,14 @@ export interface CurrencyPreferences {
 }
 
 /**
+ * Represents a manually set exchange rate by the user.
+ */
+export interface ManualExchangeRate {
+  currency: SupportedCurrency;
+  rate: number;
+}
+
+/**
  * Configuration initiale des devises par défaut
  */
 export const DEFAULT_CURRENCY_INFO: Record<SupportedCurrency, CurrencyInfo> = {

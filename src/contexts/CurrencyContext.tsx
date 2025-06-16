@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { SupportedCurrency, ExchangeRateConfig } from '../types/currency';
-import { formatCurrency, convertCurrency, getCurrentExchangeRates, updateExchangeRates } from '../utils/currency';
+import { formatCurrency, convertCurrency, getCurrentExchangeRates, updateExchangeRates, DEFAULT_EXCHANGE_RATES } from '../utils/currency'; // Added DEFAULT_EXCHANGE_RATES
 import { CURRENCY_STORAGE_KEY, SUPPORTED_CURRENCIES } from '../constants/currencyConstants';
 
 type FormatOptions = Intl.NumberFormatOptions & {
@@ -16,7 +16,8 @@ export type CurrencyContextType = {
   formatInCurrency: (amount: number, targetCurrency: SupportedCurrency, options?: FormatOptions) => string;
   exchangeRates: Record<SupportedCurrency, number>;
   lastRatesUpdate: string;
-  setUserExchangeRate: (targetCurrency: SupportedCurrency, rate: number) => void; // Added
+  setUserExchangeRate: (targetCurrency: SupportedCurrency, rate: number) => void;
+  removeUserExchangeRate: (targetCurrency: SupportedCurrency) => void; // Added
   baseCurrency: SupportedCurrency; // Added
 };
 
@@ -65,6 +66,37 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     setExchangeRatesConfig(getCurrentExchangeRates()); // Re-fetch from storage to reflect update
   }, [exchangeRatesConfig]);
 
+  // Fonction pour supprimer un taux de change défini par l'utilisateur et revenir au taux par défaut
+  const removeUserExchangeRate = useCallback((targetCurrency: SupportedCurrency) => {
+    if (targetCurrency === exchangeRatesConfig.baseCurrency) {
+      console.warn(`Cannot remove exchange rate for the base currency ${exchangeRatesConfig.baseCurrency}`);
+      return;
+    }
+
+    // Calculate the default rate for targetCurrency relative to the current baseCurrency
+    const defaultTargetRateInUSD = DEFAULT_EXCHANGE_RATES.rates[targetCurrency];
+    const currentBaseCurrencyRateInUSD = exchangeRatesConfig.baseCurrency === 'USD' ? 1 : DEFAULT_EXCHANGE_RATES.rates[exchangeRatesConfig.baseCurrency];
+
+    if (defaultTargetRateInUSD === undefined || currentBaseCurrencyRateInUSD === undefined || currentBaseCurrencyRateInUSD === 0) {
+      console.error(`Could not determine default rate for ${targetCurrency} relative to ${exchangeRatesConfig.baseCurrency}. Default rates might be missing.`);
+      // Fallback: remove the rate key, hoping the system handles missing rates gracefully or it gets repopulated.
+      // This is not ideal. A better fallback might be to set it to 1 or some other placeholder if critical.
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { [targetCurrency]: _removedRate, ...remainingRates } = exchangeRatesConfig.rates; // Renamed _ to _removedRate
+      updateExchangeRates(remainingRates, new Date().toISOString());
+      setExchangeRatesConfig(getCurrentExchangeRates());
+      return;
+    }
+    
+    const defaultTargetRateInCurrentBase = defaultTargetRateInUSD / currentBaseCurrencyRateInUSD;
+
+    // Now use setUserExchangeRate to set this default rate
+    // This ensures persistence and state update through the same mechanism
+    setUserExchangeRate(targetCurrency, defaultTargetRateInCurrentBase);
+    console.log(`User exchange rate for ${targetCurrency} removed, reset to default value: ${defaultTargetRateInCurrentBase}`);
+
+  }, [exchangeRatesConfig, setUserExchangeRate]);
+
 
   // Surveiller les changements dans les taux de change globaux (e.g., from an API or localStorage)
   useEffect(() => {
@@ -99,37 +131,35 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   // Formatter un montant dans la devise active
   const format = useCallback((amount: number, options?: FormatOptions): string => {
     return formatCurrency(amount, currency, options);
-  }, [currency]); // Added currency to dependency array
+  }, [currency]); 
   
   // Convertir un montant d'une devise à une autre en utilisant les taux actuels
   const convert = useCallback((amount: number, fromCurrency: SupportedCurrency, toCurrency: SupportedCurrency = currency): number => {
     if (fromCurrency === toCurrency) return amount;
     
-    const rates = exchangeRatesConfig.rates; // Use current rates from state
+    const rates = exchangeRatesConfig.rates; 
 
     try {
-      // Assumes all rates are relative to the baseCurrency (e.g., USD)
       const fromRate = fromCurrency === exchangeRatesConfig.baseCurrency ? 1 : rates[fromCurrency];
       const toRate = toCurrency === exchangeRatesConfig.baseCurrency ? 1 : rates[toCurrency];
 
-      if (!fromRate || !toRate) {
-        console.warn(`Exchange rate not found for ${fromCurrency} or ${toCurrency}. Falling back to default conversion.`);
-        return convertCurrency(amount, fromCurrency, toCurrency); // Fallback to util's default if rate missing
+      if (fromRate === undefined || toRate === undefined || fromRate === 0) {
+        console.warn(`Exchange rate not found or invalid for ${fromCurrency} or ${toCurrency} (fromRate: ${fromRate}, toRate: ${toRate}). Falling back to default util conversion.`);
+        return convertCurrency(amount, fromCurrency, toCurrency); 
       }
       
       const amountInBase = amount / fromRate;
       return amountInBase * toRate;
     } catch (error) {
       console.warn('Erreur lors de la conversion avec les taux dynamiques', error);
-      // Fallback sur la méthode standard
       return convertCurrency(amount, fromCurrency, toCurrency);
     }
-  }, [currency, exchangeRatesConfig]); // Added dependencies
+  }, [currency, exchangeRatesConfig]); 
   
   // Formatter un montant dans une devise spécifique
   const formatInCurrency = useCallback((amount: number, targetCurrency: SupportedCurrency, options?: FormatOptions): string => {
     return formatCurrency(amount, targetCurrency, options);
-  }, []); // No dependencies needed as formatCurrency is a stable import
+  }, []); 
 
   const contextValue = useMemo(() => ({
     currency,
@@ -141,16 +171,18 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     exchangeRates,
     lastRatesUpdate: exchangeRatesConfig.lastUpdated,
     setUserExchangeRate,
+    removeUserExchangeRate, // Added
     baseCurrency
   }), [
     currency, 
     setCurrency, 
-    format, // Now stable due to useCallback
-    convert, // Now stable due to useCallback
-    formatInCurrency, // Now stable due to useCallback
+    format, 
+    convert, 
+    formatInCurrency, 
     exchangeRates, 
-    exchangeRatesConfig.lastUpdated,
+    exchangeRatesConfig.lastUpdated, 
     setUserExchangeRate,
+    removeUserExchangeRate, // Added
     baseCurrency
   ]);
 

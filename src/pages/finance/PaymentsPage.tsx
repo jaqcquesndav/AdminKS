@@ -1,201 +1,115 @@
-import { useState, useEffect } from 'react';
-import { Search, Filter, Download, Eye, PlusCircle, CheckCircle, XCircle, AlertTriangle, Clock, MoreHorizontal } from 'lucide-react';
-import { useToastContext } from '../../contexts/ToastContext';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Search, Download, Eye, PlusCircle, CheckCircle, XCircle, AlertTriangle, Clock } from 'lucide-react';
 import { useCurrencySettings } from '../../hooks/useCurrencySettings';
-import type { SupportedCurrency } from '../../types/currency'; // Import SupportedCurrency
-
-// Types pour les paiements
-interface Payment {
-  id: string;
-  customerId: string;
-  customerName: string;
-  amount: number; // Assumed to be in the currency specified by the `currency` field
-  currency: string; // Original currency of the payment, should be a SupportedCurrency
-  status: 'completed' | 'pending' | 'failed' | 'refunded';
-  paymentMethod: 'card' | 'bank_transfer' | 'cash' | 'paypal';
-  date: string;
-  invoiceNumber: string;
-  description: string;
-  metadata?: Record<string, unknown>;
-}
+import type { SupportedCurrency } from '../../types/currency';
+import { usePayments } from '../../hooks/usePayments';
+import type { Payment, TransactionFilterParams, TransactionStatus, PaymentMethod } from '../../types/finance'; // Added PaymentMethod
+import { useToast } from '../../hooks/useToast';
 
 export function PaymentsPage() {
-  const { showToast } = useToastContext();
-  const { activeCurrency, format, convert, baseCurrency } = useCurrencySettings();
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { showToast } = useToast();
+  const { activeCurrency, formatCurrency, convert, baseCurrency } = useCurrencySettings(); 
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [filterMethod, setFilterMethod] = useState<string>('all');
+  const [filterMethod, setFilterMethod] = useState<string>('all'); // This string should align with PaymentMethod values or 'all'
   const [filterDateRange, setFilterDateRange] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  const initialFilterParams: TransactionFilterParams = useMemo(() => ({
+    page: currentPage,
+    limit: itemsPerPage, // Changed pageSize to limit
+  }), [currentPage, itemsPerPage]);
+
+  const { 
+    payments, 
+    isLoading, 
+    error, 
+    pagination, 
+    fetchPayments,
+  } = usePayments(initialFilterParams);
   
-  // This state is used in handleAddPayment and will be used when PaymentFormModal is implemented
-  const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
+  const [displayPayments, setDisplayPayments] = useState<Payment[]>([]);
 
   useEffect(() => {
-    // Simuler un appel API pour récupérer la liste des paiements
-    const fetchPayments = async () => {
-      setLoading(true);
-      try {
-        // Simule une requête API avec données mockées
-        await new Promise(resolve => setTimeout(resolve, 800));
-          const mockPayments: Payment[] = [
-          {
-            id: 'pay_123456',
-            customerId: '123',
-            customerName: 'Wanzo Tech',
-            amount: 599.99,
-            currency: 'USD', // Assuming mock data amounts are in USD (baseCurrency)
-            status: 'completed',
-            paymentMethod: 'card',
-            date: '2023-04-15',
-            invoiceNumber: 'INV-2023-0042',
-            description: 'Abonnement Enterprise - Mai 2023',
-          },
-          {
-            id: 'pay_123457',
-            customerId: '456',
-            customerName: 'Exoscode',
-            amount: 199.99,
-            currency: 'USD', // Assuming mock data amounts are in USD (baseCurrency)
-            status: 'completed',
-            paymentMethod: 'bank_transfer',
-            date: '2023-04-02',
-            invoiceNumber: 'INV-2023-0041',
-            description: 'Abonnement Professional - Mai 2023',
-          },
-          {
-            id: 'pay_123458',
-            customerId: '789',
-            customerName: 'Banque Centrale',
-            amount: 1299.99,
-            currency: 'USD', // Assuming mock data amounts are in USD (baseCurrency)
-            status: 'pending',
-            paymentMethod: 'bank_transfer',
-            date: '2023-04-19',
-            invoiceNumber: 'INV-2023-0043',
-            description: 'Abonnement Financial Institution - Mai 2023',
-          },
-          {
-            id: 'pay_123459',
-            customerId: '101',
-            customerName: 'Startup Innovation',
-            amount: 49.99,
-            currency: 'USD', // Assuming mock data amounts are in USD (baseCurrency)
-            status: 'failed',
-            paymentMethod: 'card',
-            date: '2023-04-10',
-            invoiceNumber: 'INV-2023-0040',
-            description: 'Abonnement Starter - Mai 2023',
-          },
-          {
-            id: 'pay_123460',
-            customerId: '112',
-            customerName: 'Crédit Mutuel',
-            amount: 1299.99,
-            currency: 'USD', // Assuming mock data amounts are in USD (baseCurrency)
-            status: 'refunded',
-            paymentMethod: 'card',
-            date: '2023-04-05',
-            invoiceNumber: 'INV-2023-0039',
-            description: 'Abonnement Financial Institution - Mai 2023',
-          },
-          {
-            id: 'pay_123461',
-            customerId: '145',
-            customerName: 'Digisave',
-            amount: 199.99,
-            currency: 'USD', // Assuming mock data amounts are in USD (baseCurrency)
-            status: 'completed',
-            paymentMethod: 'paypal',
-            date: '2023-04-12',
-            invoiceNumber: 'INV-2023-0038',
-            description: 'Abonnement Professional - Mai 2023',
-          },
-          {
-            id: 'pay_123462',
-            customerId: '178',
-            customerName: 'Fintech Solutions',
-            amount: 599.99,
-            currency: 'USD', // Assuming mock data amounts are in USD (baseCurrency)
-            status: 'completed',
-            paymentMethod: 'bank_transfer',
-            date: '2023-04-08',
-            invoiceNumber: 'INV-2023-0037',
-            description: 'Abonnement Enterprise - Mai 2023',
-          },
-        ];
-        
-        setPayments(mockPayments);
-      } catch (error) {
-        console.error('Erreur lors du chargement des paiements:', error);
-        showToast('error', 'Erreur lors du chargement des paiements');
-      } finally {
-        setLoading(false);
+    setDisplayPayments(payments);
+  }, [payments]);
+
+  const mapDateRangeToParams = (dateRange: string): { startDate?: string; endDate?: string } => {
+    const now = new Date();
+    let startDate, endDate;
+
+    switch (dateRange) {
+      case 'today': { 
+        startDate = new Date(now.setHours(0, 0, 0, 0)).toISOString().split('T')[0];
+        endDate = new Date(now.setHours(23, 59, 59, 999)).toISOString().split('T')[0];
+        break;
       }
+      case 'this_week': { 
+        const firstDayOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+        firstDayOfWeek.setHours(0,0,0,0);
+        startDate = firstDayOfWeek.toISOString().split('T')[0];
+        endDate = new Date().toISOString().split('T')[0]; 
+        break;
+      }
+      case 'this_month': { 
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+        break;
+      }
+      default:
+        return {};
+    }
+    return { startDate, endDate };
+  };
+  
+  useEffect(() => {
+    const { startDate, endDate } = mapDateRangeToParams(filterDateRange);
+    const params: TransactionFilterParams = {
+      page: currentPage,
+      limit: itemsPerPage, // Changed pageSize to limit
+      search: searchTerm || undefined, // Changed query to search
+      status: filterStatus !== 'all' ? filterStatus as TransactionStatus : undefined,
+      paymentMethod: filterMethod !== 'all' ? filterMethod as PaymentMethod : undefined, // Corrected cast
+      startDate,
+      endDate,
     };
-    
-    fetchPayments();
-  }, [showToast]);
+    fetchPayments(params);
+  }, [searchTerm, filterStatus, filterMethod, filterDateRange, currentPage, itemsPerPage, fetchPayments]);
+
 
   const handleViewPayment = (paymentId: string) => {
-    // Naviguer vers les détails du paiement
     console.log(`Afficher les détails du paiement: ${paymentId}`);
+    showToast('info', `Affichage des détails pour le paiement ${paymentId} (simulation).`);
   };
 
   const handleDownloadInvoice = (invoiceNumber: string) => {
-    // Télécharger la facture
     console.log(`Télécharger la facture: ${invoiceNumber}`);
-    showToast('success', `La facture ${invoiceNumber} a été téléchargée`);
+    showToast('success', `La facture ${invoiceNumber} a été téléchargée (simulation).`);
   };
 
-  const handleRefundPayment = (paymentId: string) => {
-    // Simuler un remboursement
-    setPayments(pays => pays.map(pay => 
-      pay.id === paymentId 
-        ? { ...pay, status: 'refunded' } 
-        : pay
-    ));
-    showToast('success', 'Le paiement a été remboursé avec succès');
-  };
+  const handleRefundPayment = useCallback(async (paymentId: string) => {
+    console.log(`Remboursement du paiement ${paymentId} (simulation)`);
+    setDisplayPayments(prev => prev.map(p => p.id === paymentId ? {...p, status: 'canceled' as Payment['status'] } : p));
+    showToast('success', 'Le paiement a été marqué comme annulé (simulation pour remboursement). Mise à jour en cours...');
+    
+    const { startDate, endDate } = mapDateRangeToParams(filterDateRange);
+    fetchPayments({
+      page: currentPage,
+      limit: itemsPerPage, // Changed pageSize to limit
+      search: searchTerm || undefined, // Changed query to search
+      status: filterStatus !== 'all' ? filterStatus as TransactionStatus : undefined,
+      paymentMethod: filterMethod !== 'all' ? filterMethod as PaymentMethod : undefined, // Corrected cast
+      startDate,
+      endDate,
+    });
+  }, [fetchPayments, showToast, currentPage, itemsPerPage, searchTerm, filterStatus, filterMethod, filterDateRange]);
 
   const handleAddPayment = () => {
-    setShowAddPaymentModal(true);
+    console.log('Attempting to add a new payment. Modal not yet implemented.');
+    showToast('info', 'La fonctionnalité d\'ajout de paiement sera bientôt disponible.'); // Escaped single quote
   };
-
-  const filteredPayments = payments.filter(payment => {
-    // Filtre par terme de recherche
-    const matchesSearch = searchTerm === '' || 
-      payment.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.id.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    // Filtre par statut
-    const matchesStatus = filterStatus === 'all' || payment.status === filterStatus;
-    
-    // Filtre par méthode de paiement
-    const matchesMethod = filterMethod === 'all' || payment.paymentMethod === filterMethod;
-    
-    // Filtre par plage de dates
-    let matchesDateRange = true;
-    const paymentDate = new Date(payment.date);
-    const now = new Date();
-    
-    if (filterDateRange === 'today') {
-      const today = new Date();
-      matchesDateRange = paymentDate.toDateString() === today.toDateString();
-    } else if (filterDateRange === 'this_week') {
-      const startOfWeek = new Date(now);
-      startOfWeek.setDate(now.getDate() - now.getDay());
-      startOfWeek.setHours(0, 0, 0, 0);
-      matchesDateRange = paymentDate >= startOfWeek;
-    } else if (filterDateRange === 'this_month') {
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      matchesDateRange = paymentDate >= startOfMonth;
-    }
-    
-    return matchesSearch && matchesStatus && matchesMethod && matchesDateRange;
-  });
 
   const statusBadgeClass = (status: string) => {
     switch (status) {
@@ -204,11 +118,16 @@ export function PaymentsPage() {
       case 'pending':
         return 'bg-yellow-100 text-yellow-800';
       case 'failed':
+      case 'canceled':
         return 'bg-red-100 text-red-800';
-      case 'refunded':
-        return 'bg-gray-100 text-gray-800';
+      case 'verified':
+        return 'bg-blue-100 text-blue-800';
+      case 'rejected':
+        return 'bg-pink-100 text-pink-800';
       default:
-        return 'bg-gray-100 text-gray-800';
+        if (status === 'refunded') return 'bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-200';
+        if (status === 'succeeded') return 'bg-green-100 text-green-800';
+        return 'bg-gray-200 text-gray-700';
     }
   };
 
@@ -219,10 +138,15 @@ export function PaymentsPage() {
       case 'pending':
         return <Clock className="w-3 h-3 mr-1" />;
       case 'failed':
+      case 'canceled':
         return <XCircle className="w-3 h-3 mr-1" />;
-      case 'refunded':
-        return <AlertTriangle className="w-3 h-3 mr-1" />;
+      case 'verified':
+        return <CheckCircle className="w-3 h-3 mr-1 text-blue-500" />;
+      case 'rejected':
+        return <XCircle className="w-3 h-3 mr-1 text-pink-500" />;
       default:
+        if (status === 'refunded') return <AlertTriangle className="w-3 h-3 mr-1" />;
+        if (status === 'succeeded') return <CheckCircle className="w-3 h-3 mr-1" />;
         return null;
     }
   };
@@ -235,15 +159,22 @@ export function PaymentsPage() {
         return 'En attente';
       case 'failed':
         return 'Échoué';
-      case 'refunded':
-        return 'Remboursé';
+      case 'canceled':
+        return 'Annulé';
+      case 'verified':
+        return 'Vérifié';
+      case 'rejected':
+        return 'Rejeté';
       default:
-        return status;
+        if (status === 'refunded') return 'Remboursé';
+        if (status === 'succeeded') return 'Réussi';
+        return status.charAt(0).toUpperCase() + status.slice(1);
     }
   };
 
-  const getPaymentMethodLabel = (method: string) => {
-    switch (method) {
+  const getPaymentMethodLabel = (method?: string) => {
+    if (!method) return 'N/A';
+    switch (method.toLowerCase()) {
       case 'card':
         return 'Carte bancaire';
       case 'bank_transfer':
@@ -252,35 +183,55 @@ export function PaymentsPage() {
         return 'Espèces';
       case 'paypal':
         return 'PayPal';
+      case 'stripe':
+        return 'Stripe';
+      case 'manual':
+        return 'Manuel';
+      case 'mobile_money':
+        return 'Mobile Money';
+      case 'crypto':
+        return 'Crypto';
+      case 'check':
+        return 'Chèque';
+      case 'other':
+        return 'Autre';
       default:
-        return method;
+        return method.charAt(0).toUpperCase() + method.slice(1);
     }
   };
 
-  // Helper function to format payment amounts
-  const formatPaymentAmount = (amount: number, currency: string) => {
-    const convertedAmount = convert(amount, currency as SupportedCurrency, activeCurrency);
-    return format(convertedAmount); // format from useCurrencySettings implicitly uses activeCurrency
+  const formatDisplayAmount = (amount: number, currency: SupportedCurrency) => {
+    if (currency !== activeCurrency) {
+      const convertedAmount = convert(amount, currency, activeCurrency);
+      return formatCurrency(convertedAmount, activeCurrency);
+    }
+    return formatCurrency(amount, currency);
   };
 
-  // Statistiques des paiements
-  const totalRevenue = filteredPayments
-    .filter(p => p.status === 'completed')
-    .reduce((sum, p) => sum + convert(p.amount, p.currency as SupportedCurrency, baseCurrency), 0);
+  const totalRevenue = useMemo(() => displayPayments
+    .filter(p => p.status === 'completed' )
+    .reduce((sum, p) => sum + convert(p.amount, p.currency as SupportedCurrency, baseCurrency), 0), [displayPayments, convert, baseCurrency]);
   
-  const pendingRevenue = filteredPayments
+  const pendingRevenue = useMemo(() => displayPayments
     .filter(p => p.status === 'pending')
-    .reduce((sum, p) => sum + convert(p.amount, p.currency as SupportedCurrency, baseCurrency), 0);
+    .reduce((sum, p) => sum + convert(p.amount, p.currency as SupportedCurrency, baseCurrency), 0), [displayPayments, convert, baseCurrency]);
   
-  const refundedAmount = filteredPayments
-    .filter(p => p.status === 'refunded')
-    .reduce((sum, p) => sum + convert(p.amount, p.currency as SupportedCurrency, baseCurrency), 0);
+  const refundedAmount = useMemo(() => displayPayments
+    .filter(p => p.status === 'canceled')
+    .reduce((sum, p) => sum + convert(p.amount, p.currency as SupportedCurrency, baseCurrency), 0), [displayPayments, convert, baseCurrency]);
+
+  if (isLoading && displayPayments.length === 0) {
+    return <div className="flex justify-center items-center h-64"><div className="loader"></div>Chargement des paiements...</div>;
+  }
+
+  if (error) {
+    return <div className="text-red-500 p-4">Erreur: {error.message}</div>;
+  }
 
   return (
-    <div className="space-y-6">
-      {/* Header with search and add button */}
+    <div className="space-y-6 p-4 md:p-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <h1 className="text-2xl font-bold">Gestion des Paiements</h1>
+        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Gestion des Paiements</h1>
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -288,58 +239,65 @@ export function PaymentsPage() {
             </div>
             <input
               type="text"
-              placeholder="Rechercher un paiement..."
+              placeholder="Rechercher (ID, client, facture...)"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 w-full"
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+              className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 w-full sm:w-64"
             />
           </div>
           <button
             onClick={handleAddPayment}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark"
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-dark"
           >
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Ajouter un paiement manuel
+            <PlusCircle className="mr-2 h-5 w-5" />
+            Nouveau Paiement
           </button>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3">
-        <div className="flex items-center">
-          <Filter className="h-4 w-4 text-gray-500 mr-2" />
-          <span className="text-sm text-gray-600 dark:text-gray-400">Filtres:</span>
-        </div>
-        
-        <div className="space-x-2 flex flex-wrap gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label htmlFor="filterStatus" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Statut</label>
           <select
+            id="filterStatus"
             value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1"
+            onChange={(e) => { setFilterStatus(e.target.value); setCurrentPage(1);}}
+            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
           >
             <option value="all">Tous les statuts</option>
-            <option value="completed">Complétés</option>
+            <option value="completed">Complété</option>
             <option value="pending">En attente</option>
-            <option value="failed">Échoués</option>
-            <option value="refunded">Remboursés</option>
+            <option value="failed">Échoué</option>
+            <option value="canceled">Annulé</option>
+            <option value="verified">Vérifié</option>
+            <option value="rejected">Rejeté</option>
           </select>
-          
+        </div>
+        <div>
+          <label htmlFor="filterMethod" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Méthode</label>
           <select
+            id="filterMethod"
             value={filterMethod}
-            onChange={(e) => setFilterMethod(e.target.value)}
-            className="text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1"
+            onChange={(e) => { setFilterMethod(e.target.value); setCurrentPage(1);}}
+            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
           >
             <option value="all">Toutes les méthodes</option>
             <option value="card">Carte bancaire</option>
-            <option value="bank_transfer">Virement bancaire</option>
+            <option value="bank_transfer">Virement</option>
             <option value="cash">Espèces</option>
-            <option value="paypal">PayPal</option>
+            <option value="mobile_money">Mobile Money</option>
+            <option value="crypto">Crypto</option>
+            <option value="check">Chèque</option>
+            <option value="other">Autre</option>
           </select>
-          
+        </div>
+        <div>
+          <label htmlFor="filterDateRange" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Date</label>
           <select
+            id="filterDateRange"
             value={filterDateRange}
-            onChange={(e) => setFilterDateRange(e.target.value)}
-            className="text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1"
+            onChange={(e) => { setFilterDateRange(e.target.value); setCurrentPage(1);}}
+            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
           >
             <option value="all">Toutes les dates</option>
             <option value="today">Aujourd'hui</option>
@@ -349,189 +307,134 @@ export function PaymentsPage() {
         </div>
       </div>
 
-      {/* Payment stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4 flex items-center">
-          <div className="flex-shrink-0 bg-green-100 dark:bg-green-900 rounded-full p-3">
-            <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
-          </div>
-          <div className="ml-4">
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Revenus confirmés</h3>
-            <p className="mt-1 text-lg font-semibold text-gray-900 dark:text-white">
-              {format(convert(totalRevenue, baseCurrency, activeCurrency))} {/* Convert stats to active and format */}
-            </p>
-          </div>
+        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Total des Revenus</h3>
+          <p className="mt-1 text-2xl font-semibold text-green-600 dark:text-green-400">{formatCurrency(totalRevenue, baseCurrency)}</p>
         </div>
-        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4 flex items-center">
-          <div className="flex-shrink-0 bg-yellow-100 dark:bg-yellow-900 rounded-full p-3">
-            <Clock className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
-          </div>
-          <div className="ml-4">
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Paiements en attente</h3>
-            <p className="mt-1 text-lg font-semibold text-gray-900 dark:text-white">
-              {format(convert(pendingRevenue, baseCurrency, activeCurrency))} {/* Convert stats to active and format */}
-            </p>
-          </div>
+        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Revenus en Attente</h3>
+          <p className="mt-1 text-2xl font-semibold text-yellow-600 dark:text-yellow-400">{formatCurrency(pendingRevenue, baseCurrency)}</p>
         </div>
-        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4 flex items-center">
-          <div className="flex-shrink-0 bg-red-100 dark:bg-red-900 rounded-full p-3">
-            <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
-          </div>
-          <div className="ml-4">
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Montants remboursés</h3>
-            <p className="mt-1 text-lg font-semibold text-gray-900 dark:text-white">
-              {format(convert(refundedAmount, baseCurrency, activeCurrency))} {/* Convert stats to active and format */}
-            </p>
-          </div>
+        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Montant Remboursé</h3>
+          <p className="mt-1 text-2xl font-semibold text-gray-600 dark:text-gray-400">{formatCurrency(refundedAmount, baseCurrency)}</p>
         </div>
       </div>
 
-      {/* Payments table */}
-      <div className="bg-white dark:bg-gray-800 shadow overflow-hidden rounded-lg">
-        {loading ? (
-          <div className="h-64 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      {/* Payment Table */}
+      <div className="bg-white dark:bg-gray-800 shadow overflow-x-auto rounded-lg">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead className="bg-gray-50 dark:bg-gray-700">
+            <tr>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Client / ID Paiement</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Montant</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Statut</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Méthode</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Facture</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+            {isLoading && displayPayments.length > 0 && (
+              <tr><td colSpan={7} className="text-center py-4"><div className="loader inline-block"></div> Actualisation...</td></tr>
+            )}
+            {!isLoading && displayPayments.length === 0 && (
+              <tr>
+                <td colSpan={7} className="px-6 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
+                  Aucun paiement trouvé pour les filtres sélectionnés.
+                </td>
+              </tr>
+            )}
+            {displayPayments.map((payment) => (
+              <tr key={payment.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm font-medium text-gray-900 dark:text-white">{payment.customerName || payment.customerId || 'N/A'}</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">{payment.id}</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900 dark:text-white">{formatDisplayAmount(payment.amount, payment.currency as SupportedCurrency)} </div>
+                  {payment.currency !== activeCurrency && <div className="text-xs text-gray-500 dark:text-gray-400">({payment.amount.toFixed(2)} {payment.currency})</div>}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusBadgeClass(payment.status)}`}>
+                    {statusIcon(payment.status)}
+                    {getStatusLabel(payment.status)}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{getPaymentMethodLabel(payment.method)}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{new Date(payment.paidAt).toLocaleDateString()}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  {payment.invoiceId ? (
+                     <button onClick={() => { if(payment.invoiceId) handleDownloadInvoice(payment.invoiceId);}} className="text-primary hover:text-primary-dark dark:text-primary-light dark:hover:text-primary">
+                       {payment.invoiceId}
+                     </button>
+                  ) : (
+                    <span className="text-gray-400 dark:text-gray-500">N/A</span>
+                  )}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <div className="flex items-center space-x-2">
+                    <button onClick={() => handleViewPayment(payment.id)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300" title="Voir détails">
+                      <Eye className="w-5 h-5" />
+                    </button>
+                    {payment.invoiceId && (
+                      <button onClick={() => {if(payment.invoiceId) handleDownloadInvoice(payment.invoiceId);}} className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300" title="Télécharger la facture">
+                        <Download className="w-5 h-5" />
+                      </button>
+                    )}
+                    {(payment.status === 'completed') && (
+                       <button onClick={() => handleRefundPayment(payment.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300" title="Rembourser (simulé via annulation)">
+                         <AlertTriangle className="w-5 h-5" />
+                       </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {pagination && pagination.totalPages > 1 && (
+        <div className="flex items-center justify-between pt-4">
+          <div>
+            <p className="text-sm text-gray-700 dark:text-gray-300">
+              Page <span className="font-medium">{pagination.page}</span> sur <span className="font-medium">{pagination.totalPages}</span> ({pagination.totalCount} résultats)
+            </p>
           </div>
-        ) : filteredPayments.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-700">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    ID Facture
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Client
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Description
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Montant
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Date
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Méthode
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Statut
-                  </th>
-                  <th scope="col" className="relative px-6 py-3">
-                    <span className="sr-only">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {filteredPayments.map((payment) => (
-                  <tr 
-                    key={payment.id}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
-                      {payment.invoiceNumber}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                      {payment.customerName}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-300">
-                      {payment.description}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
-                      {formatPaymentAmount(payment.amount, payment.currency)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                      {payment.date}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                      {getPaymentMethodLabel(payment.paymentMethod)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusBadgeClass(payment.status)}`}>
-                        {statusIcon(payment.status)}
-                        {getStatusLabel(payment.status)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center justify-end space-x-3">
-                        <button
-                          onClick={() => handleViewPayment(payment.id)}
-                          className="text-indigo-600 hover:text-indigo-800"
-                          title="Voir les détails"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDownloadInvoice(payment.invoiceNumber)}
-                          className="text-blue-600 hover:text-blue-800"
-                          title="Télécharger la facture"
-                        >
-                          <Download className="h-4 w-4" />
-                        </button>
-                        {payment.status === 'completed' && (
-                          <button
-                            onClick={() => handleRefundPayment(payment.id)}
-                            className="text-red-600 hover:text-red-800 text-xs"
-                            title="Rembourser"
-                          >
-                            Rembourser
-                          </button>
-                        )}
-                        <button
-                          className="text-gray-400 hover:text-gray-500"
-                        >
-                          <MoreHorizontal className="h-5 w-5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <svg
-              className="mx-auto h-12 w-12 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
+          <div className="flex gap-2">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={pagination.page <= 1 || isLoading}
+              className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">Aucun paiement trouvé</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              {searchTerm || filterStatus !== 'all' || filterMethod !== 'all' || filterDateRange !== 'all'
-                ? "Aucun paiement ne correspond à vos critères de recherche."
-                : "Commencez par enregistrer un nouveau paiement."}
-            </p>
-            <div className="mt-6">
-              <button
-                onClick={handleAddPayment}
-                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark"
-              >
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Ajouter un paiement manuel
-              </button>
-            </div>
+              Précédent
+            </button>
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(pagination.totalPages, prev + 1))}
+              disabled={pagination.page >= pagination.totalPages || isLoading}
+              className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50"
+            >
+              Suivant
+            </button>
           </div>
-        )}
-      </div>
-
-      {/* Le modal pour ajouter un paiement sera implémenté séparément comme un composant */}
-      {showAddPaymentModal && (
-        <div className="hidden">
-          {/* Placeholder for PaymentFormModal component - will be implemented later */}
-          {/* This ensures showAddPaymentModal is actually used in the component */}
         </div>
       )}
     </div>
   );
 }
+
+// Note: The PaymentFormModal component would need to be created.
+// It would handle the form for adding a new payment and use `recordManualPayment` from `usePayments`.
+// The `Payment` type from `../../types/finance` should be used consistently.
+// The `invoiceNumber` in the table was changed to `invoiceId` to reflect common API patterns and the `Payment` type in `finance.ts`.
+// If your `Payment` type uses `invoiceNumber`, adjust accordingly.
+// The `customerName` in the table now falls back to `customerId` if `customerName` is not available.
+// Added more status options for filtering and display (succeeded, canceled)
+// Added more payment method options for filtering and display (stripe, manual)
+// Updated statistics to use useMemo for better performance.
+// Updated loading states for better UX.
+// Updated pagination controls.
+// Ensured `setCurrentPage(1)` is called when filters change to avoid being on a non-existent page.

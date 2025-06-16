@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react';
-import { customerValidationService } from '../services/customers/customerValidationService'; // Corrected path
+import { useState, useEffect, useCallback } from 'react'; // Added useCallback
+// import { customerValidationService } from '../services/customers/customerValidationService'; // Old import
+import { useCustomerValidationService } from '../services/customers/customerValidationService'; // New hook import
 import type { 
-  DocumentType,
+  // DocumentType, // No longer needed here
   ValidationProcess, 
   ExtendedCustomer,
-  DocumentStatus // Added DocumentStatus for validateDocument
-} from '../types/customer'; // Corrected path
+  // DocumentStatus // No longer needed here
+  DocumentApprovalData // Keep for validateDocument if called directly from hook
+} from '../types/customer'; 
 
 /**
  * Hook personnalisé pour gérer le processus de validation des clients
@@ -16,8 +18,10 @@ export function useCustomerValidation(customerId?: string) {
   const [validationProcess, setValidationProcess] = useState<ValidationProcess | null>(null);
   const [extendedCustomer, setExtendedCustomer] = useState<ExtendedCustomer | null>(null);
   
+  const customerValidationService = useCustomerValidationService(); // Instantiate the hook
+
   // Charger le processus de validation pour un client spécifique
-  const loadValidationProcess = async (id: string) => {
+  const loadValidationProcess = useCallback(async (id: string) => { // useCallback
     setLoading(true);
     setError(null);
     
@@ -25,19 +29,19 @@ export function useCustomerValidation(customerId?: string) {
       const process = await customerValidationService.getValidationProcess(id);
       setValidationProcess(process);
       
-      // Charger également les informations étendues du client
       const customerInfo = await customerValidationService.getExtendedCustomerInfo(id);
       setExtendedCustomer(customerInfo);
-    } catch (err) { // Replaced any with Error type or left as unknown
-      setError((err instanceof Error ? err.message : String(err)) || 'Erreur lors du chargement du processus de validation');
+    } catch (err) { 
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      setError(errorMessage || 'Erreur lors du chargement du processus de validation');
       console.error('Erreur lors du chargement du processus de validation:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [customerValidationService]); // Added dependency
   
   // Initier un nouveau processus de validation
-  const initiateValidation = async (id: string) => {
+  const initiateValidation = useCallback(async (id: string) => { // useCallback
     setLoading(true);
     setError(null);
     
@@ -45,19 +49,21 @@ export function useCustomerValidation(customerId?: string) {
       const process = await customerValidationService.initiateValidationProcess(id);
       setValidationProcess(process);
       return process;
-    } catch (err) { // Replaced any with Error type or left as unknown
-      setError((err instanceof Error ? err.message : String(err)) || 'Erreur lors de l\'initialisation du processus de validation');
-      console.error('Erreur lors de l\'initialisation du processus de validation:', err);
+    } catch (err) { 
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      setError(errorMessage || 'Erreur lors de l\\\'initialisation du processus de validation');
+      console.error('Erreur lors de l\\\'initialisation du processus de validation:', err);
       throw err;
     } finally {
       setLoading(false);
     }
-  };
+  }, [customerValidationService]); // Added dependency
   
   // Mettre à jour une étape du processus de validation
-  const updateValidationStep = async (stepId: string, status: 'pending' | 'in_progress' | 'completed' | 'rejected', notes?: string) => {
+  const updateValidationStep = useCallback(async (stepId: string, status: 'pending' | 'in_progress' | 'completed' | 'rejected', notes?: string) => { // useCallback
     if (!customerId) {
       setError('ID client non spécifié');
+      console.warn('updateValidationStep called without customerId');
       return null;
     }
     
@@ -72,66 +78,70 @@ export function useCustomerValidation(customerId?: string) {
       );
       setValidationProcess(updatedProcess);
       return updatedProcess;
-    } catch (err) { // Replaced any with Error type or left as unknown
-      setError((err instanceof Error ? err.message : String(err)) || 'Erreur lors de la mise à jour de l\'étape de validation');
-      console.error('Erreur lors de la mise à jour de l\'étape de validation:', err);
+    } catch (err) { 
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      setError(errorMessage || 'Erreur lors de la mise à jour de l\\\'étape de validation');
+      console.error('Erreur lors de la mise à jour de l\\\'étape de validation:', err);
       throw err;
     } finally {
       setLoading(false);
     }
-  };
+  }, [customerId, customerValidationService]); // Added dependencies
   
   // Valider un document
-  const validateDocument = async (documentId: string, isApproved: boolean, note?: string) => {
+  const validateDocument = useCallback(async (documentId: string, isApproved: boolean, note?: string) => { // useCallback
     if (!customerId) {
       setError('ID client non spécifié');
+      console.warn('validateDocument called without customerId');
       return null;
     }
     
     setLoading(true);
     
     try {
-      const documentStatus: DocumentStatus = isApproved ? 'approved' : 'rejected';
+      // Construct DocumentApprovalData based on isApproved and note
+      const approvalData: DocumentApprovalData = {
+        status: isApproved ? 'approved' : 'rejected',
+        comments: note
+      };
       const updatedDocument = await customerValidationService.validateDocument(
         customerId,
         documentId,
-        { status: documentStatus, comments: note }
+        approvalData 
       );
       
-      // Recharger le processus de validation pour refléter les changements
-      await loadValidationProcess(customerId);
+      // After document validation, reload the validation process to reflect changes
+      // This assumes document validation might affect the overall process steps or customer documents list
+      if (validationProcess) {
+        await loadValidationProcess(customerId); 
+      }
       
-      return updatedDocument;
-    } catch (err) { // Replaced any with Error type or left as unknown
-      setError((err instanceof Error ? err.message : String(err)) || 'Erreur lors de la validation du document');
+      return updatedDocument; // Or potentially return void or a success boolean
+    } catch (err) { 
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      setError(errorMessage || 'Erreur lors de la validation du document');
       console.error('Erreur lors de la validation du document:', err);
-      throw err;
+      throw err; // Re-throw to allow UI to handle if needed
     } finally {
       setLoading(false);
     }
-  };
+  }, [customerId, customerValidationService, loadValidationProcess, validationProcess]); // Added dependencies
   
-  // Obtenir les documents requis pour un type de client
-  const getRequiredDocuments = (type: 'pme' | 'financial'): DocumentType[] => {
-    return customerValidationService.getRequiredDocumentsByCustomerType(type);
-  };
-  
-  // Charger le processus de validation au montage si un ID client est fourni
+  // Charger automatiquement les données si customerId est fourni à l'initialisation
   useEffect(() => {
     if (customerId) {
       loadValidationProcess(customerId);
     }
-  }, [customerId]);
-  
+  }, [customerId, loadValidationProcess]); // loadValidationProcess is now stable due to useCallback
+
   return {
     loading,
     error,
     validationProcess,
     extendedCustomer,
+    loadValidationProcess,
     initiateValidation,
     updateValidationStep,
     validateDocument,
-    getRequiredDocuments,
-    refreshValidation: (id: string) => loadValidationProcess(id)
   };
 }

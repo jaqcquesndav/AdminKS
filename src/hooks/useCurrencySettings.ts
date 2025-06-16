@@ -1,20 +1,22 @@
-import { useEffect, useState, useCallback } from 'react';
-import { useCurrency } from './useCurrency'; // Corrected import path
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useCurrency } from './useCurrency'; 
 import { useLanguage } from './useLanguage';
-import { formatCurrency } from '../utils/currency';
-import { useExchangeRates } from './useExchangeRates'; // Added import
+import { formatCurrency as utilFormatCurrency } from '../utils/currency';
+import { useExchangeRates } from './useExchangeRates'; 
 import { 
   SupportedCurrency, 
   DEFAULT_CURRENCY_INFO, 
   CurrencyInfo, 
   CurrencyPreferences,
-  MultiCurrencyPrice
+  MultiCurrencyPrice,
+  ManualExchangeRate as ManualRate // Aliasing for consistency with previous usage
 } from '../types/currency';
 import { SUPPORTED_CURRENCIES } from '../constants/currencyConstants';
+import { useTranslation } from 'react-i18next'; // Standard way to get t function
 
 interface CurrencySettings {
   currency: SupportedCurrency;
-  activeCurrency: SupportedCurrency;
+  activeCurrency: SupportedCurrency; 
   setCurrency: (currency: SupportedCurrency) => void;
   format: (amount: number) => string;
   formatInCurrency: (amount: number, currency: SupportedCurrency) => string;
@@ -25,19 +27,19 @@ interface CurrencySettings {
   preferences: CurrencyPreferences;
   updatePreferences: (prefs: Partial<CurrencyPreferences>) => void;
   formatMultiCurrencyPrice: (price: MultiCurrencyPrice) => string;
-  loading: boolean; // Combined loading state
-  lastUpdated: string; // From context
-  refreshRates: () => Promise<void>; // For external rates
+  loading: boolean; 
+  lastUpdated: string; 
+  refreshRates: () => Promise<void>; 
   formatCurrency: (amount: number, currency?: SupportedCurrency, options?: Intl.NumberFormatOptions) => string;
   getCurrencySymbol: (currency: SupportedCurrency) => string;
   exchangeRates: Record<SupportedCurrency, number>; 
-  updateUserRate: (targetCurrency: SupportedCurrency, rate: number) => void;
+  manualRates: ManualRate[]; 
+  addManualRate: (currency: SupportedCurrency, rate: number) => void; 
+  updateManualRate: (currency: SupportedCurrency, rate: number) => void; 
+  removeManualRate: (currency: SupportedCurrency) => void; 
   baseCurrency: SupportedCurrency;
 }
 
-/**
- * Mapping par défaut des langues vers les devises préférées
- */
 const DEFAULT_LANGUAGE_CURRENCY_MAP: Record<string, SupportedCurrency> = {
   'en': 'USD',
   'fr': 'FCFA',
@@ -45,17 +47,14 @@ const DEFAULT_LANGUAGE_CURRENCY_MAP: Record<string, SupportedCurrency> = {
   'default': 'CDF'
 };
 
-/**
- * Hook personnalisé pour gérer les paramètres d'affichage des devises
- * Fournit des fonctions utilitaires pour formater et convertir les montants
- * Intègre les taux de change dynamiques via useExchangeRates
- */
 export function useCurrencySettings(): CurrencySettings {
+  const { t } = useTranslation(); // Get t function via hook
   const currencyContext = useCurrency();
   const {
     currency: contextCurrency,
     setCurrency: setContextCurrency,
-    setUserExchangeRate, // Renamed from updateUserRate in context to avoid conflict
+    setUserExchangeRate, 
+    removeUserExchangeRate, 
     baseCurrency,
     convert: contextConvert,
     exchangeRates: contextExchangeRates,
@@ -63,16 +62,12 @@ export function useCurrencySettings(): CurrencySettings {
   } = currencyContext;
 
   const { currentLanguage } = useLanguage();
-  // Assuming useExchangeRates is for fetching external rates. 
-  // The first argument might be a base currency for the API call, or undefined if it fetches all.
-  // Corrected signature: useExchangeRates(baseCurrencyForApi?: SupportedCurrency, autoFetch?: boolean, intervalInMinutes?: number)
   const { loading: externalRatesLoading, refreshRates: refreshExternalRates } = useExchangeRates(undefined, true, 30); 
 
   const [currencyInfo, setCurrencyInfo] = useState<CurrencyInfo>(() => {
     if (contextCurrency && SUPPORTED_CURRENCIES.includes(contextCurrency)) {
       return DEFAULT_CURRENCY_INFO[contextCurrency as SupportedCurrency];
     }
-    console.warn(`Initial contextCurrency ('${contextCurrency}') in useCurrencySettings is not valid for DEFAULT_CURRENCY_INFO. Falling back to USD info.`);
     return DEFAULT_CURRENCY_INFO.USD; 
   });
 
@@ -81,13 +76,12 @@ export function useCurrencySettings(): CurrencySettings {
     return {
       defaultCurrency: initialCurrency,
       format: 'symbol_first',
-      showDecimals: initialCurrency === 'USD',
+      showDecimals: initialCurrency === 'USD', // This is a custom preference, not for Intl.NumberFormatOptions directly
       showAlwaysSign: true,
       currencySetManually: !!contextCurrency
     };
   });
 
-  // Synchronize with context currency and set based on language if not manually set
   useEffect(() => {
     const preferredCurrency = DEFAULT_LANGUAGE_CURRENCY_MAP[currentLanguage] || DEFAULT_LANGUAGE_CURRENCY_MAP.default;
     if (!preferences.currencySetManually && preferredCurrency !== contextCurrency) {
@@ -95,96 +89,118 @@ export function useCurrencySettings(): CurrencySettings {
     }
   }, [currentLanguage, preferences.currencySetManually, contextCurrency, setContextCurrency]);
 
-  // Update local currencyInfo when contextCurrency changes
   useEffect(() => {
     let validCurrencyToSet = contextCurrency;
-    if (!(contextCurrency && SUPPORTED_CURRENCIES.includes(contextCurrency))) {
-      console.error(`Invalid contextCurrency ('${contextCurrency}') detected in useEffect for currencyInfo/preferences update. Using fallback USD.`);
+    if (!validCurrencyToSet || !SUPPORTED_CURRENCIES.includes(validCurrencyToSet)) {
+      console.warn(`Invalid contextCurrency ('${validCurrencyToSet}') in useCurrencySettings. Falling back to USD info.`);
       validCurrencyToSet = 'USD'; 
     }
-    
-    setCurrencyInfo(DEFAULT_CURRENCY_INFO[validCurrencyToSet as SupportedCurrency]);
-    
-    setPreferences(prev => ({
-      ...prev,
-      defaultCurrency: validCurrencyToSet, 
-      showDecimals: validCurrencyToSet === 'USD'
-    }));
+    setCurrencyInfo(DEFAULT_CURRENCY_INFO[validCurrencyToSet]);
   }, [contextCurrency]);
 
-  // Fonction de mise à jour de la devise qui garantit la propagation des changements
-  const setCurrency = useCallback((newCurrency: SupportedCurrency) => {
-    setContextCurrency(newCurrency);
-    setPreferences(prev => ({ ...prev, currencySetManually: true, defaultCurrency: newCurrency }));
+  const updatePreferences = useCallback((prefs: Partial<CurrencyPreferences>) => {
+    setPreferences(prev => ({ ...prev, ...prefs }));
+    if (prefs.defaultCurrency) {
+      setContextCurrency(prefs.defaultCurrency);
+      setPreferences(prev => ({ ...prev, currencySetManually: true }));
+    }
   }, [setContextCurrency]);
 
-  // Mettre à jour les préférences locales
-  const updatePreferences = useCallback((newPrefs: Partial<CurrencyPreferences>) => {
-    setPreferences(prev => ({ ...prev, ...newPrefs }));
-  }, []);
+  const formatOptions = useCallback((): Intl.NumberFormatOptions => ({
+    currencyDisplay: preferences.format === 'symbol_first' ? 'symbol' : 'code',
+    minimumFractionDigits: preferences.showDecimals ? 2 : 0,
+    maximumFractionDigits: preferences.showDecimals ? 2 : 0,
+  }), [preferences.format, preferences.showDecimals]);
 
-  // Fonction pour formater un montant selon la devise actuelle
   const format = useCallback((amount: number): string => {
-    return formatCurrency(amount, contextCurrency);
-  }, [contextCurrency]);
+    return utilFormatCurrency(amount, contextCurrency, formatOptions());
+  }, [contextCurrency, formatOptions]);
 
-  // Fonction pour formater un montant dans une devise spécifique
   const formatInCurrency = useCallback((amount: number, currency: SupportedCurrency): string => {
-    return formatCurrency(amount, currency);
-  }, []);
-
-  const convert = useCallback((amount: number, from: SupportedCurrency, to: SupportedCurrency): number => {
-    return contextConvert(amount, from, to);
-  }, [contextConvert]);
+    return utilFormatCurrency(amount, currency, formatOptions());
+  }, [formatOptions]);
 
   const formatAllCurrencies = useCallback((amount: number): Record<SupportedCurrency, string> => {
-    const result: Record<SupportedCurrency, string> = {} as Record<SupportedCurrency, string>;
-    SUPPORTED_CURRENCIES.forEach((curr: SupportedCurrency) => {
-      result[curr] = formatCurrency(convert(amount, contextCurrency, curr), curr);
+    const result: Record<SupportedCurrency, string> = {} as Record<SupportedCurrency, string>; 
+    SUPPORTED_CURRENCIES.forEach(curr => {
+      const convertedAmount = contextConvert(amount, contextCurrency, curr);
+      result[curr] = utilFormatCurrency(convertedAmount, curr, formatOptions());
     });
     return result;
-  }, [contextCurrency, convert]);
-
-  const formatMultiCurrencyPrice = useCallback((price: MultiCurrencyPrice): string => {
-    const priceInKey = contextCurrency.toLowerCase() as keyof MultiCurrencyPrice;
-    const amountInActiveCurrency = price[priceInKey] !== undefined
-      ? price[priceInKey]
-      : convert(price.usd, 'USD', contextCurrency);
-    return format(amountInActiveCurrency);
-  }, [contextCurrency, format, convert]);
+  }, [contextCurrency, contextConvert, formatOptions]);
 
   const getCurrencySymbol = useCallback((currency: SupportedCurrency): string => {
     return DEFAULT_CURRENCY_INFO[currency]?.symbol || currency;
   }, []);
 
-  const updateUserRate = useCallback((targetCurrency: SupportedCurrency, rate: number) => {
-    if (targetCurrency === baseCurrency) {
-      console.warn("Cannot update rate for base currency. Base rate is always 1.");
-      return;
+  const formatMultiCurrencyPrice = useCallback((price: MultiCurrencyPrice): string => {
+    const displayCurrency = contextCurrency;
+    // Adjust for lowercase keys in MultiCurrencyPrice
+    const priceForDisplayCurrency = price[displayCurrency.toLowerCase() as keyof MultiCurrencyPrice];
+
+    if (priceForDisplayCurrency !== undefined) {
+      return formatInCurrency(priceForDisplayCurrency, displayCurrency);
     }
-    setUserExchangeRate(targetCurrency, rate); // Call context function
-  }, [setUserExchangeRate, baseCurrency]);
+    
+    const priceInUSD = price.usd;
+    if (priceInUSD !== undefined) {
+      const convertedAmount = contextConvert(priceInUSD, 'USD', displayCurrency);
+      return formatInCurrency(convertedAmount, displayCurrency);
+    }
+
+    const firstAvailableCurrency = Object.keys(price)[0] as keyof MultiCurrencyPrice | undefined;
+    if (firstAvailableCurrency && price[firstAvailableCurrency] !== undefined) {
+      // Ensure the key is a valid SupportedCurrency before converting
+      const sourceCurrency = firstAvailableCurrency.toUpperCase() as SupportedCurrency;
+      if (SUPPORTED_CURRENCIES.includes(sourceCurrency)){
+        const convertedAmount = contextConvert(price[firstAvailableCurrency]!, sourceCurrency, displayCurrency);
+        return formatInCurrency(convertedAmount, displayCurrency) + ` (*${t('currency.convertedFrom', {currency: sourceCurrency})})` ;
+      }
+    }
+    return t('currency.priceUnavailable', 'Price unavailable');
+  }, [contextCurrency, contextConvert, formatInCurrency, t]);
+
+  const addManualRate = useCallback((currency: SupportedCurrency, rate: number) => {
+    setUserExchangeRate(currency, rate);
+  }, [setUserExchangeRate]);
+
+  const updateManualRate = useCallback((currency: SupportedCurrency, rate: number) => {
+    setUserExchangeRate(currency, rate); 
+  }, [setUserExchangeRate]);
+
+  const removeManualRate = useCallback((currency: SupportedCurrency) => {
+    removeUserExchangeRate(currency);
+  }, [removeUserExchangeRate]);
+
+  const manualRates = useMemo((): ManualRate[] => {
+    return Object.entries(contextExchangeRates)
+      .filter(([currency]) => currency !== baseCurrency)
+      .map(([currency, rate]) => ({ currency: currency as SupportedCurrency, rate }));
+  }, [contextExchangeRates, baseCurrency]);
 
   return {
     currency: contextCurrency,
-    activeCurrency: contextCurrency,
-    setCurrency,
+    activeCurrency: contextCurrency, 
+    setCurrency: setContextCurrency,
     format,
     formatInCurrency,
-    convert,
+    convert: contextConvert,
     formatAllCurrencies,
     currencyInfo,
-    supportedCurrencies: SUPPORTED_CURRENCIES,
+    supportedCurrencies: SUPPORTED_CURRENCIES as SupportedCurrency[],
     preferences,
     updatePreferences,
     formatMultiCurrencyPrice,
-    loading: contextLastRateUpdate === 'loading' || externalRatesLoading,
-    lastUpdated: contextLastRateUpdate === 'loading' ? 'Loading...' : contextLastRateUpdate,
+    loading: externalRatesLoading, 
+    lastUpdated: contextLastRateUpdate || new Date().toISOString(),
     refreshRates: refreshExternalRates,
-    formatCurrency, // Raw utility
+    formatCurrency: utilFormatCurrency, 
     getCurrencySymbol,
     exchangeRates: contextExchangeRates,
-    updateUserRate,
-    baseCurrency
+    manualRates, 
+    addManualRate,
+    updateManualRate,
+    removeManualRate,
+    baseCurrency,
   };
 }

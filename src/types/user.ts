@@ -13,7 +13,7 @@ export interface User {
   role: UserRole;
   userType: UserType; // Added userType field
   customerAccountId?: string; // Added customerAccountId field
-  avatar?: string;
+  avatar?: string; // This could be avatarUrl
   status: UserStatus;
   createdAt: string;
   updatedAt?: string; // Added updatedAt field
@@ -21,6 +21,20 @@ export interface User {
   permissions: string[];
   departement?: string;
   phoneNumber?: string;
+  position?: string; // Added position for admin profile
+}
+
+// Specific type for Admin Profile, can extend User or be separate
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  phoneNumber?: string;
+  position?: string;
+  avatarUrl?: string; // Consistent with useAdminProfile
+  // Add other relevant fields from the User type if they are part of the profile form
+  role?: UserRole; // Optional: if role is displayed/managed here
+  // Consider if other User fields like status, createdAt are needed for display
 }
 
 // Type représentant un compte client (PME ou Institution Financière)

@@ -70,6 +70,64 @@ export default {
         }
       }
     }
+  },
+  customers: {
+    title: 'Clients',
+    newCustomer: 'Nouveau Client',
+    errors: {
+      loadFailed: 'Échec du chargement des clients.',
+      loadDetailsFailed: 'Échec du chargement des détails du client.',
+      createFailed: 'Échec de la création du client.',
+      updateFailed: 'Échec de la mise à jour du client.',
+      deleteFailed: 'Échec de la suppression du client.',
+      documentUploadFailed: 'Échec du téléversement du document.',
+      documentApproveFailed: 'Échec de l\'approbation du document.',
+      documentRejectFailed: 'Échec du rejet du document.',
+      validateFailed: 'Échec de la validation du client.',
+      suspendFailed: 'Échec de la suspension du client.',
+      reactivateFailed: 'Échec de la réactivation du client.',
+      loadActivitiesFailed: 'Échec du chargement des activités du client.',
+      loadStatsFailed: 'Échec du chargement des statistiques des clients.',
+      loadDocumentsFailed: 'Échec du chargement des documents du client.'
+    },
+    notifications: {
+      created: 'Client créé avec succès.',
+      updated: 'Client mis à jour avec succès.',
+      deleted: 'Client supprimé avec succès.',
+      documentUploaded: 'Document téléversé avec succès.',
+      documentApproved: 'Document approuvé avec succès.',
+      documentRejected: 'Document rejeté avec succès.',
+      validated: 'Client validé avec succès.',
+      suspended: 'Client suspendu avec succès.',
+      reactivated: 'Client réactivé avec succès.'
+    },
+    status: {
+      active: 'Actif',
+      inactive: 'Inactif',
+      pending: 'En attente',
+      suspended: 'Suspendu'
+    },
+    type: {
+      pme: 'PME',
+      ge: 'Grande Entreprise', // Retained for consistency, though user mentioned financial institutions
+      financial: 'Institution Financière', // Added based on user feedback
+      individual: 'Particulier',
+      other: 'Autre'
+    }
+  },
+  users: {
+    errors: {
+      loadFailed: 'Échec du chargement des utilisateurs.',
+      createFailed: 'Échec de la création de l\'utilisateur.',
+      updateFailed: 'Échec de la mise à jour de l\'utilisateur.',
+      deleteFailed: 'Échec de la suppression de l\'utilisateur.',
+      loadSingleFailed: 'Échec du chargement des détails de l\'utilisateur.'
+    },
+    notifications: {
+      created: 'Utilisateur créé avec succès.',
+      updated: 'Utilisateur mis à jour avec succès.',
+      deleted: 'Utilisateur supprimé avec succès.'
+    }
   }
   // ... other translations
 };

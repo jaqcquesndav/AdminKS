@@ -1,970 +1,546 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+// import { useNavigate } from 'react-router-dom'; // Commented out as navigate is not used
 import { 
-  BarChart2, FileText, 
-  Download, RefreshCw, Filter, ChevronDown, Search,
-  ArrowUp, ArrowDown, AlertTriangle, MoreVertical,
-  Calendar, ChevronRight, Clock
+  RefreshCw, ChevronDown, Search,
+  AlertTriangle, MoreVertical, ChevronUp, Download // Added MoreVertical, ChevronUp, Download
 } from 'lucide-react';
-import { useToastContext } from '../../contexts/ToastContext';
-import { useCurrencySettings } from '../../hooks/useCurrencySettings';
-import { useTokenStats } from '../../hooks/useTokenStats';
+// import { useToastContext } from '../../contexts/ToastContext'; // Replaced by useToast from useTokens
+// import { useTokenStats } from '../../hooks/useTokenStats'; // Removed local mock hook
+import { useTokens } from '../../hooks/useTokens';
+import type { TokenTransaction, TokenTransactionFilterParams, TokenType } from '../../types/finance';
+import { useToast } from '../../hooks/useToast'; 
 
 // Types
-interface TokenUsage {
-  id: string;
-  customerId: string;
-  customerName: string;
-  customerType: 'pme' | 'financial';
-  date: string;
-  tokensConsumed: number;
-  model: string;
-  serviceType: 'text' | 'voice' | 'image' | 'chat';
-  cost: number; // This will store the cost in activeCurrency
-  requestCount: number;
-}
+// interface TokenUsage { // Removed, will use TokenTransaction
+//   id: string;
+//   customerId: string;
+//   customerName: string;
+//   customerType: 'pme' | 'financial';
+//   date: string;
+//   tokensConsumed: number;
+//   model: string;
+//   serviceType: 'text' | 'voice' | 'image' | 'chat';
+//   cost: number; // This will store the cost in activeCurrency
+//   requestCount: number;
+// }
 
 // Intermediate type for mock data with cost in base currency
-type TokenUsageInput = Omit<TokenUsage, 'cost'> & { costBase: number };
+// type TokenUsageInput = Omit<TokenUsage, 'cost'> & { costBase: number }; // Removed
 
-interface TokenStats {
-  totalTokensConsumed: number;
-  totalCost: number;
-  averageCostPerToken: number;
-  tokensPerService: {
-    text: number;
-    voice: number;
-    image: number;
-    chat: number;
-  };
-  costPerService: {
-    text: number;
-    voice: number;
-    image: number;
-    chat: number;
-  };
-  topCustomers: Array<{
-    id: string;
-    name: string;
-    tokensConsumed: number;
-    cost: number;
-  }>;
-  dailyUsage: Array<{
-    date: string;
-    tokensConsumed: number;
-    cost: number;
-  }>;
-}
+// interface TokenStats { // Removed, stats handling deferred
+//   totalTokensConsumed: number;
+//   totalCost: number;
+//   averageCostPerToken: number;
+//   tokensPerService: {
+//     text: number;
+//     voice: number;
+//     image: number;
+//     chat: number;
+//   };
+//   costPerService: {
+//     text: number;
+//     voice: number;
+//     image: number;
+//     chat: number;
+//   };
+//   topCustomers: Array<{
+//     id: string;
+//     name: string;
+//     tokensConsumed: number;
+//     cost: number;
+//   }>;
+//   dailyUsage: Array<{
+//     date: string;
+//     tokensConsumed: number;
+//     cost: number;
+//   }>;
+// }
+
+const ITEMS_PER_PAGE = 10;
 
 export function TokensPage() {
   const { t } = useTranslation();
-  const { showToast } = useToastContext();
-  const { getTokenStats } = useTokenStats();
-  // Ensure baseCurrency is available from the hook
-  const { formatCurrency, convert, activeCurrency, baseCurrency } = useCurrencySettings(); 
-  const navigate = useNavigate();
+  const { showToast } = useToast(); 
+  // const navigate = useNavigate(); // Commented out as navigate is not used
   
-  // États
-  const [usageData, setUsageData] = useState<TokenUsage[]>([]);
-  const [filteredUsage, setFilteredUsage] = useState<TokenUsage[]>([]);
-  const [stats, setStats] = useState<TokenStats | null>(null);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [serviceFilter, setServiceFilter] = useState('all');
-  const [sortBy, setSortBy] = useState<keyof TokenUsage>('date');
+  const [serviceFilter, setServiceFilter] = useState<'all' | TokenType>('all'); 
+  const [sortBy, setSortBy] = useState<keyof TokenTransaction | 'serviceType' | 'tokensConsumed' | 'date'>('transactionDate'); 
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  const [dateRangeFilter, setDateRangeFilter] = useState('7d');
+  const [dateRangeFilter, setDateRangeFilter] = useState('all'); // e.g., '7d', '30d', 'custom'
+  const [customDateRange, setCustomDateRange] = useState<{ startDate: string | null, endDate: string | null }>({ startDate: null, endDate: null });
   const [showActionMenu, setShowActionMenu] = useState<string | null>(null);
-  
-  // Configuration des types de service
-  const serviceTypeConfig = {
-    text: {
-      label: t('finance.tokens.serviceTypes.text', 'Traitement de texte'),
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const initialFilters: TokenTransactionFilterParams = useMemo(() => ({
+    page: currentPage,
+    limit: ITEMS_PER_PAGE,
+    // transactionType: 'usage', // Removed: useTokens hook handles this internally based on function called
+  }), [currentPage]);
+
+  const { 
+    tokenTransactions, 
+    // tokenPackages, // Not used in this page directly yet
+    isLoading, 
+    error, 
+    pagination, 
+    fetchTokenTransactions,
+    // purchaseTokens, // Action, not for display
+    // issueTokens // Action, not for display
+  } = useTokens(initialFilters);
+
+  // const [stats, setStats] = useState<TokenStats | null>(null); // Stats handling deferred
+
+  // Configuration des types de service - This needs to map from TokenTransaction.tokenType or metadata.serviceType
+  // This is a placeholder, actual mapping will depend on backend data.
+  const serviceTypeConfig: Record<string, { label: string; color: string }> = useMemo(() => ({
+    text_generation: { // Example: mapping 'text_generation' (from backend) to UI label/color
+      label: t('finance.tokens.serviceTypes.text', 'Text Processing'),
       color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
     },
-    voice: {
-      label: t('finance.tokens.serviceTypes.voice', 'Reconnaissance vocale'),
+    voice_transcription: {
+      label: t('finance.tokens.serviceTypes.voice', 'Voice Recognition'),
       color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
     },
-    image: {
-      label: t('finance.tokens.serviceTypes.image', 'Traitement d\'images'),
+    image_generation: {
+      label: t('finance.tokens.serviceTypes.image', 'Image Processing'),
       color: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200'
     },
-    chat: {
-      label: t('finance.tokens.serviceTypes.chat', 'Conversation IA'),
+    chat_completion: {
+      label: t('finance.tokens.serviceTypes.chat', 'AI Chat'),
       color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+    },
+    wanzo_credit: {
+      label: t('finance.tokens.serviceTypes.wanzo_credit', 'Wanzo Credit'),
+      color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200'
+    },
+    api_call: {
+      label: t('finance.tokens.serviceTypes.api_call', 'API Call'),
+      color: 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200'
+    },
+    storage_gb: {
+        label: t('finance.tokens.serviceTypes.storage_gb', 'Storage GB'),
+        color: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
+    },
+    processing_unit: {
+        label: t('finance.tokens.serviceTypes.processing_unit', 'Processing Unit'),
+        color: 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200'
+    },
+    generic: {
+        label: t('finance.tokens.serviceTypes.generic', 'Generic Token'),
+        color: 'bg-stone-100 text-stone-800 dark:bg-stone-900 dark:text-stone-200'
+    },
+    unknown: {
+      label: t('finance.tokens.serviceTypes.unknown', 'Unknown Service'),
+      color: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
     }
-  };
+  }), [t]);
+  
+  const getServiceTypeDetails = React.useCallback((transaction: TokenTransaction): { label: string; color: string } => {
+    const serviceTypeKey = transaction.metadata?.serviceType as string || transaction.tokenType || 'unknown';
+    return serviceTypeConfig[serviceTypeKey] || serviceTypeConfig.unknown;
+  }, [serviceTypeConfig]); // serviceTypeConfig is now memoized, t is removed from deps
 
-  // Chargement des données
+
+  // Data fetching and filtering logic
   useEffect(() => {
-    const fetchTokenUsage = async () => {
-      setLoading(true);
-      try {
-        await new Promise(resolve => setTimeout(resolve, 800));
-        
-        const mockUsageDataInput: TokenUsageInput[] = [
-          {
-            id: 'usage-1',
-            customerId: 'cust-1',
-            customerName: 'TechStart SAS',
-            customerType: 'pme',
-            date: '2025-04-21',
-            tokensConsumed: 156200,
-            model: 'GPT-4',
-            serviceType: 'text',
-            costBase: 3.12, // USD
-            requestCount: 45
-          },
-          {
-            id: 'usage-2',
-            customerId: 'cust-2',
-            customerName: 'Crédit Maritime',
-            customerType: 'financial',
-            date: '2025-04-21',
-            tokensConsumed: 423650,
-            model: 'GPT-4',
-            serviceType: 'chat',
-            costBase: 8.47, // USD
-            requestCount: 97
-          },
-          {
-            id: 'usage-3',
-            customerId: 'cust-3',
-            customerName: 'InnoVert',
-            customerType: 'pme',
-            date: '2025-04-20',
-            tokensConsumed: 52800,
-            model: 'GPT-3.5',
-            serviceType: 'text',
-            costBase: 0.84, // USD
-            requestCount: 28
-          },
-          {
-            id: 'usage-4',
-            customerId: 'cust-2',
-            customerName: 'Crédit Maritime',
-            customerType: 'financial',
-            date: '2025-04-20',
-            tokensConsumed: 175000,
-            model: 'Whisper',
-            serviceType: 'voice',
-            costBase: 5.25, // USD
-            requestCount: 35
-          },
-          {
-            id: 'usage-5',
-            customerId: 'cust-4',
-            customerName: 'EcoSolutions',
-            customerType: 'pme',
-            date: '2025-04-19',
-            tokensConsumed: 94000,
-            model: 'DALL-E 3',
-            serviceType: 'image',
-            costBase: 9.40, // USD
-            requestCount: 12
-          },
-          {
-            id: 'usage-6',
-            customerId: 'cust-1',
-            customerName: 'TechStart SAS',
-            customerType: 'pme',
-            date: '2025-04-19',
-            tokensConsumed: 122500,
-            model: 'GPT-4',
-            serviceType: 'chat',
-            costBase: 2.45, // USD
-            requestCount: 32
-          },
-          {
-            id: 'usage-7',
-            customerId: 'cust-5',
-            customerName: 'MicroFinance SA',
-            customerType: 'financial',
-            date: '2025-04-18',
-            tokensConsumed: 318750,
-            model: 'GPT-4',
-            serviceType: 'text',
-            costBase: 6.37, // USD
-            requestCount: 65
-          },
-          {
-            id: 'usage-8',
-            customerId: 'cust-4',
-            customerName: 'EcoSolutions',
-            customerType: 'pme',
-            date: '2025-04-18',
-            tokensConsumed: 68400,
-            model: 'GPT-3.5',
-            serviceType: 'chat',
-            costBase: 1.09, // USD
-            requestCount: 43
-          },
-          {
-            id: 'usage-9',
-            customerId: 'cust-3',
-            customerName: 'InnoVert',
-            customerType: 'pme',
-            date: '2025-04-17',
-            tokensConsumed: 86000,
-            model: 'DALL-E 3',
-            serviceType: 'image',
-            costBase: 8.60, // USD
-            requestCount: 8
-          },
-          {
-            id: 'usage-10',
-            customerId: 'cust-2',
-            customerName: 'Crédit Maritime',
-            customerType: 'financial',
-            date: '2025-04-17',
-            tokensConsumed: 230000,
-            model: 'Whisper',
-            serviceType: 'voice',
-            costBase: 6.90, // USD
-            requestCount: 41
-          }
-        ];
-
-        const convertedUsageData: TokenUsage[] = mockUsageDataInput.map(item => {
-          const { costBase, ...rest } = item;
-          return {
-            ...rest,
-            cost: convert(costBase, baseCurrency, activeCurrency)
-          };
-        });
-
-        setUsageData(convertedUsageData);
-        // setFilteredUsage will be updated by its own useEffect based on usageData changes
-        
-        const fetchTokenStats = async () => {
-          try {
-            // Assume getTokenStats returns costs in baseCurrency (e.g., USD)
-            const rawStatsFromApi = await getTokenStats(dateRangeFilter);
-            
-            const convertedStats: TokenStats = {
-              ...rawStatsFromApi,
-              totalCost: convert(rawStatsFromApi.totalCost, baseCurrency, activeCurrency),
-              // Assuming averageCostPerToken is an amount, not a rate. If it's a rate, conversion might differ.
-              averageCostPerToken: convert(rawStatsFromApi.averageCostPerToken, baseCurrency, activeCurrency),
-              costPerService: {
-                text: convert(rawStatsFromApi.costPerService.text, baseCurrency, activeCurrency),
-                voice: convert(rawStatsFromApi.costPerService.voice, baseCurrency, activeCurrency),
-                image: convert(rawStatsFromApi.costPerService.image, baseCurrency, activeCurrency),
-                chat: convert(rawStatsFromApi.costPerService.chat, baseCurrency, activeCurrency),
-              },
-              topCustomers: rawStatsFromApi.topCustomers.map(customer => ({
-                ...customer,
-                cost: convert(customer.cost, baseCurrency, activeCurrency),
-              })),
-              dailyUsage: rawStatsFromApi.dailyUsage.map(day => ({
-                ...day,
-                cost: convert(day.cost, baseCurrency, activeCurrency),
-              })),
-            };
-            setStats(convertedStats);
-          } catch (error) {
-            console.error('Erreur lors du chargement des statistiques:', error);
-            showToast('error', t('finance.tokens.errors.loadStats', 'Erreur lors du chargement des statistiques'));
-          }
-        };
-        
-        await fetchTokenStats();
-      } catch (error) {
-        console.error('Erreur lors du chargement des données de consommation:', error);
-        showToast('error', t('finance.tokens.errors.loadUsage', 'Erreur lors du chargement des données de consommation'));
-      } finally {
-        setLoading(false);
-      }
+    const filters: TokenTransactionFilterParams = {
+      page: currentPage,
+      limit: ITEMS_PER_PAGE,
+      search: searchTerm || undefined,
+      tokenType: serviceFilter === 'all' ? undefined : serviceFilter,
+      // transactionType: 'usage', // Removed: useTokens hook handles this internally
     };
     
-    fetchTokenUsage();
-  }, [showToast, t, getTokenStats, dateRangeFilter, convert, activeCurrency, baseCurrency]); // Added convert, activeCurrency, baseCurrency
+    if (dateRangeFilter !== 'all' && dateRangeFilter !== 'custom') {
+      const now = new Date();
+      const startDate = new Date(); // Changed to const
+      if (dateRangeFilter === '7d') startDate.setDate(now.getDate() - 7);
+      else if (dateRangeFilter === '30d') startDate.setDate(now.getDate() - 30);
+      else if (dateRangeFilter === '90d') startDate.setDate(now.getDate() - 90);
+      filters.startDate = startDate.toISOString().split('T')[0];
+      filters.endDate = now.toISOString().split('T')[0];
+    } else if (dateRangeFilter === 'custom' && customDateRange.startDate && customDateRange.endDate) {
+      filters.startDate = customDateRange.startDate;
+      filters.endDate = customDateRange.endDate;
+    }
 
-  // Filtrage et tri des données
-  useEffect(() => {
-    let filtered = [...usageData];
-    
-    // Appliquer la recherche
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        usage => 
-          usage.customerName.toLowerCase().includes(term) ||
-          usage.model.toLowerCase().includes(term)
-      );
-    }
-    
-    // Appliquer le filtre par service
-    if (serviceFilter !== 'all') {
-      filtered = filtered.filter(usage => usage.serviceType === serviceFilter);
-    }
-    
-    // Filtre par date
-    const now = new Date();
-    let cutoffDate = new Date();
-    
-    switch (dateRangeFilter) {
-      case '1d':
-        cutoffDate.setDate(now.getDate() - 1);
-        break;
-      case '7d':
-        cutoffDate.setDate(now.getDate() - 7);
-        break;
-      case '30d':
-        cutoffDate.setDate(now.getDate() - 30);
-        break;
-      case '90d':
-        cutoffDate.setDate(now.getDate() - 90);
-        break;
-      default:
-        // 'all', ne pas filtrer
-        cutoffDate = new Date(0);
-    }
-    
-    if (dateRangeFilter !== 'all') {
-      filtered = filtered.filter(usage => new Date(usage.date) >= cutoffDate);
-    }
-    
-    // Appliquer le tri
-    filtered.sort((a, b) => {
-      const valueA = a[sortBy];
-      const valueB = b[sortBy];
+    fetchTokenTransactions(filters);
+  }, [searchTerm, serviceFilter, dateRangeFilter, customDateRange, currentPage, fetchTokenTransactions]);
+
+  // Client-side sorting for now, ideally backend should handle this
+  const sortedTransactions = useMemo(() => {
+    if (!tokenTransactions) return [];
+    return [...tokenTransactions].sort((a, b) => {
+      let valA: string | number | undefined | null, valB: string | number | undefined | null;
       
-      if (typeof valueA === 'string' && typeof valueB === 'string') {
-        return sortDirection === 'asc' 
-          ? valueA.localeCompare(valueB) 
-          : valueB.localeCompare(valueA);
-      } else if (typeof valueA === 'number' && typeof valueB === 'number') {
-        return sortDirection === 'asc' 
-          ? valueA - valueB 
-          : valueB - valueA;
+      // Handle specific sort keys that require custom logic or accessors
+      if (sortBy === 'date') { // Mapped to 'transactionDate'
+        valA = new Date(a.transactionDate).getTime();
+        valB = new Date(b.transactionDate).getTime();
+      } else if (sortBy === 'tokensConsumed') { // Mapped to 'amount'
+        valA = a.amount;
+        valB = b.amount;
+      } else if (sortBy === 'serviceType') { // Sorting by derived serviceType label
+        valA = getServiceTypeDetails(a).label.toLowerCase();
+        valB = getServiceTypeDetails(b).label.toLowerCase();
+      } else if (sortBy === 'customerName') {
+        valA = a.customerName?.toLowerCase() || '';
+        valB = b.customerName?.toLowerCase() || '';
+      } else if (sortBy === 'tokenType') { // model / tokenType
+        valA = a.tokenType?.toLowerCase() || '';
+        valB = b.tokenType?.toLowerCase() || '';
       }
-      
+      else { // Default case for direct properties of TokenTransaction
+        const key = sortBy as keyof TokenTransaction;
+        if (key === 'metadata') {
+          // Cannot sort by metadata object directly.
+          valA = null; 
+          valB = null;
+        } else {
+          // Assert that other properties are sortable primitives or null/undefined
+          valA = a[key] as string | number | null | undefined;
+          valB = b[key] as string | number | null | undefined;
+        }
+      }
+
+      // Handle cases where valA or valB might be null or undefined after extraction
+      if (valA == null && valB == null) return 0;
+      if (valA == null) return sortDirection === 'asc' ? -1 : 1; // or 1 / -1 depending on how you want to sort nulls
+      if (valB == null) return sortDirection === 'asc' ? 1 : -1; // or -1 / 1
+
+      if (typeof valA === 'string') valA = valA.toLowerCase();
+      if (typeof valB === 'string') valB = valB.toLowerCase();
+
+      if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+      if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
       return 0;
     });
-    
-    setFilteredUsage(filtered);
-  }, [usageData, searchTerm, serviceFilter, dateRangeFilter, sortBy, sortDirection]);
+  }, [tokenTransactions, sortBy, sortDirection, getServiceTypeDetails]);
 
-  // Gestion des actions sur une entrée
-  const handleToggleActionMenu = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setShowActionMenu(showActionMenu === id ? null : id);
-  };
 
-  const handleRefreshData = async () => {
-    setLoading(true);
-    try {
-      // Simuler un appel API
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      showToast('success', 'Données de consommation mises à jour');
-      
-      // Rechargement des données
-      // Dans une application réelle, cette fonction ferait un appel API
-    } catch (error) {
-      console.error('Erreur lors de la mise à jour des données:', error);
-      showToast('error', 'Erreur lors de la mise à jour des données');
-    } finally {
-      setLoading(false);
+  const handleSort = (column: keyof TokenTransaction | 'serviceType' | 'tokensConsumed' | 'date') => {
+    if (sortBy === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(column);
+      setSortDirection('desc');
     }
   };
 
-  const exportToCSV = () => {
-    // Dans une application réelle, cette fonction générerait un fichier CSV
-    showToast('success', 'Export CSV généré avec succès');
+  const handleRefresh = () => {
+    const currentFilters: TokenTransactionFilterParams = {
+      page: currentPage,
+      limit: ITEMS_PER_PAGE,
+      search: searchTerm || undefined,
+      tokenType: serviceFilter === 'all' ? undefined : serviceFilter,
+      // transactionType: 'usage', // Removed: useTokens hook handles this internally
+    };
+    if (dateRangeFilter !== 'all' && dateRangeFilter !== 'custom') {
+      const now = new Date();
+      const startDate = new Date(); // Changed to const
+      if (dateRangeFilter === '7d') startDate.setDate(now.getDate() - 7);
+      else if (dateRangeFilter === '30d') startDate.setDate(now.getDate() - 30);
+      else if (dateRangeFilter === '90d') startDate.setDate(now.getDate() - 90);
+      currentFilters.startDate = startDate.toISOString().split('T')[0];
+      currentFilters.endDate = now.toISOString().split('T')[0];
+    } else if (dateRangeFilter === 'custom' && customDateRange.startDate && customDateRange.endDate) {
+      currentFilters.startDate = customDateRange.startDate;
+      currentFilters.endDate = customDateRange.endDate;
+    }
+    fetchTokenTransactions(currentFilters);
+    showToast('info', t('finance.tokens.refreshMessage'));
   };
 
-  const formatNumber = (num: number) => {
-    return new Intl.NumberFormat('fr-FR').format(num);
+  const handleExport = () => {
+    // TODO: Implement actual CSV/PDF export functionality
+    showToast('info', t('finance.tokens.exportMessage'));
+    console.log('Exporting data:', sortedTransactions);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('fr-FR', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
-    });
+  const toggleActionMenu = (id: string | null) => {
+    setShowActionMenu(showActionMenu === id ? null : id);
+  };
+  
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
   };
 
-  // Simuler des statistiques pour l'affichage (fallback or initial structure)
-  // These costs are in USD and should be converted if stats object is null and these are used directly.
-  const mockStatsFallback: TokenStats = {
-    totalTokensConsumed: 1727300,
-    totalCost: 52.49, // USD
-    averageCostPerToken: 0.00003039, // USD
-    tokensPerService: {
-      text: 527750,
-      voice: 405000,
-      image: 180000,
-      chat: 614550
-    },
-    costPerService: {
-      text: 10.33, // USD
-      voice: 12.15, // USD
-      image: 18.00, // USD
-      chat: 12.01 // USD
-    },
-    topCustomers: [
-      { id: 'cust-2', name: 'Crédit Maritime', tokensConsumed: 829650, cost: 20.62 /* USD */ },
-      { id: 'cust-1', name: 'TechStart SAS', tokensConsumed: 278700, cost: 5.57 /* USD */ },
-      { id: 'cust-5', name: 'MicroFinance SA', tokensConsumed: 318750, cost: 6.37 /* USD */ }
-    ],
-    dailyUsage: [
-      { date: '2025-04-17', tokensConsumed: 316000, cost: 15.50 /* USD */ },
-      { date: '2025-04-18', tokensConsumed: 387150, cost: 7.46 /* USD */ },
-      { date: '2025-04-19', tokensConsumed: 216500, cost: 11.85 /* USD */ },
-      { date: '2025-04-20', tokensConsumed: 227800, cost: 6.09 /* USD */ },
-      { date: '2025-04-21', tokensConsumed: 579850, cost: 11.59 /* USD */ }
-    ]
-  };
+  // Placeholder for service filter options - should be dynamic based on available tokenTypes or metadata
+  const serviceFilterOptions = [
+    { value: 'all', label: t('finance.tokens.filters.allServices') },
+    { value: 'text_generation' as TokenType, label: t('finance.tokens.serviceTypes.text') },
+    { value: 'voice_transcription' as TokenType, label: t('finance.tokens.serviceTypes.voice') },
+    { value: 'image_generation' as TokenType, label: t('finance.tokens.serviceTypes.image') },
+    { value: 'chat_completion' as TokenType, label: t('finance.tokens.serviceTypes.chat') },
+    { value: 'wanzo_credit' as TokenType, label: t('finance.tokens.serviceTypes.wanzo_credit') },
+    { value: 'api_call' as TokenType, label: t('finance.tokens.serviceTypes.api_call') },
+    { value: 'storage_gb' as TokenType, label: t('finance.tokens.serviceTypes.storage_gb') },
+    { value: 'processing_unit' as TokenType, label: t('finance.tokens.serviceTypes.processing_unit') },
+    { value: 'generic' as TokenType, label: t('finance.tokens.serviceTypes.generic') },
+  ];
+  
+  const dateRangeOptions = [
+    { value: 'all', label: t('finance.tokens.filters.allTime') },
+    { value: '7d', label: t('finance.tokens.filters.last7Days') },
+    { value: '30d', label: t('finance.tokens.filters.last30Days') },
+    { value: '90d', label: t('finance.tokens.filters.last90Days') },
+    { value: 'custom', label: t('finance.tokens.filters.customRange') },
+  ];
 
-  // Composants pour la page
-  const StatCard = ({ title, value, icon, trend, trendValue, info }: {
-    title: string;
-    value: React.ReactNode;
-    icon: React.ReactNode;
-    trend?: 'up' | 'down' | null;
-    trendValue?: string;
-    info?: string;
-  }) => (
-    <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">{title}</h3>
-          <div className="mt-1 text-3xl font-semibold text-gray-900 dark:text-white">{value}</div>
-          {trend && (
-            <div className={`mt-2 flex items-center text-sm ${
-              trend === 'up' ? 'text-green-600 dark:text-green-500' : 'text-red-600 dark:text-red-500'
-            }`}>
-              {trend === 'up' ? (
-                <ArrowUp className="h-4 w-4 mr-1" />
-              ) : (
-                <ArrowDown className="h-4 w-4 mr-1" />
-              )}
-              <span>{trendValue}</span>
-            </div>
-          )}
-          {info && (
-            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">{info}</p>
-          )}
-        </div>
-        <div className="p-3 bg-primary-50 dark:bg-primary-900 rounded-full">
-          {icon}
-        </div>
-      </div>
-    </div>
-  );
+  const tableHeaderKeys: Array<{ key: keyof TokenTransaction | 'serviceType' | 'tokensConsumed' | 'date' | 'actions'; label: string; sortable: boolean; className?: string }> = [
+    { key: 'customerName', label: t('finance.tokens.table.customer'), sortable: true, className: 'w-1/6' },
+    // { key: 'customerType', label: t('finance.tokens.table.customerType\'), sortable: true, className: 'w-1/12' }, // customerType not directly on TokenTransaction
+    { key: 'transactionDate' as 'date', label: t('finance.tokens.table.date'), sortable: true, className: 'w-1/12' }, // Mapped to transactionDate, ensure key matches handleSort
+    { key: 'serviceType', label: t('finance.tokens.table.serviceType'), sortable: true, className: 'w-1/6' }, // Derived from tokenType/metadata
+    { key: 'tokenType', label: t('finance.tokens.table.model'), sortable: true, className: 'w-1/6' }, // Mapped to tokenType (model)
+    { key: 'amount' as 'tokensConsumed', label: t('finance.tokens.table.tokens'), sortable: true, className: 'w-1/12 text-right' }, // Mapped to amount, ensure key matches handleSort
+    // { key: 'cost', label: t('finance.tokens.table.cost\'), sortable: true, className: 'w-1/12 text-right' }, // Cost not on TokenTransaction
+    // { key: 'requestCount', label: t('finance.tokens.table.requests\'), sortable: true, className: 'w-1/12 text-right' }, // requestCount not directly on TokenTransaction
+    { key: 'actions', label: t('finance.tokens.table.actions'), sortable: false, className: 'w-1/12 text-center' }
+  ];
 
-  const ServiceBreakdown = () => (
-    <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6">
-      <h3 className="text-base font-medium text-gray-900 dark:text-white mb-4">
-        {t('finance.tokens.breakdown.title', 'Répartition par service')}
-      </h3>
-      
-      {stats && (
-        <div className="space-y-4">
-          {Object.entries(serviceTypeConfig).map(([key, config]) => {
-            const serviceKey = key as keyof typeof stats.tokensPerService;
-            const tokensConsumed = stats.tokensPerService[serviceKey];
-            const cost = stats.costPerService[serviceKey];
-            const percentage = (tokensConsumed / stats.totalTokensConsumed) * 100;
-            
-            return (
-              <div key={key} className="space-y-1">
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
-                      {config.label}
-                    </span>
-                  </div>
-                  <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">
-                    {formatNumber(tokensConsumed)} tokens
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                  <div 
-                    className="bg-primary h-2 rounded-full" 
-                    style={{ width: `${Math.round(percentage)}%` }}
-                  ></div>
-                </div>
-                <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
-                  <span>{Math.round(percentage)}%</span>
-                  {/* Cost is already in activeCurrency from stats state */}
-                  <span>{formatCurrency(cost)}</span> 
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
 
-  const TopCustomersChart = () => (
-    <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6">
-      <h3 className="text-base font-medium text-gray-900 dark:text-white mb-4">
-        {t('finance.tokens.topCustomers.title', 'Clients avec le plus de consommation')}
-      </h3>
-      
-      {stats && (
-        <div className="space-y-4">
-          {stats.topCustomers.map((customer, index) => {
-            const percentage = (customer.tokensConsumed / stats.totalTokensConsumed) * 100;
-            
-            return (
-              <div key={customer.id} className="space-y-1">
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center">
-                    <span className="font-medium text-sm text-gray-900 dark:text-white">
-                      {customer.name}
-                    </span>
-                  </div>
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
-                    {formatNumber(customer.tokensConsumed)} tokens
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                  <div 
-                    className={`h-2 rounded-full ${index === 0 ? 'bg-primary' : index === 1 ? 'bg-purple-500' : 'bg-amber-500'}`}
-                    style={{ width: `${Math.round(percentage)}%` }}
-                  ></div>
-                </div>
-                <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
-                  <span>{Math.round(percentage)}%</span>
-                  <span>{formatCurrency(customer.cost, activeCurrency)}</span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-
-  const DailyUsageChart = () => (
-    <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6 h-full">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-base font-medium text-gray-900 dark:text-white">
-          {t('finance.tokens.dailyUsage.title', 'Consommation journalière')}
-        </h3>
-        <select 
-          value={dateRangeFilter}
-          onChange={(e) => setDateRangeFilter(e.target.value)}
-          className="text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:border-primary focus:ring-primary"
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-red-500">
+        <AlertTriangle size={48} className="mb-4" />
+        <h2 className="text-xl font-semibold mb-2">{t('finance.tokens.errorLoadingTitle')}</h2>
+        <p>{t('finance.tokens.errorLoadingMessage', { message: error.message })}</p>
+        <button 
+          onClick={handleRefresh}
+          className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center"
         >
-          <option value="1d">{t('finance.tokens.timeRanges.1d', 'Dernier jour')}</option>
-          <option value="7d">{t('finance.tokens.timeRanges.7d', '7 derniers jours')}</option>
-          <option value="30d">{t('finance.tokens.timeRanges.30d', '30 derniers jours')}</option>
-          <option value="90d">{t('finance.tokens.timeRanges.90d', '90 derniers jours')}</option>
-        </select>
-      </div>
-      
-      {stats && (
-        <div className="flex flex-col h-64">
-          <div className="flex justify-between items-end h-48 mt-4">
-            {stats.dailyUsage.map((day) => {
-              const maxUsage = Math.max(...stats.dailyUsage.map(d => d.tokensConsumed));
-              const heightPercentage = (day.tokensConsumed / maxUsage) * 100;
-              
-              return (
-                <div key={day.date} className="flex flex-col items-center flex-1">
-                  <div className="relative w-full px-1 flex justify-center">
-                    <div 
-                      className="w-10 bg-primary rounded-t-sm"
-                      style={{ height: `${heightPercentage}%` }}
-                    ></div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          
-          <div className="flex justify-between mt-2">
-            {stats.dailyUsage.map((day) => (
-              <div key={day.date} className="flex flex-col items-center text-xs text-gray-500 dark:text-gray-400">
-                {new Date(day.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
-  const ActionMenu = ({ tokenUsage }: { tokenUsage: TokenUsage }) => (
-    <div className="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white dark:bg-gray-800 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-      <div className="py-1" role="menu" aria-orientation="vertical">
-        <button
-          onClick={() => {
-            setShowActionMenu(null);
-            navigate(`/customers/detail/${tokenUsage.customerId}`);
-          }}
-          className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-          role="menuitem"
-        >
-          <ChevronRight className="mr-3 h-4 w-4 text-gray-500 dark:text-gray-400" />
-          {t('finance.tokens.actions.viewCustomer', 'Voir le client')}
-        </button>
-        
-        <button
-          onClick={() => {
-            setShowActionMenu(null);
-            // Dans une application réelle, cette fonction générerait un rapport détaillé
-            showToast('info', 'Génération du rapport détaillé...');
-          }}
-          className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-          role="menuitem"
-        >
-          <FileText className="mr-3 h-4 w-4 text-gray-500 dark:text-gray-400" />
-          {t('finance.tokens.actions.detailedReport', 'Rapport détaillé')}
+          <RefreshCw size={18} className="mr-2" />
+          {t('finance.tokens.tryAgain')}
         </button>
       </div>
-    </div>
-  );
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          {t('finance.tokens.title', 'Tokens & Consommation IA')}
-        </h1>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleRefreshData}
-            disabled={loading}
-            className="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            {t('finance.tokens.refresh', 'Actualiser')}
-          </button>
-          <button
-            onClick={exportToCSV}
-            className="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-          >
-            <Download className="h-4 w-4 mr-2" />
-            {t('finance.tokens.export', 'Exporter CSV')}
-          </button>
-        </div>
-      </div>
-
-      {/* Cartes de statistiques */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard 
-          title={t('finance.tokens.stats.totalTokens', 'Total tokens consommés')}
-          value={formatNumber(mockStatsFallback.totalTokensConsumed)}
-          icon={<BarChart2 className="h-6 w-6 text-primary" />}
-          trend="up"
-          trendValue="+8.3% depuis la période précédente"
-        />
-        
-        <StatCard 
-          title={t('finance.tokens.stats.totalCost', 'Coût total')}
-          value={formatCurrency(mockStatsFallback.totalCost, activeCurrency)}
-          icon={<FileText className="h-6 w-6 text-primary" />}
-          trend="up"
-          trendValue="+6.1% depuis la période précédente"
-        />
-        
-        <StatCard 
-          title={t('finance.tokens.stats.avgCost', 'Coût moyen / 1k tokens')}
-          value={formatCurrency(mockStatsFallback.averageCostPerToken * 1000, activeCurrency)}
-          icon={<AlertTriangle className="h-6 w-6 text-primary" />}
-          info="Basé sur la consommation moyenne"
-        />
-        
-        <StatCard 
-          title={t('finance.tokens.stats.activeCustomers', 'Clients actifs')}
-          value="5"
-          icon={<Calendar className="h-6 w-6 text-primary" />}
-          trend="up"
-          trendValue="+2 depuis la période précédente"
-        />
-      </div>
-
-      {/* Graphiques et répartition */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <ServiceBreakdown />
-        <TopCustomersChart />
-        <DailyUsageChart />
-      </div>
-
-      {/* Tableau des consommations */}
-      <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
-        <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-            <div>
-              <h2 className="text-lg font-medium text-gray-900 dark:text-white">
-                {t('finance.tokens.usageTable.title', 'Détail de la consommation')}
-              </h2>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {t('finance.tokens.usageTable.description', 'Historique détaillé de la consommation de tokens par client et par service')}
-              </p>
-            </div>
+    <div className="p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+      <header className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-800 dark:text-white">{t('finance.tokens.title')}</h1>
+        <p className="text-sm text-gray-600 dark:text-gray-400">{t('finance.tokens.subtitle')}</p>
+      </header>
+      
+      {/* Token Usage Table Section */}
+      <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow">
+        <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-3">
+          <div className="relative w-full sm:w-auto max-w-xs">
+            <input 
+              type="text"
+              placeholder={t('finance.tokens.filters.searchPlaceholder')}
+              className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white w-full"
+              value={searchTerm}
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+            />
+            <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" />
           </div>
           
-          {/* Filtres et recherche */}
-          <div className="mt-4 flex flex-col md:flex-row gap-4">
-            <div className="relative flex-grow">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-4 w-4 text-gray-400" />
-              </div>
-              <input
-                type="text"
-                placeholder={t('common.searchPlaceholder', 'Rechercher...') as string}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-3 py-2 w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:border-primary focus:ring-primary"
-              />
+          <div className="flex flex-wrap gap-2 items-center"> {/* Added items-center for alignment */}
+            <div className="relative">
+              <select 
+                value={serviceFilter}
+                onChange={(e) => { setServiceFilter(e.target.value as 'all' | TokenType); setCurrentPage(1);}}
+                className="appearance-none pr-8 py-2 pl-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200"
+              >
+                {serviceFilterOptions.map((option: {value: string, label: string}) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+              <ChevronDown size={16} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none" />
             </div>
-            
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Filter className="h-4 w-4 text-gray-400" />
-                </div>
-                <select
-                  value={serviceFilter}
-                  onChange={(e) => setServiceFilter(e.target.value)}
-                  className="pl-10 pr-10 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:border-primary focus:ring-primary"
-                >
-                  <option value="all">{t('finance.tokens.filters.allServices', 'Tous les services')}</option>
-                  <option value="text">{t('finance.tokens.serviceTypes.text', 'Traitement de texte')}</option>
-                  <option value="voice">{t('finance.tokens.serviceTypes.voice', 'Reconnaissance vocale')}</option>
-                  <option value="image">{t('finance.tokens.serviceTypes.image', 'Traitement d\'images')}</option>
-                  <option value="chat">{t('finance.tokens.serviceTypes.chat', 'Conversation IA')}</option>
-                </select>
-                <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                  <ChevronDown className="h-4 w-4 text-gray-400" />
-                </div>
-              </div>
-              
-              <div className="relative">
-                <select
-                  value={dateRangeFilter}
-                  onChange={(e) => setDateRangeFilter(e.target.value)}
-                  className="pl-3 pr-10 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:border-primary focus:ring-primary"
-                >
-                  <option value="1d">{t('finance.tokens.timeRanges.1d', 'Dernier jour')}</option>
-                  <option value="7d">{t('finance.tokens.timeRanges.7d', '7 derniers jours')}</option>
-                  <option value="30d">{t('finance.tokens.timeRanges.30d', '30 derniers jours')}</option>
-                  <option value="90d">{t('finance.tokens.timeRanges.90d', '90 derniers jours')}</option>
-                  <option value="all">{t('finance.tokens.timeRanges.all', 'Toute la période')}</option>
-                </select>
-                <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                  <ChevronDown className="h-4 w-4 text-gray-400" />
-                </div>
-              </div>
+
+            <div className="relative">
+              <select
+                value={dateRangeFilter}
+                onChange={(e) => { setDateRangeFilter(e.target.value); setCurrentPage(1); if (e.target.value !== 'custom') setCustomDateRange({ startDate: null, endDate: null }); }}
+                className="appearance-none pr-8 py-2 pl-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200"
+              >
+                {dateRangeOptions.map(option => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+              <ChevronDown size={16} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none" />
             </div>
+            {dateRangeFilter === 'custom' && (
+              <div className="flex gap-2 items-center">
+                <input 
+                  type="date" 
+                  value={customDateRange.startDate || ''}
+                  onChange={(e) => setCustomDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                  className="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                />
+                <span className="text-gray-500 dark:text-gray-400">-</span>
+                <input 
+                  type="date" 
+                  value={customDateRange.endDate || ''}
+                  onChange={(e) => setCustomDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                  className="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                  min={customDateRange.startDate || undefined}
+                />
+              </div>
+            )}
+             <button 
+              onClick={handleRefresh}
+              className="p-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 focus:outline-none"
+              title={t('finance.tokens.filters.refresh')}
+            >
+              <RefreshCw size={20} />
+            </button>
+            <button 
+              onClick={handleExport} // Attached handleExport
+              className="p-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 focus:outline-none"
+              title={t('finance.tokens.filters.export')}
+            >
+              <Download size={20} />
+            </button>
           </div>
         </div>
-        
-        {/* Tableau des consommations */}
-        {loading ? (
-          <div className="p-8 flex justify-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-          </div>
-        ) : filteredUsage.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-700">
-                <tr>
-                  <th 
-                    scope="col" 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                    onClick={() => {
-                      if (sortBy === 'customerName') {
-                        setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                      } else {
-                        setSortBy('customerName');
-                        setSortDirection('asc');
-                      }
-                    }}
-                  >
-                    {t('finance.tokens.columns.customer', 'Client')}
-                    {sortBy === 'customerName' && (
-                      <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </th>
-                  <th 
-                    scope="col" 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                    onClick={() => {
-                      if (sortBy === 'date') {
-                        setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                      } else {
-                        setSortBy('date');
-                        setSortDirection('desc');
-                      }
-                    }}
-                  >
-                    {t('finance.tokens.columns.date', 'Date')}
-                    {sortBy === 'date' && (
-                      <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </th>
-                  <th 
-                    scope="col" 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                    onClick={() => {
-                      if (sortBy === 'serviceType') {
-                        setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                      } else {
-                        setSortBy('serviceType');
-                        setSortDirection('asc');
-                      }
-                    }}
-                  >
-                    {t('finance.tokens.columns.service', 'Service')}
-                    {sortBy === 'serviceType' && (
-                      <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </th>
-                  <th 
-                    scope="col" 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                    onClick={() => {
-                      if (sortBy === 'model') {
-                        setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                      } else {
-                        setSortBy('model');
-                        setSortDirection('asc');
-                      }
-                    }}
-                  >
-                    {t('finance.tokens.columns.model', 'Modèle')}
-                    {sortBy === 'model' && (
-                      <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </th>
-                  <th 
-                    scope="col" 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                    onClick={() => {
-                      if (sortBy === 'tokensConsumed') {
-                        setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                      } else {
-                        setSortBy('tokensConsumed');
-                        setSortDirection('desc');
-                      }
-                    }}
-                  >
-                    {t('finance.tokens.columns.tokens', 'Tokens')}
-                    {sortBy === 'tokensConsumed' && (
-                      <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </th>
-                  <th 
-                    scope="col" 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                    onClick={() => {
-                      if (sortBy === 'requestCount') {
-                        setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                      } else {
-                        setSortBy('requestCount');
-                        setSortDirection('desc');
-                      }
-                    }}
-                  >
-                    {t('finance.tokens.columns.requests', 'Requêtes')}
-                    {sortBy === 'requestCount' && (
-                      <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </th>
-                  <th 
-                    scope="col" 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                    onClick={() => {
-                      if (sortBy === 'cost') {
-                        setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                      } else {
-                        setSortBy('cost');
-                        setSortDirection('desc');
-                      }
-                    }}
-                  >
-                    {t('finance.tokens.columns.cost', 'Coût')}
-                    {sortBy === 'cost' && (
-                      <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </th>
-                  <th scope="col" className="relative px-6 py-3">
-                    <span className="sr-only">{t('common.actions', 'Actions')}</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {filteredUsage.map((usage) => (
-                  <tr 
-                    key={usage.id}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900 dark:text-white">
-                        {usage.customerName}
-                      </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                        ID: {usage.customerId}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {formatDate(usage.date)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                      {usage.customerName}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {formatNumber(usage.tokensConsumed)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {/* usage.cost is already in activeCurrency from usageData state */}
-                    {formatCurrency(usage.cost)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {usage.model}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                      {formatNumber(usage.tokensConsumed)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {usage.requestCount}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                      {formatCurrency(usage.cost, activeCurrency)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="relative">
-                        <button
-                          onClick={(e) => handleToggleActionMenu(usage.id, e)}
-                          className="rounded-full p-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none"
-                        >
-                          <MoreVertical className="h-5 w-5" />
-                        </button>
-                        {showActionMenu === usage.id && <ActionMenu tokenUsage={usage} />}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+
+        {isLoading ? (
+          <div className="flex justify-center items-center h-64">
+            <RefreshCw size={32} className="animate-spin text-blue-500" />
+            <p className="ml-2 text-gray-600 dark:text-gray-400">{t('finance.tokens.loading')}</p>
           </div>
         ) : (
-          <div className="text-center py-12">
-            <Clock className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">
-              {searchTerm || serviceFilter !== 'all'
-                ? t('finance.tokens.noResults', 'Aucun résultat trouvé')
-                : t('finance.tokens.noUsage', 'Aucune consommation enregistrée')}
-            </h3>
-            <p className="mt-1 text-sm text-gray-500">
-              {searchTerm || serviceFilter !== 'all'
-                ? t('finance.tokens.tryDifferentSearch', 'Essayez une recherche différente')
-                : t('finance.tokens.checkLater', 'Les nouvelles consommations apparaîtront ici.')}
-            </p>
-          </div>
+          <>
+            {/* Table - Token Transactions */}
+            <div className="overflow-x-auto rounded-lg shadow">
+              <table className="min-w-full bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-100 dark:bg-gray-700">
+                  <tr>
+                    {tableHeaderKeys.map(({ key, label, sortable, className }) => (
+                      <th key={key as string} className={`px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider ${className}`}>
+                        {sortable ? (
+                          <button 
+                            onClick={() => {
+                              handleSort(key as keyof TokenTransaction | 'serviceType' | 'tokensConsumed' | 'date');
+                            }}
+                            className="flex items-center focus:outline-none"
+                            disabled={key === 'actions'} // Disable button for 'actions'
+                          >
+                            <span>{label}</span>
+                            {sortBy === key && (
+                              sortDirection === 'asc' ? 
+                              <ChevronUp size={16} className="ml-2" /> : 
+                              <ChevronDown size={16} className="ml-2" />
+                            )}
+                          </button>
+                        ) : (
+                          <span>{label}</span>
+                        )}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  {sortedTransactions.length === 0 ? (
+                    <tr>
+                      <td colSpan={tableHeaderKeys.length} className="px-4 py-2 text-center text-gray-500 dark:text-gray-400">
+                        {t('finance.tokens.noData')}
+                      </td>
+                    </tr>
+                  ) : (
+                    sortedTransactions.map(transaction => (
+                      <tr key={transaction.id}>
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900 dark:text-white">{transaction.customerName}</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">{transaction.customerId}</div>
+                        </td>
+                        {/* <td className="px-4 py-2 whitespace-nowrap">
+                          <div className="text-sm text-gray-900 dark:text-white">{transaction.customerType}</div>
+                        </td> */}
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <div className="text-sm text-gray-900 dark:text-white">{new Date(transaction.transactionDate).toLocaleString()}</div>
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getServiceTypeDetails(transaction).color}`}>
+                            {getServiceTypeDetails(transaction).label}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <div className="text-sm text-gray-900 dark:text-white">{transaction.tokenType}</div>
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-right">
+                          <div className="text-sm text-gray-900 dark:text-white">{transaction.amount}</div>
+                        </td>
+                        {/* <td className="px-4 py-2 whitespace-nowrap text-right">
+                          <div className="text-sm text-gray-900 dark:text-white">{transaction.cost}</div>
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-right">
+                          <div className="text-sm text-gray-900 dark:text-white">{transaction.requestCount}</div>
+                        </td> */}
+                        <td className="px-4 py-2 whitespace-nowrap text-center">
+                          <div className="flex justify-center gap-2">
+                            <button 
+                              onClick={() => toggleActionMenu(transaction.id)}
+                              className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 focus:outline-none"
+                            >
+                              <MoreVertical size={16} />
+                            </button>
+                            {/* Action menu - Placeholder for future actions (e.g., edit, delete) */}
+                            {showActionMenu === transaction.id && (
+                              <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden z-10">
+                                {/* <button className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                  {t('finance.tokens.actions.edit')}
+                              </button> */}
+                                <button 
+                                  onClick={() => {
+                                    // handleDeleteTransaction(transaction.id); // Implement delete logic
+                                    showToast('info', t('finance.tokens.actions.deleteNotImplemented'));
+                                  }}
+                                  className="block w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900"
+                                >
+                                  {t('finance.tokens.actions.delete')}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            {pagination && pagination.totalCount > 0 && ( // Ensure pagination object and totalCount exist
+              <div className="mt-6 flex flex-col sm:flex-row justify-between items-center">
+                <span className="text-sm text-gray-500 dark:text-gray-400 mb-2 sm:mb-0">
+                  {t('finance.tokens.pagination.info', { 
+                    from: Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, pagination.totalCount), 
+                    to: Math.min(currentPage * ITEMS_PER_PAGE, pagination.totalCount),
+                    total: pagination.totalCount,
+                    //totalPages: pagination.totalPages // Add if available and needed
+                  })}
+                </span>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1.5 text-sm bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-md shadow hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {t('finance.tokens.pagination.prev')}
+                  </button>
+                  {/* Page numbers can be added here if pagination.totalPages is available */}
+                  <button 
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={!pagination || currentPage === pagination.totalPages || pagination.totalCount === 0}
+                    className="px-3 py-1.5 text-sm bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-md shadow hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {t('finance.tokens.pagination.next')}
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
-      </div>
-    </div>
+      </div> {/* Closing div for "bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow" */}
+    </div> // Closing div for "p-6 bg-gray-50 dark:bg-gray-900 min-h-screen"
   );
 }

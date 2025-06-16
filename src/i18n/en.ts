@@ -61,6 +61,63 @@ export default {
         }
       }
     }
+  },
+  customers: {
+    title: 'Customers',
+    newCustomer: 'New Customer',
+    errors: {
+      loadFailed: 'Failed to load customers.',
+      loadDetailsFailed: 'Failed to load customer details.',
+      createFailed: 'Failed to create customer.',
+      updateFailed: 'Failed to update customer.',
+      deleteFailed: 'Failed to delete customer.', // Assuming you might add delete later
+      documentUploadFailed: 'Failed to upload document.',
+      documentApproveFailed: 'Failed to approve document.',
+      documentRejectFailed: 'Failed to reject document.',
+      validateFailed: 'Failed to validate customer.',
+      suspendFailed: 'Failed to suspend customer.',
+      reactivateFailed: 'Failed to reactivate customer.',
+      loadActivitiesFailed: 'Failed to load customer activities.',
+      loadStatsFailed: 'Failed to load customer statistics.',
+      loadDocumentsFailed: 'Failed to load customer documents.'
+    },
+    notifications: {
+      created: 'Customer created successfully.',
+      updated: 'Customer updated successfully.',
+      deleted: 'Customer deleted successfully.', // Assuming you might add delete later
+      documentUploaded: 'Document uploaded successfully.',
+      documentApproved: 'Document approved successfully.',
+      documentRejected: 'Document rejected successfully.',
+      validated: 'Customer validated successfully.',
+      suspended: 'Customer suspended successfully.',
+      reactivated: 'Customer reactivated successfully.'
+    },
+    status: {
+      active: 'Active',
+      inactive: 'Inactive',
+      pending: 'Pending',
+      suspended: 'Suspended'
+    },
+    type: {
+      pme: 'PME/SME',
+      ge: 'Large Enterprise',
+      individual: 'Individual',
+      other: 'Other'
+    }
+  },
+  users: {
+    errors: {
+      loadFailed: 'Failed to load users.',
+      createFailed: 'Failed to create user.',
+      updateFailed: 'Failed to update user.',
+      deleteFailed: 'Failed to delete user.',
+      loadSingleFailed: 'Failed to load user details.'
+    },
+    notifications: {
+      created: 'User created successfully.',
+      updated: 'User updated successfully.',
+      deleted: 'User deleted successfully.'
+    }
   }
   // ... other translations
 };

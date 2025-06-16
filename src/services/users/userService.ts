@@ -1,168 +1,109 @@
-import type { User, UserRole, UserType } from '../../types/user'; // Added UserType
-import { ROLE_PERMISSIONS } from '../../types/user'; // Import ROLE_PERMISSIONS
+import { useAdminApi, AdminUser } from '../api/adminApiService';
+import type { User, UserRole, UserType, UserStatus } from '../../types/user'; // Added UserStatus
+import { ROLE_PERMISSIONS } from '../../types/user';
 
-// In-memory storage for users (replace with API calls in production)
-const users = new Map<string, User>();
-
-// Add default admin user
-const defaultAdmin: User = {  id: 'admin-1',
-  name: 'Jean Dupont',
-  email: 'jean.dupont@wanzo.com',
-  role: 'super_admin',
-  userType: 'internal', // Added userType
-  status: 'active',
-  createdAt: new Date().toISOString(),
-  lastLogin: new Date('2024-01-15T08:30:00').toISOString(),
-  // Permissions will now be derived from ROLE_PERMISSIONS based on the role
-  permissions: ROLE_PERMISSIONS.super_admin 
+// Helper to map AdminUser from API to frontend User type
+const mapAdminUserToUser = (adminUser: AdminUser): User => {
+  return {
+    id: adminUser.id,
+    name: adminUser.name,
+    email: adminUser.email,
+    role: adminUser.role as UserRole,
+    status: adminUser.status as UserStatus, // Added cast, ensure backend status strings match UserStatus literals
+    userType: 'internal', // Placeholder: Determine from role or add to AdminUser API type
+    customerAccountId: undefined, // Placeholder: Add to AdminUser API type if needed
+    createdAt: adminUser.createdAt,
+    lastLogin: adminUser.lastLogin,
+    permissions: ROLE_PERMISSIONS[adminUser.role as UserRole] || [],
+    // Ensure all other fields expected by frontend User type are mapped
+  };
 };
 
-// Initialize with default admin
-users.set(defaultAdmin.id, defaultAdmin);
-
-interface CreateUserData {
-  name: string;
-  email: string;
-  password: string; // Password handling will need a proper hashing mechanism in a real app
-  role: UserRole;
-  userType: UserType; // Added userType
-  customerAccountId?: string; // Added customerAccountId, optional
-}
-
-export async function createUser(data: CreateUserData): Promise<User> {
-  // Check if email already exists
-  if (Array.from(users.values()).some(user => user.email === data.email)) {
-    throw new Error('Email already exists');
-  }
-
-  // Validate customerAccountId for external users
-  if (data.userType === 'external' && !data.customerAccountId) {
-    throw new Error('customerAccountId is required for external users');
-  }
-  if (data.userType === 'internal' && data.customerAccountId) {
-    // Or handle this case as an error, depending on desired logic
-    console.warn('customerAccountId is provided for an internal user and will be ignored.');
-  }
-
-  const newUser: User = {
-    id: `user-${Date.now()}`,
+// Maps frontend User data to the structure expected by the Admin API for creating users
+const mapUserToCreateAdminUserData = (data: CreateUserDataInternal): Partial<AdminUser> => {
+  return {
     name: data.name,
     email: data.email,
     role: data.role,
-    userType: data.userType,
-    customerAccountId: data.userType === 'external' ? data.customerAccountId : undefined,
-    status: 'pending', // New users could start as pending until email verification or admin approval
-    createdAt: new Date().toISOString(),
-    lastLogin: new Date().toISOString(), // Or undefined until first login
-    permissions: ROLE_PERMISSIONS[data.role] || [], // Assign permissions based on role
+    // Password, userType, customerAccountId are not part of AdminUser type.
+    // Backend API and AdminUser type need to be updated if these are to be managed via this API.
+  };
+};
+
+// Maps frontend User data to the structure expected by the Admin API for updating users
+const mapUserToUpdateAdminUserData = (data: Partial<User>): Partial<AdminUser> => {
+  return {
+    name: data.name,
+    // email: data.email, // Typically, email is not updatable or has a specific process.
+    role: data.role,
+    status: data.status,
+    // userType and customerAccountId are not part of AdminUser type.
+  };
+};
+
+// Interface for data received by createUser within userService
+interface CreateUserDataInternal {
+  name: string;
+  email: string;
+  password?: string; // Password handling needs clarification (e.g., Auth0 flow)
+  role: UserRole;
+  userType: UserType;
+  customerAccountId?: string;
+}
+
+// This is now a custom hook that provides user service functions.
+// It correctly uses the useAdminApi hook internally.
+export const useUserService = () => {
+  const adminApi = useAdminApi();
+
+  const getUsers = async (requestingUserRole?: UserRole, requestingUserCompanyId?: string): Promise<User[]> => {
+    console.log('useUserService.getUsers called with role:', requestingUserRole, 'companyId:', requestingUserCompanyId);
+    // TODO: Implement API filtering if backend supports it.
+    // Example: const response = await adminApi.getUsers({ params: { role: requestingUserRole, companyId: requestingUserCompanyId } });
+    const response = await adminApi.getUsers();
+    if (response && response.data) {
+      return response.data.map(mapAdminUserToUser);
+    }
+    return [];
   };
 
-  users.set(newUser.id, newUser);
-  return newUser;
-}
-
-export async function updateUser(id: string, data: Partial<Omit<User, 'id' | 'email' | 'createdAt'>>): Promise<User> { // email and createdAt usually not updatable directly
-  const user = users.get(id);
-  if (!user) {
-    throw new Error('User not found');
-  }
-
-  // Prevent changing userType or customerAccountId directly if that's the business rule
-  // Or add specific functions for such changes if allowed under certain conditions
-  let newPermissions = user.permissions;
-  if (data.role && data.role !== user.role) {
-    newPermissions = ROLE_PERMISSIONS[data.role] || [];
-  }
-
-  const updatedUser: User = {
-     ...user, 
-     ...data, 
-     permissions: newPermissions, 
-     // Ensure customerAccountId is handled correctly if role/userType changes imply it
-     customerAccountId: data.userType === 'external' 
-                        ? (data.customerAccountId || user.customerAccountId) 
-                        : undefined,
-    updatedAt: new Date().toISOString(), // Assuming User type will have updatedAt
-    };
-  users.set(id, updatedUser);
-  return updatedUser;
-}
-
-export async function deleteUser(id: string): Promise<void> {
-  if (!users.delete(id)) {
-    throw new Error('User not found');
-  }
-}
-
-// getUsers might need to accept a parameter indicating the role of the requester
-// to filter results accordingly (e.g., a company_admin only sees their company users)
-export async function getUsers(requestingUserRole?: UserRole, requestingUserCompanyId?: string): Promise<User[]> {
-  const allUsers = Array.from(users.values());
-
-  if (requestingUserRole === 'super_admin') {
-    return allUsers;
-  }
-
-  if (requestingUserRole === 'company_admin' && requestingUserCompanyId) {
-    return allUsers.filter(user => user.userType === 'external' && user.customerAccountId === requestingUserCompanyId);
-  }
-
-  // Handle internal users who are not super_admins
-  // They can see all other internal users
-  const internalRoles: UserRole[] = ['cto', 'growth_finance', 'customer_support', 'content_manager'];
-  if (requestingUserRole && internalRoles.includes(requestingUserRole)) {
-    return allUsers.filter(user => user.userType === 'internal');
-  }
-
-  // Default: if no specific role matches above, or if role is company_user or other external without company_admin rights,
-  // they should probably only see themselves (handled by getMyProfile) or no one through this generic getter.
-  // For now, returning an empty array for unhandled roles or insufficient permissions.
-  return [];
-}
-
-// It would be good to add a getMyProfile function
-export async function getMyProfile(userId: string): Promise<User | undefined> {
-  return users.get(userId);
-}
-
-// Function for super_admin to get users by company
-export async function getUsersByCompany(companyId: string): Promise<User[]> {
-  // This assumes super_admin rights or specific permission check elsewhere
-  return Array.from(users.values()).filter(user => user.customerAccountId === companyId && user.userType === 'external');
-}
-
-// Function for a company_admin to update a user within their company
-export async function updateCompanyUser(companyAdminId: string, targetUserId: string, data: Partial<Omit<User, 'id' | 'email' | 'createdAt' | 'userType' | 'customerAccountId'>>): Promise<User> {
-  const admin = users.get(companyAdminId);
-  if (!admin || admin.role !== 'company_admin' || admin.userType !== 'external') {
-    throw new Error('Unauthorized: Not a company admin.');
-  }
-
-  const user = users.get(targetUserId);
-  if (!user || user.customerAccountId !== admin.customerAccountId) {
-    throw new Error('User not found in this company or user is not an external user.');
-  }
-  // Company admin cannot change the role to super_admin or other internal roles.
-  if (data.role && (data.role === 'super_admin' || data.role === 'cto' || data.role === 'growth_finance' || data.role === 'customer_support' || data.role === 'content_manager')) {
-    throw new Error('Company admin cannot assign internal Wanzo roles.');
-  }
-  // Company admin can only assign 'company_admin' or 'company_user' from their own company.
-  if (data.role && data.role !== 'company_admin' && data.role !== 'company_user') {
-    throw new Error('Invalid role assignment by company admin.');
-  }
-
-  let newPermissions = user.permissions;
-  if (data.role && data.role !== user.role) {
-    newPermissions = ROLE_PERMISSIONS[data.role] || [];
-  }
-
-  const updatedUser: User = {
-    ...user,
-    ...data,
-    permissions: newPermissions,
-    updatedAt: new Date().toISOString(), // Assuming User type will have updatedAt
+  const createUser = async (data: CreateUserDataInternal): Promise<User> => {
+    const apiData = mapUserToCreateAdminUserData(data);
+    // Note: Password, userType, customerAccountId are not sent via current adminApi.createUser
+    // This might require backend API changes or a different user creation flow (e.g., via Auth0 directly)
+    const response = await adminApi.createUser(apiData);
+    if (response && response.data) {
+      return mapAdminUserToUser(response.data);
+    }
+    throw new Error('Failed to create user - no data returned from API');
   };
 
-  users.set(targetUserId, updatedUser);
-  return updatedUser;
-}
+  const updateUser = async (id: string, data: Partial<User>): Promise<User> => {
+    const apiData = mapUserToUpdateAdminUserData(data);
+    const response = await adminApi.updateUser(id, apiData);
+    if (response && response.data) {
+      return mapAdminUserToUser(response.data);
+    }
+    throw new Error('Failed to update user - no data returned from API');
+  };
+
+  const deleteUser = async (id: string): Promise<void> => {
+    await adminApi.deleteUser(id);
+  };
+  
+  const getUserById = async (id: string): Promise<User | null> => {
+    const response = await adminApi.getUserById(id);
+    if (response && response.data) {
+      return mapAdminUserToUser(response.data);
+    }
+    return null;
+  };
+
+  return {
+    getUsers,
+    createUser,
+    updateUser,
+    deleteUser,
+    getUserById,
+  };
+};

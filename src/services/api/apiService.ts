@@ -46,7 +46,16 @@ export const useApi = () => {
     // Méthodes API génériques
     get: <T>(endpoint: string) => apiClient.get<T>(endpoint),
     post: <T>(endpoint: string, data: unknown) => apiClient.post<T>(endpoint, data),
+    // Ajout de postMultipart pour gérer FormData explicitement si nécessaire
+    postMultipart: <T>(endpoint: string, formData: FormData) =>
+      apiClient.post<T>(endpoint, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }),
     put: <T>(endpoint: string, data: unknown) => apiClient.put<T>(endpoint, data),
     delete: <T>(endpoint: string) => apiClient.delete<T>(endpoint),
+    // Vous pouvez ajouter PATCH ici si votre backend le supporte et que vous en avez besoin
+    // patch: <T>(endpoint: string, data: unknown) => apiClient.patch<T>(endpoint, data),
   };
 };
